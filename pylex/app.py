@@ -24,6 +24,8 @@ class PyLexApp(tk.Tk):
         self.diagnostics = []
         self.execution = None
         self._execution_poll = None
+        self.documents = {}
+        self.editor = None
         self._menu()
         self._toolbar()
         self._workspace()
@@ -84,8 +86,10 @@ class PyLexApp(tk.Tk):
     def _workspace(self):
         panes = ttk.Panedwindow(self, orient="vertical")
         panes.pack(fill="both", expand=True, padx=6, pady=5)
-        self.editor = CodeEditor(panes, self.mark_dirty)
-        panes.add(self.editor, weight=4)
+        self.editor_tabs = ttk.Notebook(panes)
+        panes.add(self.editor_tabs, weight=4)
+        self.editor_tabs.bind("<<NotebookTabChanged>>", self._on_tab_changed)
+        self._create_document()
 
         lower = ttk.Frame(panes)
         panes.add(lower, weight=2)
@@ -186,60 +190,110 @@ class PyLexApp(tk.Tk):
         self._set_diagnostics(diagnostics)
         return diagnostics
 
-    def mark_dirty(self):
-        self.dirty = True
+    def mark_dirty(self, editor=None):
+        editor = editor or self.editor
+        document = self.documents.get(editor)
+        if document is not None:
+            document["dirty"] = True
+            if self.editor is editor:
+                self._sync_active_document()
+                if self.diagnostics:
+                    self._set_diagnostics([])
+                    self.error_summary.configure(text="Source changed. Run Analyze All to refresh diagnostics.")
+        editor.clear_diagnostic()
+
+    def _create_document(self, path=None, content=""):
+        """Create a new editor tab and register its independent document state."""
+        frame = ttk.Frame(self.editor_tabs)
+        editor = CodeEditor(frame, on_change=lambda: self.mark_dirty(editor))
+        editor.pack(fill="both", expand=True)
+        editor.set_content(content)
+        self.documents[editor] = {
+            "frame": frame, "path": Path(path) if path else None, "dirty": False,
+        }
+        label = Path(path).name if path else "Untitled"
+        self.editor_tabs.add(frame, text=label)
+        self.editor_tabs.select(frame)
+        self.editor = editor
+        self._sync_active_document()
+        return editor
+
+    def _active_document(self):
+        return self.documents.get(self.editor)
+
+    def _sync_active_document(self):
+        document = self._active_document()
+        if document is None:
+            self.current_path = None
+            self.dirty = False
+            return
+        self.current_path = document["path"]
+        self.dirty = document["dirty"]
         self._title()
-        if self.diagnostics:
-            self._set_diagnostics([])
-            self.error_summary.configure(text="Source changed. Run Analyze All to refresh diagnostics.")
-        self.editor.clear_diagnostic()
+
+    def _on_tab_changed(self, event=None):
+        selected = self.editor_tabs.select()
+        if not selected:
+            return
+        for editor, document in self.documents.items():
+            if str(document["frame"]) == selected:
+                self.editor = editor
+                self._sync_active_document()
+                self._set_diagnostics([])
+                break
 
     def _title(self):
         name = self.current_path.name if self.current_path else "Untitled"
         self.title(f"{'*' if self.dirty else ''}{name} — PyLex Studio 1.2.0")
 
     def _confirm(self):
-        if not self.dirty:
+        document = self._active_document()
+        if document is None or not document["dirty"]:
             return True
         answer = messagebox.askyesnocancel(
-            "Unsaved Changes", "Save changes before continuing?"
+            "Unsaved Changes",
+            f"Save changes to {document['path'].name if document['path'] else 'Untitled'} before continuing?"
         )
         if answer is None:
             return False
         return self.save_file() if answer else True
 
     def new_file(self):
-        if self._confirm():
-            self.editor.set_content("")
-            self.current_path = None
-            self.dirty = False
-            self.clear_results()
-            self._title()
+        self._create_document()
 
     def open_file(self):
-        if not self._confirm():
-            return
         path = filedialog.askopenfilename(
             filetypes=[("Python files", "*.py"), ("All files", "*.*")]
         )
-        if path:
-            try:
-                self.editor.set_content(Path(path).read_text(encoding="utf-8"))
-                self.current_path = Path(path)
-                self.dirty = False
-                self.clear_results()
-                self._title()
-                self.status.configure(text="File opened.")
-            except (OSError, UnicodeError) as exc:
-                messagebox.showerror("Open Error", str(exc))
+        if not path:
+            return
+        path = Path(path)
+        for editor, document in self.documents.items():
+            if document["path"] and document["path"].resolve() == path.resolve():
+                self.editor_tabs.select(document["frame"])
+                self.editor = editor
+                self._sync_active_document()
+                return
+        try:
+            content = path.read_text(encoding="utf-8")
+        except (OSError, UnicodeError) as exc:
+            messagebox.showerror("Open Error", str(exc))
+            return
+        self._create_document(path=path, content=content)
+        self.clear_results()
+        self.status.configure(text=f"Opened {path.name}.")
 
     def save_file(self):
-        if self.current_path is None:
+        document = self._active_document()
+        if document is None:
+            return False
+        if document["path"] is None:
             return self.save_as()
         try:
-            self.current_path.write_text(self.editor.get_content(), encoding="utf-8")
-            self.dirty = False
-            self._title()
+            document["path"].write_text(self.editor.get_content(), encoding="utf-8")
+            document["dirty"] = False
+            self.editor_tabs.tab(document["frame"], text=document["path"].name)
+            self._sync_active_document()
             self.status.configure(text="File saved.")
             return True
         except OSError as exc:
@@ -247,14 +301,23 @@ class PyLexApp(tk.Tk):
             return False
 
     def save_as(self):
+        document = self._active_document()
+        if document is None:
+            return False
         path = filedialog.asksaveasfilename(
             defaultextension=".py",
             filetypes=[("Python files", "*.py"), ("All files", "*.*")]
         )
         if not path:
             return False
-        self.current_path = Path(path)
+        path = Path(path)
+        for editor, other in self.documents.items():
+            if editor is not self.editor and other["path"] and other["path"].resolve() == path.resolve():
+                messagebox.showerror("Save Error", "That file is already open in another tab.")
+                return False
+        document["path"] = path
         return self.save_file()
+
 
     def analyze_lexical(self):
         source = self.editor.get_content()
@@ -459,7 +522,14 @@ class PyLexApp(tk.Tk):
             style.configure("Treeview.Heading", background="#eeeeee", foreground="#202020")
 
     def close(self):
-        if self._confirm():
-            if self.execution is not None and not self.execution.done:
-                self.execution.stop()
-            self.destroy()
+        for editor, document in list(self.documents.items()):
+            if not document["dirty"]:
+                continue
+            self.editor_tabs.select(document["frame"])
+            self.editor = editor
+            self._sync_active_document()
+            if not self._confirm():
+                return
+        if self.execution is not None and not self.execution.done:
+            self.execution.stop()
+        self.destroy()
