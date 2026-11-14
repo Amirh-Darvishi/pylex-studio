@@ -14,7 +14,9 @@ A lightweight Python desktop editor with independent lexical and syntax analysis
 - Live streaming stdout and stderr with separate console colors
 - Force-stop a running program and its child processes with the Stop control or Shift+F5
 - Clear or save execution output; inspect exit code, execution status, and duration
-- Preflight checks for unavailable third-party imports with suggested pip install commands
+- Dependency inspector classifying standard-library, local, installed, and missing imports; reports package versions and locations
+- Interpreter-aware installation commands and active virtual-environment details
+- Preflight dependency checks before execution, plus runtime missing-module diagnostics
 - Open and save multiple files in independent editor tabs
 - Per-tab unsaved-change indicators and save confirmation
 - Project folder explorer with double-click file opening
@@ -84,7 +86,7 @@ The lexical analyzer uses Python `tokenize` and reports token start/end position
 
 ## Running code (1.2.0 development)
 
-Code runs in a child process. The editor remains responsive while the process is active. Output streams into the console while the program runs. Use Force Stop or Shift+F5 to terminate the process tree (including child processes); executions use the configurable timeout selected in View → Preferences (5, 10, 30, or 60 seconds, or Unlimited). The Output status shows the remaining time while a limited execution is running. The console can be cleared or saved to a text file. A preflight import check reports likely missing third-party packages and suggests installation commands; Python tracebacks remain authoritative. This is not a security sandbox: code runs with the current user's permissions. Do not run untrusted code.
+Code runs in a child process. The editor remains responsive while the process is active. Output streams into the console while the program runs. Use Force Stop or Shift+F5 to terminate the process tree (including child processes); executions use the configurable timeout selected in View → Preferences (5, 10, 30, or 60 seconds, or Unlimited). The Output status shows the remaining time while a limited execution is running. The console can be cleared or saved to a text file. A dedicated Dependencies panel classifies standard-library, local-project, installed, and missing imports, including installed versions and module locations. It reports the exact Python executable and virtual-environment status, and provides interpreter-specific pip commands. Static scans cannot identify every dynamic import, so runtime ModuleNotFoundError diagnostics remain authoritative. This is not a security sandbox: code runs with the current user's permissions. Do not run untrusted code.
 
 ## Tests
 
