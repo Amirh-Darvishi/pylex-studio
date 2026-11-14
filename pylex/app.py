@@ -654,6 +654,8 @@ class PyLexApp(tk.Tk):
         output = session.read_available()
         if output:
             self._append_output(output)
+            if "The program finished" in output or "The program exited" in output:
+                self.status.configure(text="Program finished — choose Stop Debugging to close the debugger.")
         if session.done:
             session.close()
             self.debug_session = None
