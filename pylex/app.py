@@ -338,6 +338,7 @@ class PyLexApp(tk.Tk):
         self.editor_tabs.select(frame)
         self.editor = editor
         self._sync_active_document()
+        self.editor.set_breakpoints(self.breakpoints.get(editor, set()))
         return editor
 
     def _active_document(self):
@@ -361,6 +362,7 @@ class PyLexApp(tk.Tk):
             if str(document["frame"]) == selected:
                 self.editor = editor
                 self._sync_active_document()
+                self.editor.set_breakpoints(self.breakpoints.get(self.editor, set()))
                 self._set_diagnostics([])
                 break
 
@@ -563,10 +565,13 @@ class PyLexApp(tk.Tk):
             if self.debug_session is not None and not self.debug_session.done:
                 self.debug_session.set_breakpoint(line)
             self.editor.set_breakpoints(points)
-        self.status.configure(text=f"Breakpoint set on line {line}.")
+            self.status.configure(text=f"Breakpoint set on line {line}.")
         return line
 
     def start_debugging(self):
+        if self.execution is not None and not self.execution.done:
+            self.status.configure(text="Stop normal execution before starting the debugger.")
+            return
         if self.debug_session is not None and not self.debug_session.done:
             self.status.configure(text="A debugging session is already active.")
             return
