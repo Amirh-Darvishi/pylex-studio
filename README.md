@@ -63,7 +63,11 @@ python -m pip install -r requirements.txt
 python main.py
 ```
 
-## Debugging (1.2.0 development)\n\nUse Debug or Tools → Start Debugging to launch the current source under Python's built-in `pdb` debugger. Toggle Breakpoint at the current line, then use Continue, Step Into, Step Over, Variables, and Stack. Debugged code runs with the current user's permissions and is not sandboxed.\n\n## File and project management (1.2.0 development)
+## Debugging (1.2.0 development)
+
+Use Debug or Tools → Start Debugging to launch the current source under Python's built-in `pdb` debugger. Toggle Breakpoint at the current line, then use Continue, Step Into, Step Over, Variables, and Stack. Debugged code runs with the current user's permissions and is not sandboxed.
+
+## File and project management (1.2.0 development)
 
 Use File → Open Project Folder to browse a project. Double-click supported files in the explorer to open them in tabs. Each tab tracks its own unsaved changes; use Ctrl+W to close the active tab.
 
