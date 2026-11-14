@@ -750,7 +750,7 @@ class PyLexApp(tk.Tk):
         if visible:
             self.workspace.forget(self.project_tree)
         else:
-            self.workspace.add(self.project_tree, before=self.editor_panes, weight=1)
+            self.workspace.insert(0, self.project_tree, weight=1)
         self.preferences["show_project_explorer"] = not visible
         self._persist_preferences()
 
