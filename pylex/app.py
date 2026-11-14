@@ -349,6 +349,7 @@ class PyLexApp(tk.Tk):
         self.editor = editor
         editor.set_font_family(self.preferences["font_family"])
         editor.set_font_size(self.preferences["font_size"])
+        editor.set_theme(self.dark)
         self._sync_active_document()
         self.editor.set_breakpoints(self.breakpoints.get(editor, set()))
         return editor
@@ -519,6 +520,9 @@ class PyLexApp(tk.Tk):
         self.status.configure(text="Analysis results cleared.")
 
     def run_code(self):
+        if self.debug_session is not None and not self.debug_session.done:
+            self.status.configure(text="Stop debugging before starting normal execution.")
+            return
         if self.execution is not None and not self.execution.done:
             self.status.configure(text="A program is already running. Stop it before starting another.")
             return
@@ -581,6 +585,9 @@ class PyLexApp(tk.Tk):
         return line
 
     def start_debugging(self):
+        if self.debug_session is not None and self.debug_session.done:
+            self.debug_session.close()
+            self.debug_session = None
         if self.execution is not None and not self.execution.done:
             self.status.configure(text="Stop normal execution before starting the debugger.")
             return
