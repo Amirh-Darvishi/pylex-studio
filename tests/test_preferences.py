@@ -25,6 +25,24 @@ class PreferencesTests(unittest.TestCase):
                 self.assertEqual(loaded["font_family"], "Cascadia Code")
                 self.assertEqual(loaded["font_size"], 16)
 
+    def test_timeout_preference_round_trip_and_unlimited(self):
+        with tempfile.TemporaryDirectory() as folder:
+            with patch("pylex.preferences.Path.home", return_value=Path(folder)):
+                values = dict(DEFAULTS)
+                values["timeout_seconds"] = None
+                save_preferences(values)
+                self.assertIsNone(load_preferences()["timeout_seconds"])
+                values["timeout_seconds"] = 30
+                save_preferences(values)
+                self.assertEqual(load_preferences()["timeout_seconds"], 30)
+
+    def test_invalid_timeout_is_reset_to_default(self):
+        with tempfile.TemporaryDirectory() as folder:
+            with patch("pylex.preferences.Path.home", return_value=Path(folder)):
+                path = Path(folder) / ".pylex_studio.json"
+                path.write_text(json.dumps({"timeout_seconds": 999}), encoding="utf-8")
+                self.assertEqual(load_preferences()["timeout_seconds"], 10)
+
     def test_invalid_values_are_normalized(self):
         with tempfile.TemporaryDirectory() as folder:
             with patch("pylex.preferences.Path.home", return_value=Path(folder)):
