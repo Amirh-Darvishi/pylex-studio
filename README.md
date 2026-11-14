@@ -22,7 +22,8 @@ A lightweight Python desktop editor with independent lexical and syntax analysis
 - Automatic closing of brackets and quotes
 - Find and replace with Ctrl+H
 - pdb-backed debugging with breakpoints, Continue, Step Into, Step Over, variables, and stack inspection
-- Adjustable editor font size
+- Adjustable editor font family and font size
+- Persistent preferences for theme, font, font size, and project explorer visibility
 - Structured error panel with exact exception type and source location
 - Click or double-click a diagnostic to jump to its line and column
 - Current-line emphasis and inline error highlighting
@@ -62,6 +63,10 @@ Install dependencies and run:
 python -m pip install -r requirements.txt
 python main.py
 ```
+
+## User interface preferences (1.2.0 development)
+
+Open View → Preferences to choose the dark or light theme, editor font family, font size, and project explorer visibility. Preferences are stored in `.pylex_studio.json` in the user's home directory and are reused on the next launch.
 
 ## Debugging (1.2.0 development)
 
