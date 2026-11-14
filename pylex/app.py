@@ -3,6 +3,7 @@ import tkinter as tk
 from tkinter import ttk, filedialog, messagebox
 from pathlib import Path
 import re
+import time
 
 from .editor import CodeEditor
 from .analyzer import (
@@ -31,6 +32,7 @@ class PyLexApp(tk.Tk):
         self._execution_poll = None
         self.debug_session = None
         self._debug_poll = None
+        self._last_timeout_display = None
         self.breakpoints = {}
         self.documents = {}
         self.editor = None
@@ -555,12 +557,18 @@ class PyLexApp(tk.Tk):
             self._append_output("\n".join(lines) + "\n", "system")
         self._append_output("Starting program...\n", "system")
         try:
-            self.execution = start_source(source, timeout=10)
+            timeout = self.preferences["timeout_seconds"]
+            self.execution = start_source(source, timeout=timeout)
         except OSError as exc:
             self._append_output(f"Could not start Python process: {exc}\n", "stderr")
             self.status.configure(text="Could not start Python process.")
             return
-        self.status.configure(text="Running — live output enabled. Shift+F5 / Force Stop terminates the process tree.")
+        timeout_label = "unlimited" if timeout is None else f"{timeout} seconds"
+        self._append_output(f"Execution timeout: {timeout_label}.\n", "system")
+        self._last_timeout_display = None
+        self.status.configure(
+            text=f"Running — timeout: {timeout_label}. Shift+F5 / Force Stop terminates the process tree."
+        )
         self._poll_execution()
 
     def stop_execution(self):
@@ -581,6 +589,20 @@ class PyLexApp(tk.Tk):
         for channel, content in handle.read_available():
             self._append_output(content, channel)
         if not handle.done:
+            timeout = handle.timeout
+            if timeout is None:
+                display = "unlimited"
+                status_text = "Running — no time limit. Use Force Stop / Shift+F5 to terminate."
+            else:
+                remaining = max(0, int(timeout - (time.monotonic() - handle.started_at) + 0.999))
+                display = str(remaining)
+                status_text = (
+                    f"Running — {remaining}s remaining before timeout. "
+                    "Use Force Stop / Shift+F5 to terminate."
+                )
+            if display != self._last_timeout_display:
+                self.status.configure(text=status_text)
+                self._last_timeout_display = display
             self._execution_poll = self.after(60, self._poll_execution)
             return
         result = handle.result
@@ -887,6 +909,17 @@ class PyLexApp(tk.Tk):
             body, text="Show project explorer", variable=explorer_var,
         ).grid(row=3, column=0, columnspan=2, sticky="w", pady=5)
 
+        ttk.Label(body, text="Execution timeout").grid(row=4, column=0, sticky="w", pady=5)
+        timeout_values = ("5 seconds", "10 seconds", "30 seconds", "60 seconds", "Unlimited")
+        current_timeout = self.preferences["timeout_seconds"]
+        timeout_text = "Unlimited" if current_timeout is None else f"{current_timeout} seconds"
+        timeout_var = tk.StringVar(value=timeout_text)
+        timeout_box = ttk.Combobox(
+            body, textvariable=timeout_var, values=timeout_values,
+            state="readonly", width=20,
+        )
+        timeout_box.grid(row=4, column=1, sticky="ew", pady=5)
+
         def apply():
             self.preferences["theme"] = theme_var.get()
             self.preferences["font_family"] = font_var.get()
@@ -895,6 +928,16 @@ class PyLexApp(tk.Tk):
             except (ValueError, tk.TclError):
                 messagebox.showerror("Preferences", "Font size must be a number from 7 to 40.")
                 return
+            selected_timeout = timeout_var.get()
+            timeout_map = {
+                "5 seconds": 5, "10 seconds": 10,
+                "30 seconds": 30, "60 seconds": 60,
+                "Unlimited": None,
+            }
+            if selected_timeout not in timeout_map:
+                messagebox.showerror("Preferences", "Choose a valid execution timeout.")
+                return
+            self.preferences["timeout_seconds"] = timeout_map[selected_timeout]
             desired_explorer = bool(explorer_var.get())
             if desired_explorer != self.preferences["show_project_explorer"]:
                 self.toggle_project_explorer()
@@ -907,7 +950,7 @@ class PyLexApp(tk.Tk):
             dialog.destroy()
 
         buttons = ttk.Frame(body)
-        buttons.grid(row=4, column=0, columnspan=2, sticky="e", pady=(10, 0))
+        buttons.grid(row=5, column=0, columnspan=2, sticky="e", pady=(10, 0))
         ttk.Button(buttons, text="Apply", command=apply).pack(side="right", padx=3)
         ttk.Button(buttons, text="Cancel", command=dialog.destroy).pack(side="right", padx=3)
 
