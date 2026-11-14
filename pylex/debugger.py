@@ -126,6 +126,13 @@ class DebugSession:
         except subprocess.TimeoutExpired:
             self.process.kill()
             self.process.wait()
+        self._reader.join(timeout=1)
+        for stream in (self.process.stdin, self.process.stdout):
+            if stream is not None:
+                try:
+                    stream.close()
+                except OSError:
+                    pass
         try:
             self.script_path.unlink(missing_ok=True)
         except OSError:
