@@ -113,41 +113,51 @@ class CodeEditor(tk.Frame):
         """Insert matching brackets and quotes, or skip an existing closer."""
         char = event.char
         pairs = {"(": ")", "[": "]", "{": "}", '"': '"', "'": "'"}
-        if char in {")", "]", "}"}:
+        if char in {")", "]", "}"} or char in {"'", '"'}:
             if self.text.get("insert") == char:
                 self.text.mark_set("insert", "insert+1c")
                 return "break"
-            return None
+            if char not in pairs:
+                return None
         if char not in pairs:
             return None
-        if char in {"'", '"'} and self.text.get("insert") == char:
-            self.text.mark_set("insert", "insert+1c")
-            return "break"
         if char in {"'", '"'} and self.text.get("insert-1c", "insert") == "\\":
             return None
+
         try:
             selected = self.text.get("sel.first", "sel.last")
+            start = self.text.index("sel.first")
             self.text.delete("sel.first", "sel.last")
         except tk.TclError:
             selected = ""
-        self.text.insert("insert", char + selected + pairs[char])
-        self.text.mark_set("insert", "insert-1c")
+            start = self.text.index("insert")
+
+        self.text.insert(start, char + selected + pairs[char])
+        # Place the caret immediately after the opening character, before
+        # the selected text (if any) and its closing delimiter.
+        self.text.mark_set("insert", f"{start}+1c")
         return "break"
 
     def show_completions(self, event=None):
         """Show lightweight keyword and built-in completion suggestions."""
-        word = self.text.get("insert wordstart", "insert")
-        if not word:
+        prefix_start = self.text.index("insert wordstart")
+        prefix = self.text.get(prefix_start, "insert")
+        if not prefix:
             return "break"
         candidates = sorted(set(keyword.kwlist) | set(dir(builtins)))
-        matches = [item for item in candidates if item.startswith(word) and item != word]
+        matches = [item for item in candidates if item.startswith(prefix) and item != prefix]
         if not matches:
             self._hide_completions()
             return "break"
+
         self._hide_completions()
+        self._completion_start = prefix_start
+        self._completion_end = self.text.index("insert")
         self._completion_window = tk.Toplevel(self)
         self._completion_window.wm_overrideredirect(True)
-        self._completion_list = tk.Listbox(self._completion_window, height=min(8, len(matches)))
+        self._completion_list = tk.Listbox(
+            self._completion_window, height=min(8, len(matches)), exportselection=False,
+        )
         self._completion_list.pack()
         for item in matches[:100]:
             self._completion_list.insert("end", item)
@@ -162,8 +172,29 @@ class CodeEditor(tk.Frame):
         self._completion_list.selection_set(0)
         self._completion_list.bind("<Return>", self._apply_completion)
         self._completion_list.bind("<Double-Button-1>", self._apply_completion)
-        self._completion_list.bind("<Escape>", lambda _event: self._hide_completions())
+        self._completion_list.bind("<Escape>", self._cancel_completions)
+        self._completion_list.bind("<Up>", self._completion_move)
+        self._completion_list.bind("<Down>", self._completion_move)
         self._completion_list.focus_set()
+        return "break"
+
+    def _completion_move(self, event):
+        """Keep keyboard navigation inside the completion list."""
+        if self._completion_list is not None:
+            size = self._completion_list.size()
+            if size:
+                current = self._completion_list.curselection()
+                index = current[0] if current else 0
+                index = max(0, min(size - 1, index + (1 if event.keysym == "Down" else -1)))
+                self._completion_list.selection_clear(0, "end")
+                self._completion_list.selection_set(index)
+                self._completion_list.activate(index)
+                self._completion_list.see(index)
+        return "break"
+
+    def _cancel_completions(self, event=None):
+        self._hide_completions()
+        self.text.focus_set()
         return "break"
 
     def _apply_completion(self, event=None):
@@ -172,8 +203,9 @@ class CodeEditor(tk.Frame):
         selection = self._completion_list.curselection()
         if selection:
             value = self._completion_list.get(selection[0])
-            self.text.delete("insert wordstart", "insert")
-            self.text.insert("insert", value)
+            self.text.delete(self._completion_start, self._completion_end)
+            self.text.insert(self._completion_start, value)
+            self.text.mark_set("insert", f"{self._completion_start}+{len(value)}c")
         self._hide_completions()
         self.text.focus_set()
         return "break"
