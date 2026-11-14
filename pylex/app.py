@@ -38,7 +38,9 @@ class PyLexApp(tk.Tk):
         file_menu = tk.Menu(menu, tearoff=False)
         for label, command in [
             ("New", self.new_file), ("Open...", self.open_file),
+            ("Open Project Folder...", self.open_project_folder),
             ("Save", self.save_file), ("Save As...", self.save_as),
+            ("Close Tab", self.close_tab),
         ]:
             file_menu.add_command(label=label, command=command)
         file_menu.add_separator()
@@ -64,6 +66,7 @@ class PyLexApp(tk.Tk):
         self.bind_all("<Control-o>", lambda event: self.open_file())
         self.bind_all("<Control-s>", lambda event: self.save_file())
         self.bind_all("<Control-h>", lambda event: self.find_replace())
+        self.bind_all("<Control-w>", lambda event: self.close_tab())
         self.bind_all("<F5>", lambda event: self.run_code())
         self.bind_all("<Shift-F5>", lambda event: self.stop_execution())
         self.bind_all("<F6>", lambda event: self.analyze_all())
@@ -84,8 +87,15 @@ class PyLexApp(tk.Tk):
             ttk.Button(bar, text=label, command=action).pack(side="left", padx=2)
 
     def _workspace(self):
-        panes = ttk.Panedwindow(self, orient="vertical")
-        panes.pack(fill="both", expand=True, padx=6, pady=5)
+        workspace = ttk.Panedwindow(self, orient="horizontal")
+        workspace.pack(fill="both", expand=True, padx=6, pady=5)
+        self.project_root = None
+        self.project_tree = ttk.Treeview(workspace, show="tree", selectmode="browse")
+        self.project_tree.bind("<Double-1>", self._on_project_tree_open)
+        workspace.add(self.project_tree, weight=1)
+
+        panes = ttk.Panedwindow(workspace, orient="vertical")
+        workspace.add(panes, weight=5)
         self.editor_tabs = ttk.Notebook(panes)
         panes.add(self.editor_tabs, weight=4)
         self.editor_tabs.bind("<<NotebookTabChanged>>", self._on_tab_changed)
@@ -195,12 +205,107 @@ class PyLexApp(tk.Tk):
         document = self.documents.get(editor)
         if document is not None:
             document["dirty"] = True
+            label = document["path"].name if document["path"] else "Untitled"
+            self.editor_tabs.tab(document["frame"], text="*" + label)
             if self.editor is editor:
                 self._sync_active_document()
                 if self.diagnostics:
                     self._set_diagnostics([])
                     self.error_summary.configure(text="Source changed. Run Analyze All to refresh diagnostics.")
         editor.clear_diagnostic()
+
+    def open_project_folder(self):
+        """Choose a project root and display its files in the explorer."""
+        folder = filedialog.askdirectory(title="Open Project Folder")
+        if not folder:
+            return
+        self.project_root = Path(folder)
+        self._populate_project_tree()
+        self.status.configure(text=f"Project opened: {self.project_root}")
+
+    def _populate_project_tree(self):
+        self.project_tree.delete(*self.project_tree.get_children())
+        if self.project_root is None:
+            return
+        root_id = self.project_tree.insert(
+            "", "end", text=self.project_root.name,
+            values=(str(self.project_root),), open=True,
+        )
+        ignored = {".git", ".venv", "venv", "__pycache__", ".pytest_cache", "node_modules"}
+
+        def add_children(parent_id, directory):
+            try:
+                entries = sorted(
+                    directory.iterdir(),
+                    key=lambda item: (not item.is_dir(), item.name.lower()),
+                )
+            except OSError:
+                return
+            for entry in entries:
+                if entry.name in ignored or entry.is_symlink():
+                    continue
+                if entry.is_dir():
+                    node = self.project_tree.insert(
+                        parent_id, "end", text=entry.name,
+                        values=(str(entry),), open=False,
+                    )
+                    add_children(node, entry)
+                elif entry.is_file():
+                    self.project_tree.insert(
+                        parent_id, "end", text=entry.name,
+                        values=(str(entry),),
+                    )
+
+        add_children(root_id, self.project_root)
+
+    def _on_project_tree_open(self, event=None):
+        selection = self.project_tree.selection()
+        if not selection:
+            return
+        values = self.project_tree.item(selection[0], "values")
+        if not values:
+            return
+        path = Path(values[0])
+        if path.is_dir():
+            is_open = bool(self.project_tree.item(selection[0], "open"))
+            self.project_tree.item(selection[0], open=not is_open)
+            return
+        if path.suffix.lower() not in {".py", ".pyw", ".txt", ".md", ".json", ".toml", ".yaml", ".yml"}:
+            self.status.configure(text=f"Selected {path.name}.")
+            return
+        for editor, document in self.documents.items():
+            if document["path"] and document["path"].resolve() == path.resolve():
+                self.editor_tabs.select(document["frame"])
+                self.editor = editor
+                self._sync_active_document()
+                return
+        try:
+            content = path.read_text(encoding="utf-8")
+        except (OSError, UnicodeError) as exc:
+            messagebox.showerror("Open Error", str(exc))
+            return
+        self._create_document(path=path, content=content)
+        self.status.configure(text=f"Opened {path.name}.")
+
+    def close_tab(self):
+        """Close the active document after resolving its unsaved changes."""
+        document = self._active_document()
+        if document is None or not self._confirm():
+            return
+        frame = document["frame"]
+        self.editor_tabs.forget(frame)
+        del self.documents[self.editor]
+        if not self.documents:
+            self._create_document()
+        else:
+            selected = self.editor_tabs.select()
+            for editor, item in self.documents.items():
+                if str(item["frame"]) == selected:
+                    self.editor = editor
+                    break
+            self._sync_active_document()
+        self._set_diagnostics([])
+        self.status.configure(text="Tab closed.")
 
     def _create_document(self, path=None, content=""):
         """Create a new editor tab and register its independent document state."""
