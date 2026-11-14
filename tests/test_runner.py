@@ -39,6 +39,14 @@ class RunnerTests(unittest.TestCase):
         self.assertIn("ModuleNotFoundError", result.stderr)
         self.assertIn("pylex_test_missing_package_abc123", result.stderr)
 
+    def test_unlimited_timeout_allows_longer_execution(self):
+        result = start_source(
+            "import time\nprint('started', flush=True)\ntime.sleep(0.25)\nprint('finished')",
+            timeout=None,
+        ).wait(5)
+        self.assertEqual(result.status, "finished")
+        self.assertIn("finished", result.stdout)
+
     def test_timeout_terminates_process(self):
         result = start_source("import time\ntime.sleep(3)", timeout=0.15).wait(5)
         self.assertEqual(result.status, "timed_out")
