@@ -9,6 +9,7 @@ from .analyzer import (
 )
 from .runner import start_source
 from .debugger import DebugSession
+from .preferences import load_preferences, save_preferences
 
 
 class PyLexApp(tk.Tk):
@@ -21,7 +22,8 @@ class PyLexApp(tk.Tk):
         self.minsize(850, 560)
         self.current_path = None
         self.dirty = False
-        self.dark = True
+        self.preferences = load_preferences()
+        self.dark = self.preferences["theme"] == "dark"
         self.diagnostics = []
         self.execution = None
         self._execution_poll = None
@@ -73,6 +75,11 @@ class PyLexApp(tk.Tk):
         tools_menu.add_command(label="Show Stack", command=self.debug_stack)
         tools_menu.add_command(label="Stop Debugging", command=self.stop_debugging)
         menu.add_cascade(label="Tools", menu=tools_menu)
+
+        view_menu = tk.Menu(menu, tearoff=False)
+        view_menu.add_command(label="Preferences...", command=self.open_preferences)
+        view_menu.add_command(label="Toggle Project Explorer", command=self.toggle_project_explorer)
+        menu.add_cascade(label="View", menu=view_menu)
         self.config(menu=menu)
 
         self.bind_all("<Control-n>", lambda event: self.new_file())
@@ -105,13 +112,16 @@ class PyLexApp(tk.Tk):
 
     def _workspace(self):
         workspace = ttk.Panedwindow(self, orient="horizontal")
+        self.workspace = workspace
         workspace.pack(fill="both", expand=True, padx=6, pady=5)
         self.project_root = None
         self.project_tree = ttk.Treeview(workspace, show="tree", selectmode="browse")
         self.project_tree.bind("<Double-1>", self._on_project_tree_open)
-        workspace.add(self.project_tree, weight=1)
+        if self.preferences["show_project_explorer"]:
+            workspace.add(self.project_tree, weight=1)
 
         panes = ttk.Panedwindow(workspace, orient="vertical")
+        self.editor_panes = panes
         workspace.add(panes, weight=5)
         self.editor_tabs = ttk.Notebook(panes)
         panes.add(self.editor_tabs, weight=4)
@@ -337,6 +347,8 @@ class PyLexApp(tk.Tk):
         self.editor_tabs.add(frame, text=label)
         self.editor_tabs.select(frame)
         self.editor = editor
+        editor.set_font_family(self.preferences["font_family"])
+        editor.set_font_size(self.preferences["font_size"])
         self._sync_active_document()
         self.editor.set_breakpoints(self.breakpoints.get(editor, set()))
         return editor
@@ -721,16 +733,96 @@ class PyLexApp(tk.Tk):
         dialog.bind("<Return>", lambda _event: find_next())
 
     def zoom(self, delta):
-        self.editor.set_font_size(self.editor.font_size + delta)
-        self.status.configure(text=f"Editor font size: {self.editor.font_size}")
+        self.preferences["font_size"] = max(7, min(40, self.editor.font_size + delta))
+        for editor in self.documents:
+            editor.set_font_size(self.preferences["font_size"])
+        self._persist_preferences()
+        self.status.configure(text=f"Editor font size: {self.preferences['font_size']}")
+
+    def _persist_preferences(self):
+        try:
+            save_preferences(self.preferences)
+        except OSError as exc:
+            self.status.configure(text=f"Could not save preferences: {exc}")
+
+    def toggle_project_explorer(self):
+        visible = bool(self.preferences["show_project_explorer"])
+        if visible:
+            self.workspace.forget(self.project_tree)
+        else:
+            self.workspace.add(self.project_tree, before=self.editor_panes, weight=1)
+        self.preferences["show_project_explorer"] = not visible
+        self._persist_preferences()
+
+    def open_preferences(self):
+        dialog = tk.Toplevel(self)
+        dialog.title("PyLex Studio Preferences")
+        dialog.transient(self)
+        dialog.resizable(False, False)
+        body = ttk.Frame(dialog, padding=12)
+        body.pack(fill="both", expand=True)
+
+        ttk.Label(body, text="Theme").grid(row=0, column=0, sticky="w", pady=5)
+        theme_var = tk.StringVar(value=self.preferences["theme"])
+        theme_box = ttk.Combobox(
+            body, textvariable=theme_var, values=("dark", "light"),
+            state="readonly", width=20,
+        )
+        theme_box.grid(row=0, column=1, sticky="ew", pady=5)
+
+        ttk.Label(body, text="Editor font").grid(row=1, column=0, sticky="w", pady=5)
+        font_var = tk.StringVar(value=self.preferences["font_family"])
+        font_box = ttk.Combobox(
+            body, textvariable=font_var,
+            values=("Consolas", "Cascadia Code", "Courier New", "Lucida Console"),
+            state="readonly", width=20,
+        )
+        font_box.grid(row=1, column=1, sticky="ew", pady=5)
+
+        ttk.Label(body, text="Font size").grid(row=2, column=0, sticky="w", pady=5)
+        size_var = tk.IntVar(value=self.preferences["font_size"])
+        size_box = tk.Spinbox(body, from_=7, to=40, textvariable=size_var, width=8)
+        size_box.grid(row=2, column=1, sticky="w", pady=5)
+
+        explorer_var = tk.BooleanVar(value=self.preferences["show_project_explorer"])
+        ttk.Checkbutton(
+            body, text="Show project explorer", variable=explorer_var,
+        ).grid(row=3, column=0, columnspan=2, sticky="w", pady=5)
+
+        def apply():
+            self.preferences["theme"] = theme_var.get()
+            self.preferences["font_family"] = font_var.get()
+            try:
+                self.preferences["font_size"] = max(7, min(40, int(size_var.get())))
+            except (ValueError, tk.TclError):
+                messagebox.showerror("Preferences", "Font size must be a number from 7 to 40.")
+                return
+            desired_explorer = bool(explorer_var.get())
+            if desired_explorer != self.preferences["show_project_explorer"]:
+                self.toggle_project_explorer()
+            self.dark = self.preferences["theme"] == "dark"
+            for editor in self.documents:
+                editor.set_font_family(self.preferences["font_family"])
+                editor.set_font_size(self.preferences["font_size"])
+            self._theme()
+            self._persist_preferences()
+            dialog.destroy()
+
+        buttons = ttk.Frame(body)
+        buttons.grid(row=4, column=0, columnspan=2, sticky="e", pady=(10, 0))
+        ttk.Button(buttons, text="Apply", command=apply).pack(side="right", padx=3)
+        ttk.Button(buttons, text="Cancel", command=dialog.destroy).pack(side="right", padx=3)
 
     def toggle_theme(self):
         self.dark = not self.dark
+        self.preferences["theme"] = "dark" if self.dark else "light"
         self._theme()
+        self._persist_preferences()
 
     def _theme(self):
         bg, fg = ("#1e1e1e", "#dddddd") if self.dark else ("#ffffff", "#202020")
-        self.editor.set_theme(self.dark)
+        for editor in self.documents:
+            editor.set_theme(self.dark)
         for panel in (self.output, self.lexical, self.syntax):
             panel.configure(bg=bg, fg=fg, insertbackground=fg)
         style = ttk.Style(self)
