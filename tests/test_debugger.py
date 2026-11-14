@@ -39,7 +39,7 @@ class DebuggerTests(unittest.TestCase):
             output = ""
             while time.monotonic() < deadline:
                 output += session.read_available()
-                if "Breakpoint" in output or "(Pdb)" in output:
+                if "Breakpoint 1" in output or "(2)<module>()" in output:
                     break
                 if session.done:
                     break
