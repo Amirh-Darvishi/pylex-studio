@@ -1,33 +1,61 @@
 # PyLex Studio
 
-ویرایشگر دسکتاپ پایتون با تحلیل لغوی و نحوی مستقل.
+A lightweight Python desktop editor with independent lexical and syntax analysis.
 
-## امکانات
-- ویرایش فایل‌های Python، شماره خطوط و رنگ‌بندی پایه
-- تحلیل لغوی با `tokenize` و تحلیل نحوی با `ast`
-- اجرای کد و نمایش stdout / stderr
-- بزرگ‌نمایی، تم روشن/تاریک، باز کردن و ذخیره فایل
-- آزمون‌های واحد و GitHub Actions
+## Features
 
-## نیازمندی
-Python 3.10+ و Tkinter. وابستگی خارجی پایتون وجود ندارد.
+- Python code editor with line numbers
+- Pygments-powered syntax highlighting
+- Lexical analysis using Python's `tokenize` module
+- Syntax analysis using Python's `ast` module
+- Run Python code and inspect standard output and errors
+- Open and save Python files
+- Adjustable editor font size
+- Dark and light editor themes
 
-## نصب و اجرا
+## Requirements
+
+- Python 3.10+
+- Tkinter (usually included with standard Python installations)
+- Pygments
+
+## Installation
+
 ```bash
 git clone https://github.com/Amirh-Darvishi/pylex-studio.git
 cd pylex-studio
 python -m venv .venv
-# Windows: .venv\Scripts\Activate.ps1
-# Linux/macOS: source .venv/bin/activate
+```
+
+Activate the environment:
+
+```powershell
+# Windows PowerShell
+.venv\\Scripts\\Activate.ps1
+```
+
+```bash
+# Linux / macOS
+source .venv/bin/activate
+```
+
+Install dependencies and run:
+
+```bash
+python -m pip install -r requirements.txt
 python main.py
 ```
 
-## تست
+## Tests
+
 ```bash
 python -m unittest discover -s tests -v
 ```
 
-## امنیت
-کد اجراشده با سطح دسترسی کاربر فعلی اجرا می‌شود. این ابزار sandbox نیست؛ کدهای ناشناس را اجرا نکنید.
+## Security
 
-راهنمای کامل فارسی در `docs/PROJECT_GUIDE.html` قرار دارد.
+Code execution runs with the permissions of the current user. The runner is **not a security sandbox**. Do not execute untrusted code.
+
+## Documentation
+
+The Persian project guide is available at `docs/PROJECT_GUIDE.html`.
