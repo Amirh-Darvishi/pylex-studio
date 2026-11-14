@@ -1,6 +1,6 @@
 # PyLex Studio
 
-**Current development target: 1.1.1** (not yet released)
+**Current development target: 1.2.0** (in development)
 
 A lightweight Python desktop editor with independent lexical and syntax analysis.
 
@@ -10,7 +10,9 @@ A lightweight Python desktop editor with independent lexical and syntax analysis
 - Pygments-powered syntax highlighting
 - Lexical analysis using Python's `tokenize` module
 - Syntax analysis using Python's `ast` module
-- Run Python code and inspect standard output and errors
+- Run Python code asynchronously without freezing the editor
+- Stop a running program with the Stop control or Shift+F5
+- Inspect stdout, stderr, exit code, execution status, and duration
 - Open and save Python files
 - Adjustable editor font size
 - Structured error panel with exact exception type and source location
@@ -53,11 +55,11 @@ python -m pip install -r requirements.txt
 python main.py
 ```
 
-## Analysis and diagnostics (1.1.1 development)
+## Analysis and diagnostics
 
 The lexical analyzer uses Python `tokenize` and reports token start/end positions. The syntax analyzer uses `ast.parse`. Diagnostics preserve concrete exception types (for example, `IndentationError`), are de-duplicated when the tokenizer and parser report the same issue, and can be selected in the Errors panel to navigate to the corresponding editor position. Editor columns are zero-based internally; the UI displays one-based columns.
 
-## Tests
+## Running code (1.2.0 development)\n\nCode runs in a child process. The editor remains responsive while the process is active. Use Stop or Shift+F5 to terminate it; executions also have a 10-second timeout. This is not a security sandbox: code runs with the current user's permissions. Do not run untrusted code.\n\n## Tests
 
 ```bash
 python -m unittest discover -s tests -v
