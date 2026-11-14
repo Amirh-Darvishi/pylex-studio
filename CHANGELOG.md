@@ -8,6 +8,8 @@ All notable changes to PyLex Studio are documented here.
 - Interactive pdb-based debugging in a child process.
 - Per-editor breakpoints, Continue, Step Into, Step Over, variable inspection, and stack inspection.
 - Debugger lifecycle and output-capture tests.
+- Preferences dialog for theme, editor font family, font size, and project explorer visibility.
+- Persistent user preferences stored outside the project directory.
 
 ### Added
 - Non-blocking Python code execution in a child process.
