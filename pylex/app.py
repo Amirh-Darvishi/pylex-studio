@@ -70,6 +70,7 @@ class PyLexApp(tk.Tk):
         tools_menu.add_command(label="Step Over", command=self.debug_next)
         tools_menu.add_command(label="Toggle Breakpoint", command=self.toggle_breakpoint)
         tools_menu.add_command(label="Inspect Variables", command=self.debug_variables)
+        tools_menu.add_command(label="Show Stack", command=self.debug_stack)
         tools_menu.add_command(label="Stop Debugging", command=self.stop_debugging)
         menu.add_cascade(label="Tools", menu=tools_menu)
         self.config(menu=menu)
@@ -92,6 +93,7 @@ class PyLexApp(tk.Tk):
             ("Debug", self.start_debugging), ("Continue", self.debug_continue),
             ("Step", self.debug_step), ("Next", self.debug_next),
             ("Breakpoint", self.toggle_breakpoint), ("Variables", self.debug_variables),
+            ("Stack", self.debug_stack),
             ("Analyze All", self.analyze_all),
             ("Lexical", self.analyze_lexical), ("Syntax", self.analyze_syntax),
             ("Clear Results", self.clear_results),
@@ -554,12 +556,14 @@ class PyLexApp(tk.Tk):
             points.remove(line)
             if self.debug_session is not None and not self.debug_session.done:
                 self.debug_session.clear_breakpoint(line)
+            self.editor.set_breakpoints(points)
             self.status.configure(text=f"Breakpoint removed from line {line}.")
         else:
             points.add(line)
             if self.debug_session is not None and not self.debug_session.done:
                 self.debug_session.set_breakpoint(line)
-            self.status.configure(text=f"Breakpoint set on line {line}.")
+            self.editor.set_breakpoints(points)
+        self.status.configure(text=f"Breakpoint set on line {line}.")
         return line
 
     def start_debugging(self):
@@ -604,6 +608,13 @@ class PyLexApp(tk.Tk):
             return
         self.debug_session.inspect_variables()
         self.status.configure(text="Requested current-frame variables.")
+
+    def debug_stack(self):
+        if self.debug_session is None or self.debug_session.done:
+            self.status.configure(text="No active debugging session.")
+            return
+        self.debug_session.command("where")
+        self.status.configure(text="Requested current stack trace.")
 
     def stop_debugging(self):
         if self.debug_session is None:
