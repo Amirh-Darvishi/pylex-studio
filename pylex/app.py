@@ -853,6 +853,6 @@ class PyLexApp(tk.Tk):
                 return
         if self.execution is not None and not self.execution.done:
             self.execution.stop()
-        if self.debug_session is not None and not self.debug_session.done:
+        if self.debug_session is not None:
             self.debug_session.close()
         self.destroy()
