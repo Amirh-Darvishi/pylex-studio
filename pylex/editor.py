@@ -113,13 +113,16 @@ class CodeEditor(tk.Frame):
         """Insert matching brackets and quotes, or skip an existing closer."""
         char = event.char
         pairs = {"(": ")", "[": "]", "{": "}", '"': '"', "'": "'"}
-        if char in set(pairs.values()):
+        if char in {")", "]", "}"}:
             if self.text.get("insert") == char:
                 self.text.mark_set("insert", "insert+1c")
                 return "break"
             return None
         if char not in pairs:
             return None
+        if char in {"'", '"'} and self.text.get("insert") == char:
+            self.text.mark_set("insert", "insert+1c")
+            return "break"
         if char in {"'", '"'} and self.text.get("insert-1c", "insert") == "\\":
             return None
         try:
