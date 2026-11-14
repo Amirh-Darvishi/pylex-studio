@@ -13,6 +13,10 @@ A lightweight Python desktop editor with independent lexical and syntax analysis
 - Run Python code asynchronously without freezing the editor
 - Stop a running program with the Stop control or Shift+F5
 - Inspect stdout, stderr, exit code, execution status, and duration
+- Open and save multiple files in independent editor tabs
+- Per-tab unsaved-change indicators and save confirmation
+- Project folder explorer with double-click file opening
+- Close the active tab with Ctrl+W
 - Open and save Python files
 - Basic Python keyword and built-in completion with Ctrl+Space
 - Automatic closing of brackets and quotes
@@ -58,7 +62,7 @@ python -m pip install -r requirements.txt
 python main.py
 ```
 
-## Analysis and diagnostics
+## File and project management (1.2.0 development)\n\nUse File → Open Project Folder to browse a project. Double-click supported files in the explorer to open them in tabs. Each tab tracks its own unsaved changes; use Ctrl+W to close the active tab.\n\n## Analysis and diagnostics
 
 The lexical analyzer uses Python `tokenize` and reports token start/end positions. The syntax analyzer uses `ast.parse`. Diagnostics preserve concrete exception types (for example, `IndentationError`), are de-duplicated when the tokenizer and parser report the same issue, and can be selected in the Errors panel to navigate to the corresponding editor position. Editor columns are zero-based internally; the UI displays one-based columns.
 
