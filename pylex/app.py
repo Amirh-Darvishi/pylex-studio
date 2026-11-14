@@ -269,7 +269,7 @@ class PyLexApp(tk.Tk):
         if path.is_dir():
             is_open = bool(self.project_tree.item(selection[0], "open"))
             self.project_tree.item(selection[0], open=not is_open)
-            return
+            return "break"
         if path.suffix.lower() not in {".py", ".pyw", ".txt", ".md", ".json", ".toml", ".yaml", ".yml"}:
             self.status.configure(text=f"Selected {path.name}.")
             return
