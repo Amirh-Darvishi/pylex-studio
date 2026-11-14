@@ -25,7 +25,7 @@ A lightweight Python desktop editor with independent lexical and syntax analysis
 - Find and replace with Ctrl+H
 - pdb-backed debugging with breakpoints, Continue, Step Into, Step Over, variables, and stack inspection
 - Adjustable editor font family and font size
-- Persistent preferences for theme, font, font size, and project explorer visibility
+- Persistent preferences for theme, font, font size, project explorer visibility, and execution timeout
 - Structured error panel with exact exception type and source location
 - Click or double-click a diagnostic to jump to its line and column
 - Current-line emphasis and inline error highlighting
@@ -84,7 +84,7 @@ The lexical analyzer uses Python `tokenize` and reports token start/end position
 
 ## Running code (1.2.0 development)
 
-Code runs in a child process. The editor remains responsive while the process is active. Output streams into the console while the program runs. Use Force Stop or Shift+F5 to terminate the process tree (including child processes); executions also have a 10-second timeout. The console can be cleared or saved to a text file. A preflight import check reports likely missing third-party packages and suggests installation commands; Python tracebacks remain authoritative. This is not a security sandbox: code runs with the current user's permissions. Do not run untrusted code.
+Code runs in a child process. The editor remains responsive while the process is active. Output streams into the console while the program runs. Use Force Stop or Shift+F5 to terminate the process tree (including child processes); executions use the configurable timeout selected in View → Preferences (5, 10, 30, or 60 seconds, or Unlimited). The Output status shows the remaining time while a limited execution is running. The console can be cleared or saved to a text file. A preflight import check reports likely missing third-party packages and suggests installation commands; Python tracebacks remain authoritative. This is not a security sandbox: code runs with the current user's permissions. Do not run untrusted code.
 
 ## Tests
 
