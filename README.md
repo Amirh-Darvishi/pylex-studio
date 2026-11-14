@@ -18,7 +18,7 @@ A lightweight Python desktop editor with independent lexical and syntax analysis
 - Project folder explorer with double-click file opening
 - Close the active tab with Ctrl+W
 - Open and save Python files
-- Basic Python keyword and built-in completion with Ctrl+Space
+- Keyboard-navigable Python keyword and built-in completion with Ctrl+Space
 - Automatic closing of brackets and quotes
 - Find and replace with Ctrl+H
 - Adjustable editor font size
