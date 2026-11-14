@@ -1,6 +1,9 @@
-"""Run Python source in a child process with timeout and cancellation support."""
+"""Run Python source in an isolated process group with streaming output and cancellation."""
 from dataclasses import dataclass
+import os
 from pathlib import Path
+import queue
+import signal
 import subprocess
 import sys
 import tempfile
@@ -11,7 +14,6 @@ import time
 @dataclass(frozen=True)
 class ExecutionResult:
     """Immutable result returned when a child process finishes."""
-
     stdout: str
     stderr: str
     exit_code: int
@@ -19,8 +21,28 @@ class ExecutionResult:
     duration: float
 
 
+def _terminate_process_tree(process):
+    """Terminate the process and descendants, not only the Python parent."""
+    if process.poll() is not None:
+        return
+    try:
+        if os.name == "nt":
+            subprocess.run(
+                ["taskkill", "/PID", str(process.pid), "/T", "/F"],
+                stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+                check=False, timeout=5,
+            )
+        else:
+            os.killpg(process.pid, signal.SIGKILL)
+    except (OSError, subprocess.SubprocessError):
+        try:
+            process.kill()
+        except OSError:
+            pass
+
+
 class ExecutionHandle:
-    """Thread-safe handle for observing and stopping a running Python process."""
+    """Thread-safe handle exposing live stdout/stderr and force-stop support."""
 
     def __init__(self, process, script_path, timeout):
         self.process = process
@@ -31,6 +53,17 @@ class ExecutionHandle:
         self._lock = threading.Lock()
         self._stop_requested = False
         self._result = None
+        self._events = queue.Queue()
+        self._stdout_parts = []
+        self._stderr_parts = []
+        self._readers = [
+            threading.Thread(target=self._read_stream, args=(process.stdout, "stdout"),
+                             daemon=True),
+            threading.Thread(target=self._read_stream, args=(process.stderr, "stderr"),
+                             daemon=True),
+        ]
+        for reader in self._readers:
+            reader.start()
         self._thread = threading.Thread(target=self._collect, daemon=True)
         self._thread.start()
 
@@ -43,18 +76,39 @@ class ExecutionHandle:
         with self._lock:
             return self._result
 
+    def _read_stream(self, stream, channel):
+        parts = self._stdout_parts if channel == "stdout" else self._stderr_parts
+        try:
+            for line in iter(stream.readline, ""):
+                parts.append(line)
+                self._events.put((channel, line))
+        except (OSError, ValueError):
+            pass
+        finally:
+            try:
+                stream.close()
+            except OSError:
+                pass
+
+    def read_available(self):
+        """Return queued live output as (channel, text) pairs without blocking."""
+        chunks = []
+        while True:
+            try:
+                chunks.append(self._events.get_nowait())
+            except queue.Empty:
+                return chunks
+
     def stop(self):
-        """Stop the child process if it is still running."""
+        """Force-stop the process tree so descendants cannot keep pipes alive."""
         with self._lock:
             if self._done.is_set():
                 return False
             self._stop_requested = True
-        if self.process.poll() is None:
-            try:
-                self.process.kill()
-            except OSError:
-                pass
+        _terminate_process_tree(self.process)
         return True
+
+    force_stop = stop
 
     def wait(self, timeout=None):
         """Wait for completion and return the result, or None on wait timeout."""
@@ -63,37 +117,46 @@ class ExecutionHandle:
         return self.result
 
     def _collect(self):
-        stdout = stderr = ""
         status = "finished"
-        exit_code = -1
         try:
             try:
-                stdout, stderr = self.process.communicate(timeout=self.timeout)
-                exit_code = self.process.returncode
+                self.process.wait(timeout=self.timeout)
             except subprocess.TimeoutExpired:
                 status = "timed_out"
-                self.process.kill()
-                stdout, stderr = self.process.communicate()
-                exit_code = self.process.returncode
-                message = f"Execution timed out after {self.timeout:g} seconds."
-                stderr = (stderr + "\n" if stderr else "") + message
+                _terminate_process_tree(self.process)
+                self.process.wait()
+            for reader in self._readers:
+                reader.join(timeout=3)
             with self._lock:
                 if self._stop_requested:
                     status = "stopped"
-                    message = "Execution stopped by user."
-                    stderr = (stderr + "\n" if stderr else "") + message
+            stdout = "".join(self._stdout_parts)
+            stderr = "".join(self._stderr_parts)
+            if status == "timed_out":
+                stderr += ("\n" if stderr else "") + (
+                    f"Execution timed out after {self.timeout:g} seconds."
+                )
+            elif status == "stopped":
+                stderr += ("\n" if stderr else "") + "Execution force-stopped by user."
+            exit_code = self.process.returncode
         except Exception as exc:
             status = "failed"
-            stderr = (stderr + "\n" if stderr else "") + f"{type(exc).__name__}: {exc}"
+            stdout = "".join(self._stdout_parts)
+            stderr = "".join(self._stderr_parts)
+            stderr += ("\n" if stderr else "") + f"{type(exc).__name__}: {exc}"
+            exit_code = self.process.poll()
+            if exit_code is None:
+                _terminate_process_tree(self.process)
+                self.process.wait()
+                exit_code = self.process.returncode
         finally:
             try:
                 self.script_path.unlink(missing_ok=True)
             except OSError:
                 pass
             result = ExecutionResult(
-                stdout=stdout or "",
-                stderr=stderr or "",
-                exit_code=exit_code,
+                stdout=stdout or "", stderr=stderr or "",
+                exit_code=exit_code if exit_code is not None else -1,
                 status=status,
                 duration=max(0.0, time.monotonic() - self.started_at),
             )
@@ -103,10 +166,7 @@ class ExecutionHandle:
 
 
 def start_source(source, timeout=10):
-    """Start source asynchronously and immediately return an ExecutionHandle.
-
-    Code runs with the current user's permissions. This is not a security sandbox.
-    """
+    """Start source asynchronously. Code is not sandboxed."""
     script_path = None
     try:
         with tempfile.NamedTemporaryFile(
@@ -114,13 +174,16 @@ def start_source(source, timeout=10):
         ) as script:
             script.write(source)
             script_path = Path(script.name)
+        options = {}
+        if os.name == "nt":
+            options["creationflags"] = getattr(subprocess, "CREATE_NEW_PROCESS_GROUP", 0)
+        else:
+            options["start_new_session"] = True
         process = subprocess.Popen(
-            [sys.executable, str(script_path)],
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            text=True,
-            encoding="utf-8",
-            errors="replace",
+            [sys.executable, "-u", str(script_path)],
+            stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+            text=True, encoding="utf-8", errors="replace", bufsize=1,
+            **options,
         )
         return ExecutionHandle(process, script_path, timeout)
     except Exception:
