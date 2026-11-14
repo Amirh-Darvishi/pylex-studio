@@ -11,7 +11,6 @@ All notable changes to PyLex Studio are documented here.
 - Preferences dialog for theme, editor font family, font size, and project explorer visibility.
 - Persistent user preferences stored outside the project directory.
 
-### Added
 - Non-blocking Python code execution in a child process.
 - Stop execution control and Shift+F5 shortcut.
 - Execution status, duration, stdout, stderr, and exit-code reporting.
