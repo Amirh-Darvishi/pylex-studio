@@ -11,8 +11,10 @@ A lightweight Python desktop editor with independent lexical and syntax analysis
 - Lexical analysis using Python's `tokenize` module
 - Syntax analysis using Python's `ast` module
 - Run Python code asynchronously without freezing the editor
-- Stop a running program with the Stop control or Shift+F5
-- Inspect stdout, stderr, exit code, execution status, and duration
+- Live streaming stdout and stderr with separate console colors
+- Force-stop a running program and its child processes with the Stop control or Shift+F5
+- Clear or save execution output; inspect exit code, execution status, and duration
+- Preflight checks for unavailable third-party imports with suggested pip install commands
 - Open and save multiple files in independent editor tabs
 - Per-tab unsaved-change indicators and save confirmation
 - Project folder explorer with double-click file opening
@@ -82,7 +84,7 @@ The lexical analyzer uses Python `tokenize` and reports token start/end position
 
 ## Running code (1.2.0 development)
 
-Code runs in a child process. The editor remains responsive while the process is active. Use Stop or Shift+F5 to terminate it; executions also have a 10-second timeout. This is not a security sandbox: code runs with the current user's permissions. Do not run untrusted code.
+Code runs in a child process. The editor remains responsive while the process is active. Output streams into the console while the program runs. Use Force Stop or Shift+F5 to terminate the process tree (including child processes); executions also have a 10-second timeout. The console can be cleared or saved to a text file. A preflight import check reports likely missing third-party packages and suggests installation commands; Python tracebacks remain authoritative. This is not a security sandbox: code runs with the current user's permissions. Do not run untrusted code.
 
 ## Tests
 
