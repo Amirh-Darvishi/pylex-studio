@@ -14,6 +14,9 @@ A lightweight Python desktop editor with independent lexical and syntax analysis
 - Stop a running program with the Stop control or Shift+F5
 - Inspect stdout, stderr, exit code, execution status, and duration
 - Open and save Python files
+- Basic Python keyword and built-in completion with Ctrl+Space
+- Automatic closing of brackets and quotes
+- Find and replace with Ctrl+H
 - Adjustable editor font size
 - Structured error panel with exact exception type and source location
 - Click or double-click a diagnostic to jump to its line and column
