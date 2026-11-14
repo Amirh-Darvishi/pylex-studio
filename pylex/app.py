@@ -7,7 +7,7 @@ from .editor import CodeEditor
 from .analyzer import (
     lexical_analysis, syntax_analysis, format_tokens, collect_diagnostics,
 )
-from .runner import run_source
+from .runner import start_source
 
 
 class PyLexApp(tk.Tk):
@@ -15,13 +15,15 @@ class PyLexApp(tk.Tk):
 
     def __init__(self):
         super().__init__()
-        self.title("PyLex Studio 1.1.1 — Python Editor")
+        self.title("PyLex Studio 1.2.0 — Python Editor")
         self.geometry("1180x780")
         self.minsize(850, 560)
         self.current_path = None
         self.dirty = False
         self.dark = True
         self.diagnostics = []
+        self.execution = None
+        self._execution_poll = None
         self._menu()
         self._toolbar()
         self._workspace()
@@ -48,6 +50,7 @@ class PyLexApp(tk.Tk):
         tools_menu.add_command(label="Clear Results", command=self.clear_results)
         tools_menu.add_separator()
         tools_menu.add_command(label="Run Code", command=self.run_code)
+        tools_menu.add_command(label="Stop Execution", command=self.stop_execution)
         menu.add_cascade(label="Tools", menu=tools_menu)
         self.config(menu=menu)
 
@@ -55,6 +58,7 @@ class PyLexApp(tk.Tk):
         self.bind_all("<Control-o>", lambda event: self.open_file())
         self.bind_all("<Control-s>", lambda event: self.save_file())
         self.bind_all("<F5>", lambda event: self.run_code())
+        self.bind_all("<Shift-F5>", lambda event: self.stop_execution())
         self.bind_all("<F6>", lambda event: self.analyze_all())
 
     def _toolbar(self):
@@ -62,7 +66,7 @@ class PyLexApp(tk.Tk):
         bar.pack(fill="x")
         buttons = [
             ("New", self.new_file), ("Open", self.open_file),
-            ("Save", self.save_file), ("▶ Run", self.run_code),
+            ("Save", self.save_file), ("▶ Run", self.run_code), ("■ Stop", self.stop_execution),
             ("Analyze All", self.analyze_all),
             ("Lexical", self.analyze_lexical), ("Syntax", self.analyze_syntax),
             ("Clear Results", self.clear_results),
@@ -187,7 +191,7 @@ class PyLexApp(tk.Tk):
 
     def _title(self):
         name = self.current_path.name if self.current_path else "Untitled"
-        self.title(f"{'*' if self.dirty else ''}{name} — PyLex Studio 1.1.1")
+        self.title(f"{'*' if self.dirty else ''}{name} — PyLex Studio 1.2.0")
 
     def _confirm(self):
         if not self.dirty:
@@ -311,13 +315,43 @@ class PyLexApp(tk.Tk):
         self.status.configure(text="Analysis results cleared.")
 
     def run_code(self):
-        stdout, stderr, exit_code = run_source(self.editor.get_content())
-        report = stdout
-        if stderr:
-            report += ("\n" if report else "") + "Errors:\n" + stderr
-        report += f"\n\nExit code: {exit_code}"
+        if self.execution is not None and not self.execution.done:
+            self.status.configure(text="A program is already running. Stop it before starting another.")
+            return
+        try:
+            self.execution = start_source(self.editor.get_content(), timeout=10)
+        except OSError as exc:
+            messagebox.showerror("Execution Error", str(exc))
+            self.status.configure(text="Could not start Python process.")
+            return
+        self._show(self.output, "Program is running...\\n")
+        self.status.configure(text="Running — press Shift+F5 or Stop to cancel.")
+        self._poll_execution()
+
+    def stop_execution(self):
+        if self.execution is None or self.execution.done:
+            self.status.configure(text="No program is currently running.")
+            return
+        self.execution.stop()
+        self.status.configure(text="Stopping program...")
+
+    def _poll_execution(self):
+        if self.execution is None:
+            return
+        if not self.execution.done:
+            self._execution_poll = self.after(100, self._poll_execution)
+            return
+        result = self.execution.result
+        report = result.stdout
+        if result.stderr:
+            report += ("\\n" if report else "") + "Errors:\\n" + result.stderr
+        report += f"\\n\\nStatus: {result.status}\\nExit code: {result.exit_code}\\nDuration: {result.duration:.2f}s"
         self._show(self.output, report)
-        self.status.configure(text=f"Execution finished — exit code {exit_code}.")
+        self.status.configure(
+            text=f"Execution {result.status} — exit code {result.exit_code}."
+        )
+        self.execution = None
+        self._execution_poll = None
 
     def zoom(self, delta):
         self.editor.set_font_size(self.editor.font_size + delta)
@@ -344,4 +378,6 @@ class PyLexApp(tk.Tk):
 
     def close(self):
         if self._confirm():
+            if self.execution is not None and not self.execution.done:
+                self.execution.stop()
             self.destroy()
