@@ -2,12 +2,14 @@
 import tkinter as tk
 from tkinter import ttk, filedialog, messagebox
 from pathlib import Path
+import re
 
 from .editor import CodeEditor
 from .analyzer import (
     lexical_analysis, syntax_analysis, format_tokens, collect_diagnostics,
 )
 from .runner import start_source
+from .dependencies import find_missing_imports
 from .debugger import DebugSession
 from .preferences import load_preferences, save_preferences
 
@@ -64,7 +66,7 @@ class PyLexApp(tk.Tk):
         tools_menu.add_command(label="Clear Results", command=self.clear_results)
         tools_menu.add_separator()
         tools_menu.add_command(label="Run Code", command=self.run_code)
-        tools_menu.add_command(label="Stop Execution", command=self.stop_execution)
+        tools_menu.add_command(label="Force Stop Execution", command=self.stop_execution)
         tools_menu.add_separator()
         tools_menu.add_command(label="Start Debugging", command=self.start_debugging)
         tools_menu.add_command(label="Continue", command=self.debug_continue)
@@ -96,7 +98,7 @@ class PyLexApp(tk.Tk):
         bar.pack(fill="x")
         buttons = [
             ("New", self.new_file), ("Open", self.open_file),
-            ("Save", self.save_file), ("▶ Run", self.run_code), ("■ Stop", self.stop_execution),
+            ("Save", self.save_file), ("▶ Run", self.run_code), ("■ Force Stop", self.stop_execution),
             ("Debug", self.start_debugging), ("Continue", self.debug_continue),
             ("Step", self.debug_step), ("Next", self.debug_next),
             ("Breakpoint", self.toggle_breakpoint), ("Variables", self.debug_variables),
@@ -143,14 +145,25 @@ class PyLexApp(tk.Tk):
 
     def _text_panel(self, title):
         frame = ttk.Frame(self.tabs)
+        row = 0
+        if title == "Output":
+            actions = ttk.Frame(frame, padding=(4, 3))
+            actions.grid(row=0, column=0, columnspan=2, sticky="ew")
+            ttk.Button(actions, text="Clear Output", command=self.clear_output).pack(side="left", padx=2)
+            ttk.Button(actions, text="Save Output...", command=self.save_output).pack(side="left", padx=2)
+            ttk.Button(actions, text="Force Stop", command=self.stop_execution).pack(side="left", padx=2)
+            row = 1
         text = tk.Text(frame, wrap="none", font=("Consolas", 10), height=8)
+        text.tag_configure("stderr", foreground="#d9534f")
+        text.tag_configure("stdout", foreground="#5b9b68")
+        text.tag_configure("system", foreground="#4b83c3")
         ybar = ttk.Scrollbar(frame, command=text.yview)
         xbar = ttk.Scrollbar(frame, orient="horizontal", command=text.xview)
         text.configure(yscrollcommand=ybar.set, xscrollcommand=xbar.set)
-        text.grid(row=0, column=0, sticky="nsew")
-        ybar.grid(row=0, column=1, sticky="ns")
-        xbar.grid(row=1, column=0, sticky="ew")
-        frame.rowconfigure(0, weight=1)
+        text.grid(row=row, column=0, sticky="nsew")
+        ybar.grid(row=row, column=1, sticky="ns")
+        xbar.grid(row=row + 1, column=0, sticky="ew")
+        frame.rowconfigure(row, weight=1)
         frame.columnconfigure(0, weight=1)
         self.tabs.add(frame, text=title)
         return text
@@ -524,48 +537,110 @@ class PyLexApp(tk.Tk):
             self.status.configure(text="Stop debugging before starting normal execution.")
             return
         if self.execution is not None and not self.execution.done:
-            self.status.configure(text="A program is already running. Stop it before starting another.")
+            self.status.configure(text="A program is already running. Force Stop it before starting another.")
             return
+        source = self.editor.get_content()
+        missing = find_missing_imports(source)
+        self._show(self.output, "")
+        if missing:
+            lines = [
+                "DEPENDENCY CHECK — possible missing third-party libraries",
+                "The following imports were not found in this Python environment:",
+            ]
+            lines.extend(f"  • {module}  →  python -m pip install {package}"
+                         for module, package in missing)
+            lines.append("Execution will continue; the real traceback will be shown if import fails.\n")
+            self._append_output("\n".join(lines) + "\n", "system")
+        self._append_output("Starting program...\n", "system")
         try:
-            self.execution = start_source(self.editor.get_content(), timeout=10)
+            self.execution = start_source(source, timeout=10)
         except OSError as exc:
-            messagebox.showerror("Execution Error", str(exc))
+            self._append_output(f"Could not start Python process: {exc}\n", "stderr")
             self.status.configure(text="Could not start Python process.")
             return
-        self._show(self.output, "Program is running...\n")
-        self.status.configure(text="Running — press Shift+F5 or Stop to cancel.")
+        self.status.configure(text="Running — live output enabled. Shift+F5 / Force Stop terminates the process tree.")
         self._poll_execution()
 
     def stop_execution(self):
         if self.execution is None or self.execution.done:
             self.status.configure(text="No program is currently running.")
             return
-        self.execution.stop()
-        self.status.configure(text="Stopping program...")
+        self.execution.force_stop()
+        self.status.configure(text="Force-stopping process and child processes...")
 
     def _poll_execution(self):
-        if self.execution is None:
+        handle = self.execution
+        if handle is None:
             return
-        if not self.execution.done:
-            self._execution_poll = self.after(100, self._poll_execution)
+        for channel, content in handle.read_available():
+            self._append_output(content, channel)
+        if not handle.done:
+            self._execution_poll = self.after(60, self._poll_execution)
             return
-        result = self.execution.result
-        report = result.stdout
+        result = handle.result
+        # Drain any final chunks queued as the reader threads close.
+        for channel, content in handle.read_available():
+            self._append_output(content, channel)
+        self._append_output(
+            f"\n{'=' * 64}\nExecution: {result.status.upper()}\n"
+            f"Exit code: {result.exit_code}\nDuration: {result.duration:.2f}s\n",
+            "system",
+        )
         if result.stderr:
-            report += ("\n" if report else "") + "Errors:\n" + result.stderr
-        report += f"\n\nStatus: {result.status}\nExit code: {result.exit_code}\nDuration: {result.duration:.2f}s"
-        self._show(self.output, report)
+            self._report_runtime_error(result.stderr)
         self.status.configure(
             text=f"Execution {result.status} — exit code {result.exit_code}."
         )
         self.execution = None
         self._execution_poll = None
 
-    def _append_output(self, content):
+    def _append_output(self, content, channel="stdout"):
         self.output.configure(state="normal")
-        self.output.insert("end", content)
+        self.output.insert("end", content, channel if channel in {"stdout", "stderr", "system"} else "stdout")
         self.output.see("end")
         self.output.configure(state="disabled")
+
+    def clear_output(self):
+        self.output.configure(state="normal")
+        self.output.delete("1.0", "end")
+        self.output.configure(state="disabled")
+        self.status.configure(text="Output cleared.")
+
+    def save_output(self):
+        content = self.output.get("1.0", "end-1c")
+        if not content:
+            self.status.configure(text="There is no output to save.")
+            return
+        path = filedialog.asksaveasfilename(
+            title="Save Execution Output", defaultextension=".txt",
+            filetypes=[("Text files", "*.txt"), ("Log files", "*.log"), ("All files", "*.*")],
+        )
+        if not path:
+            return
+        try:
+            Path(path).write_text(content, encoding="utf-8")
+            self.status.configure(text=f"Output saved to {path}.")
+        except OSError as exc:
+            messagebox.showerror("Save Output Error", str(exc))
+
+    def _report_runtime_error(self, stderr):
+        missing = re.search(r"No module named ['\"]([^'\"]+)['\"]", stderr)
+        if not missing:
+            return
+        module = missing.group(1)
+        line_matches = re.findall(r'File "[^"]+", line (\d+)', stderr)
+        line = int(line_matches[-1]) if line_matches else 1
+        source_lines = self.editor.get_content().splitlines()
+        source_line = source_lines[line - 1] if 1 <= line <= len(source_lines) else ""
+        from .analyzer import Diagnostic
+        diagnostic = Diagnostic(
+            "ModuleNotFoundError",
+            f"Missing library '{module}'. Install it with: python -m pip install {module}",
+            line, 0, line, 0, source_line,
+        )
+        self._set_diagnostics([diagnostic])
+        self.tabs.select(self.error_tree.master)
+        self.status.configure(text=f"Missing dependency: {module}. See Errors and Output.")
 
     def toggle_breakpoint(self):
         line = int(self.editor.text.index("insert").split(".")[0])
@@ -854,7 +929,8 @@ class PyLexApp(tk.Tk):
             if not self._confirm():
                 return
         if self.execution is not None and not self.execution.done:
-            self.execution.stop()
+            self.execution.force_stop()
+            self.execution.wait(timeout=2)
         if self.debug_session is not None:
             self.debug_session.close()
         self.destroy()
