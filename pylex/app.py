@@ -8,6 +8,7 @@ from .analyzer import (
     lexical_analysis, syntax_analysis, format_tokens, collect_diagnostics,
 )
 from .runner import start_source
+from .debugger import DebugSession
 
 
 class PyLexApp(tk.Tk):
@@ -24,6 +25,9 @@ class PyLexApp(tk.Tk):
         self.diagnostics = []
         self.execution = None
         self._execution_poll = None
+        self.debug_session = None
+        self._debug_poll = None
+        self.breakpoints = {}
         self.documents = {}
         self.editor = None
         self._menu()
@@ -59,6 +63,14 @@ class PyLexApp(tk.Tk):
         tools_menu.add_separator()
         tools_menu.add_command(label="Run Code", command=self.run_code)
         tools_menu.add_command(label="Stop Execution", command=self.stop_execution)
+        tools_menu.add_separator()
+        tools_menu.add_command(label="Start Debugging", command=self.start_debugging)
+        tools_menu.add_command(label="Continue", command=self.debug_continue)
+        tools_menu.add_command(label="Step Into", command=self.debug_step)
+        tools_menu.add_command(label="Step Over", command=self.debug_next)
+        tools_menu.add_command(label="Toggle Breakpoint", command=self.toggle_breakpoint)
+        tools_menu.add_command(label="Inspect Variables", command=self.debug_variables)
+        tools_menu.add_command(label="Stop Debugging", command=self.stop_debugging)
         menu.add_cascade(label="Tools", menu=tools_menu)
         self.config(menu=menu)
 
@@ -77,6 +89,9 @@ class PyLexApp(tk.Tk):
         buttons = [
             ("New", self.new_file), ("Open", self.open_file),
             ("Save", self.save_file), ("▶ Run", self.run_code), ("■ Stop", self.stop_execution),
+            ("Debug", self.start_debugging), ("Continue", self.debug_continue),
+            ("Step", self.debug_step), ("Next", self.debug_next),
+            ("Breakpoint", self.toggle_breakpoint), ("Variables", self.debug_variables),
             ("Analyze All", self.analyze_all),
             ("Lexical", self.analyze_lexical), ("Syntax", self.analyze_syntax),
             ("Clear Results", self.clear_results),
@@ -526,6 +541,92 @@ class PyLexApp(tk.Tk):
         self.execution = None
         self._execution_poll = None
 
+    def _append_output(self, content):
+        self.output.configure(state="normal")
+        self.output.insert("end", content)
+        self.output.see("end")
+        self.output.configure(state="disabled")
+
+    def toggle_breakpoint(self):
+        line = int(self.editor.text.index("insert").split(".")[0])
+        points = self.breakpoints.setdefault(self.editor, set())
+        if line in points:
+            points.remove(line)
+            if self.debug_session is not None and not self.debug_session.done:
+                self.debug_session.clear_breakpoint(line)
+            self.status.configure(text=f"Breakpoint removed from line {line}.")
+        else:
+            points.add(line)
+            if self.debug_session is not None and not self.debug_session.done:
+                self.debug_session.set_breakpoint(line)
+            self.status.configure(text=f"Breakpoint set on line {line}.")
+        return line
+
+    def start_debugging(self):
+        if self.debug_session is not None and not self.debug_session.done:
+            self.status.configure(text="A debugging session is already active.")
+            return
+        try:
+            self.debug_session = DebugSession.start(self.editor.get_content())
+        except OSError as exc:
+            messagebox.showerror("Debugger Error", str(exc))
+            return
+        self._show(self.output, "Debugger started. Set breakpoints, then choose Continue.\n")
+        for line in sorted(self.breakpoints.get(self.editor, set())):
+            self.debug_session.set_breakpoint(line)
+        self.status.configure(text="Debugger ready — set breakpoints or press Continue.")
+        self._poll_debugger()
+
+    def debug_continue(self):
+        if self.debug_session is None or self.debug_session.done:
+            self.status.configure(text="No active debugging session.")
+            return
+        self.debug_session.continue_execution()
+        self.status.configure(text="Debugger running...")
+
+    def debug_step(self):
+        if self.debug_session is None or self.debug_session.done:
+            self.status.configure(text="No active debugging session.")
+            return
+        self.debug_session.step()
+        self.status.configure(text="Stepping into next statement...")
+
+    def debug_next(self):
+        if self.debug_session is None or self.debug_session.done:
+            self.status.configure(text="No active debugging session.")
+            return
+        self.debug_session.next()
+        self.status.configure(text="Stepping over current statement...")
+
+    def debug_variables(self):
+        if self.debug_session is None or self.debug_session.done:
+            self.status.configure(text="No active debugging session.")
+            return
+        self.debug_session.inspect_variables()
+        self.status.configure(text="Requested current-frame variables.")
+
+    def stop_debugging(self):
+        if self.debug_session is None:
+            self.status.configure(text="No active debugging session.")
+            return
+        self.debug_session.stop()
+        self.status.configure(text="Stopping debugger...")
+
+    def _poll_debugger(self):
+        session = self.debug_session
+        if session is None:
+            return
+        output = session.read_available()
+        if output:
+            self._append_output(output)
+        if session.done:
+            session.close()
+            self.debug_session = None
+            self._debug_poll = None
+            self.status.configure(text="Debugging session finished.")
+            return
+        self._debug_poll = self.after(80, self._poll_debugger)
+
     def find_replace(self):
         """Open a compact find-and-replace dialog for the active editor."""
         dialog = tk.Toplevel(self)
@@ -637,4 +738,6 @@ class PyLexApp(tk.Tk):
                 return
         if self.execution is not None and not self.execution.done:
             self.execution.stop()
+        if self.debug_session is not None and not self.debug_session.done:
+            self.debug_session.close()
         self.destroy()
