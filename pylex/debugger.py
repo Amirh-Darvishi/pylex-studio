@@ -1,6 +1,8 @@
 """Interactive pdb-backed debugging for Python source files."""
 from pathlib import Path
+import os
 import queue
+import signal
 import subprocess
 import sys
 import tempfile
@@ -26,6 +28,7 @@ class DebugSession:
             ) as script:
                 script.write(source)
                 script_path = Path(script.name)
+            options = {"creationflags": getattr(subprocess, "CREATE_NEW_PROCESS_GROUP", 0)} if os.name == "nt" else {"start_new_session": True}
             process = subprocess.Popen(
                 [sys.executable, "-m", "pdb", str(script_path)],
                 stdin=subprocess.PIPE,
@@ -35,6 +38,7 @@ class DebugSession:
                 encoding="utf-8",
                 errors="replace",
                 bufsize=1,
+                **options,
             )
             return cls(process, script_path)
         except Exception:
@@ -109,13 +113,23 @@ class DebugSession:
         return self.command(f"p {expression}")
 
     def stop(self):
+        """Force-stop the debugger and every process spawned beneath it."""
         if self.done:
             return False
-        self.command("q")
         try:
-            self.process.terminate()
-        except OSError:
-            pass
+            if os.name == "nt":
+                subprocess.run(
+                    ["taskkill", "/PID", str(self.process.pid), "/T", "/F"],
+                    stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+                    check=False, timeout=5,
+                )
+            else:
+                os.killpg(self.process.pid, signal.SIGKILL)
+        except (OSError, subprocess.SubprocessError):
+            try:
+                self.process.kill()
+            except OSError:
+                pass
         return True
 
     def close(self):
