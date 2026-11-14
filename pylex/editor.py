@@ -1,4 +1,6 @@
 """Tkinter code editor with Pygments highlighting and diagnostic navigation."""
+import builtins
+import keyword
 import tkinter as tk
 from tkinter import font as tkfont
 
@@ -19,6 +21,8 @@ class CodeEditor(tk.Frame):
         self.editor_font = tkfont.Font(family="Consolas", size=self.font_size)
         self._highlight_job = None
         self._diagnostic_location = None
+        self._completion_window = None
+        self._completion_list = None
 
         self.gutter = tk.Text(
             self, width=5, padx=5, takefocus=0, state="disabled",
@@ -43,6 +47,8 @@ class CodeEditor(tk.Frame):
         self.text.bind("<ButtonRelease-1>", self._cursor_changed)
         self.text.bind("<MouseWheel>", self._cursor_changed, add="+")
         self.text.bind("<Tab>", self._tab)
+        self.text.bind("<KeyPress>", self._auto_pair, add="+")
+        self.text.bind("<Control-space>", self.show_completions)
         self.text.bind("<Control-a>", self._select_all)
         self._configure_tags()
         self.text.edit_modified(False)
@@ -102,6 +108,78 @@ class CodeEditor(tk.Frame):
     def _select_all(self, event=None):
         self.text.tag_add("sel", "1.0", "end-1c")
         return "break"
+
+    def _auto_pair(self, event):
+        """Insert matching brackets and quotes, or skip an existing closer."""
+        char = event.char
+        pairs = {"(": ")", "[": "]", "{": "}", '"': '"', "'": "'"}
+        if char in set(pairs.values()):
+            if self.text.get("insert") == char:
+                self.text.mark_set("insert", "insert+1c")
+                return "break"
+            return None
+        if char not in pairs:
+            return None
+        if char in {"'", '"'} and self.text.get("insert-1c", "insert") == "\\":
+            return None
+        try:
+            selected = self.text.get("sel.first", "sel.last")
+            self.text.delete("sel.first", "sel.last")
+        except tk.TclError:
+            selected = ""
+        self.text.insert("insert", char + selected + pairs[char])
+        self.text.mark_set("insert", "insert-" + str(len(selected) + 1) + "c")
+        return "break"
+
+    def show_completions(self, event=None):
+        """Show lightweight keyword and built-in completion suggestions."""
+        word = self.text.get("insert- wordstart", "insert")
+        if not word:
+            return "break"
+        candidates = sorted(set(keyword.kwlist) | set(dir(builtins)))
+        matches = [item for item in candidates if item.startswith(word) and item != word]
+        if not matches:
+            self._hide_completions()
+            return "break"
+        self._hide_completions()
+        self._completion_window = tk.Toplevel(self)
+        self._completion_window.wm_overrideredirect(True)
+        self._completion_list = tk.Listbox(self._completion_window, height=min(8, len(matches)))
+        self._completion_list.pack()
+        for item in matches[:100]:
+            self._completion_list.insert("end", item)
+        bbox = self.text.bbox("insert")
+        if bbox:
+            x, y, _, height = bbox
+            geometry = "+{}+{}".format(
+                self.text.winfo_rootx() + x,
+                self.text.winfo_rooty() + y + height,
+            )
+            self._completion_window.geometry(geometry)
+        self._completion_list.selection_set(0)
+        self._completion_list.bind("<Return>", self._apply_completion)
+        self._completion_list.bind("<Double-Button-1>", self._apply_completion)
+        self._completion_list.bind("<Escape>", lambda _event: self._hide_completions())
+        self._completion_list.focus_set()
+        return "break"
+
+    def _apply_completion(self, event=None):
+        if self._completion_list is None:
+            return "break"
+        selection = self._completion_list.curselection()
+        if selection:
+            value = self._completion_list.get(selection[0])
+            self.text.delete("insert- wordstart", "insert")
+            self.text.insert("insert", value)
+        self._hide_completions()
+        self.text.focus_set()
+        return "break"
+
+    def _hide_completions(self):
+        if self._completion_window is not None:
+            self._completion_window.destroy()
+        self._completion_window = None
+        self._completion_list = None
 
     def refresh_lines(self):
         count = max(1, int(self.text.index("end-1c").split(".")[0]))
