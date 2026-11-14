@@ -1,5 +1,7 @@
 # PyLex Studio
 
+**Current development target: 1.1.1** (not yet released)
+
 A lightweight Python desktop editor with independent lexical and syntax analysis.
 
 ## Features
@@ -11,6 +13,11 @@ A lightweight Python desktop editor with independent lexical and syntax analysis
 - Run Python code and inspect standard output and errors
 - Open and save Python files
 - Adjustable editor font size
+- Structured error panel with exact exception type and source location
+- Click or double-click a diagnostic to jump to its line and column
+- Current-line emphasis and inline error highlighting
+- Separate Output, Lexical Analysis, Syntax Analysis, and Errors panels
+- Analyze All and Clear Results actions
 - Dark and light editor themes
 
 ## Requirements
@@ -31,7 +38,7 @@ Activate the environment:
 
 ```powershell
 # Windows PowerShell
-.venv\\Scripts\\Activate.ps1
+.venv\Scripts\Activate.ps1
 ```
 
 ```bash
@@ -45,6 +52,10 @@ Install dependencies and run:
 python -m pip install -r requirements.txt
 python main.py
 ```
+
+## Analysis and diagnostics (1.1.1 development)
+
+The lexical analyzer uses Python `tokenize` and reports token start/end positions. The syntax analyzer uses `ast.parse`. Diagnostics preserve concrete exception types (for example, `IndentationError`), are de-duplicated when the tokenizer and parser report the same issue, and can be selected in the Errors panel to navigate to the corresponding editor position. Editor columns are zero-based internally; the UI displays one-based columns.
 
 ## Tests
 
