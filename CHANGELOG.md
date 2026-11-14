@@ -13,6 +13,9 @@ All notable changes to PyLex Studio are documented here.
 - Basic keyword and built-in completion using Ctrl+Space.
 - Automatic bracket and quote pairing.
 - Find and replace dialog with Ctrl+H.
+- Multiple open documents in independent editor tabs.
+- Per-document dirty state, tab indicators, save prompts, and close-tab handling.
+- Project folder explorer with recursive file browsing and double-click open.
 
 ### Improved
 - Preserved the existing synchronous `run_source` API for compatibility.
