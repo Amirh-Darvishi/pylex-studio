@@ -70,7 +70,7 @@ python main.py
 
 ## User interface preferences (1.2.0 development)
 
-Open View → Preferences to choose the dark or light theme, editor font family, font size, and project explorer visibility. Preferences are stored in `.pylex_studio.json` in the user's home directory and are reused on the next launch.
+Open View → Preferences to choose the dark or light theme, editor font family, font size, project explorer visibility, and execution timeout (5, 10, 30, or 60 seconds, or Unlimited). Preferences are stored in `.pylex_studio.json` in the user's home directory and are reused on the next launch.
 
 ## Debugging (1.2.0 development)
 
