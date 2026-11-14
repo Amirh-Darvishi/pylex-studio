@@ -5,6 +5,8 @@ All notable changes to PyLex Studio are documented here.
 ## [1.2.0] - In development
 
 ### Added
+- Configurable execution timeout: 5, 10, 30, 60 seconds, or Unlimited.
+- Persist timeout preference and show a live remaining-time status during execution.
 - Interactive pdb-based debugging in a child process.
 - Per-editor breakpoints, Continue, Step Into, Step Over, variable inspection, and stack inspection.
 - Debugger lifecycle and output-capture tests.
