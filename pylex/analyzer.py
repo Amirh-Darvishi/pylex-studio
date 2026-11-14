@@ -85,7 +85,12 @@ def lexical_analysis(source: str):
     partial token stream from a complete lexical analysis.
     """
     result = []
-    for item in tokenize.generate_tokens(io.StringIO(source).readline):
+    generated = list(tokenize.generate_tokens(io.StringIO(source).readline))
+    # Some Python versions emit an ERRORTOKEN for an unterminated quote
+    # instead of raising TokenError. Ask the parser for its canonical error.
+    if any(item.type == tokenize.ERRORTOKEN for item in generated):
+        ast.parse(source)
+    for item in generated:
         if item.type in (tokenize.ENCODING, tokenize.ENDMARKER):
             continue
         name = tokenize.tok_name.get(item.type, str(item.type))
@@ -149,13 +154,23 @@ def collect_diagnostics(source: str):
     # A tokenizer EOF report and the parser's SyntaxError often describe the
     # same unclosed delimiter/string, but with different messages and columns.
     # Prefer the parser's more actionable explanation for that source line.
-    parser_lines = {
-        item.line for item in found
+    parser_diagnostics = [
+        item for item in found
         if item.error_type in {"SyntaxError", "IndentationError", "TabError"}
-    }
+    ]
+    parser_lines = {item.line for item in parser_diagnostics}
     filtered = [
         item for item in found
-        if not (item.error_type == "TokenError" and item.line in parser_lines)
+        if not (
+            item.error_type == "TokenError"
+            and (
+                item.line in parser_lines
+                or (
+                    parser_diagnostics
+                    and "EOF in multi-line statement" in item.message
+                )
+            )
+        )
     ]
 
     unique = {}
