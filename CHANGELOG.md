@@ -25,8 +25,11 @@ All notable changes to PyLex Studio are documented here.
 - Project folder explorer with recursive file browsing and double-click open.
 
 ### Improved
-- Preserved the existing synchronous `run_source` API for compatibility.
-- Kept the GUI responsive while user code is running.
+- Stream stdout and stderr live into a color-coded output console.
+- Add controls to clear and save execution logs.
+- Preflight third-party imports and suggest exact pip installation commands for common package-name differences.
+- Force-stop the entire execution/debugger process tree so child processes cannot leave the editor stuck.
+- Preserve the synchronous `run_source` API for compatibility.
 
 ### Security
 - Execution is not sandboxed and uses the current user's permissions.
