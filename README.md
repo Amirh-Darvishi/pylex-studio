@@ -59,7 +59,11 @@ python main.py
 
 The lexical analyzer uses Python `tokenize` and reports token start/end positions. The syntax analyzer uses `ast.parse`. Diagnostics preserve concrete exception types (for example, `IndentationError`), are de-duplicated when the tokenizer and parser report the same issue, and can be selected in the Errors panel to navigate to the corresponding editor position. Editor columns are zero-based internally; the UI displays one-based columns.
 
-## Running code (1.2.0 development)\n\nCode runs in a child process. The editor remains responsive while the process is active. Use Stop or Shift+F5 to terminate it; executions also have a 10-second timeout. This is not a security sandbox: code runs with the current user's permissions. Do not run untrusted code.\n\n## Tests
+## Running code (1.2.0 development)
+
+Code runs in a child process. The editor remains responsive while the process is active. Use Stop or Shift+F5 to terminate it; executions also have a 10-second timeout. This is not a security sandbox: code runs with the current user's permissions. Do not run untrusted code.
+
+## Tests
 
 ```bash
 python -m unittest discover -s tests -v
