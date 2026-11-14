@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="fa" dir="rtl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>مستندات جامع PyLex Studio</title>
+<style>
+body{margin:0;background:#f3f6fb;color:#202938;font:16px/2 Tahoma,sans-serif}
+header{background:linear-gradient(120deg,#14213d,#3157a4);color:white;padding:48px 8%}
+main{max-width:1100px;margin:28px auto;padding:0 18px;display:grid;grid-template-columns:230px 1fr;gap:20px}
+nav,section{background:white;border:1px solid #dce3ee;border-radius:12px;padding:20px;margin-bottom:16px}
+nav{position:sticky;top:12px;height:max-content}a{display:block;color:#3157a4;text-decoration:none}
+h2{border-bottom:1px solid #ddd;padding-bottom:8px}pre{background:#101827;color:#e8edf5;padding:15px;border-radius:8px;direction:ltr;text-align:left;overflow:auto}
+code{background:#edf1f8;padding:2px 5px;border-radius:4px}.note{background:#edf4ff;border-right:4px solid #3157a4;padding:12px}
+table{border-collapse:collapse;width:100%}td,th{border:1px solid #ddd;padding:8px;text-align:right}
+@media(max-width:750px){main{grid-template-columns:1fr}nav{position:static}}
+</style></head><body>
+<header><h1>PyLex Studio</h1><p>مستندات جامع پروژه؛ معرفی، معماری، تحلیل لغوی و نحوی، نصب، آزمون، امنیت</p><b>نسخه 1.0.0 | Python 3.10+ | Tkinter</b></header>
+<main><nav><b>فهرست</b>
+<a href="#intro">۱. معرفی</a><a href="#requirements">۲. نیازمندی‌ها</a><a href="#architecture">۳. معماری</a><a href="#lexer">۴. تحلیل لغوی</a><a href="#parser">۵. تحلیل نحوی</a><a href="#editor">۶. امکانات ویرایشگر</a><a href="#run">۷. اجرای کد</a><a href="#install">۸. نصب</a><a href="#tests">۹. آزمون</a><a href="#security">۱۰. امنیت</a><a href="#roadmap">۱۱. توسعه آینده</a><a href="#terms">۱۲. واژه‌نامه</a></nav>
+<div>
+<section id="intro"><h2>۱. معرفی پروژه</h2><p><b>PyLex Studio</b> یک ویرایشگر دسکتاپ سبک برای زبان پایتون است. کاربر می‌تواند کد بنویسد، فایل باز و ذخیره کند، برنامه را اجرا کند و دو مرحله تحلیل لغوی و نحوی را به صورت مستقل ببیند.</p>
+<section id="requirements"><h2>۲. اهداف و نیازمندی‌ها</h2><ul><li>شناخت کلمات کلیدی پایتون مانند if، for، def، class و return</li><li>تبدیل متن به توکن و بررسی دستور زبان</li><li>ویرایش فایل، فونت، بزرگ‌نمایی و تم</li><li>اجرای کد و نمایش خروجی و خطا</li><li> ساختار ماژولار و تست‌پذیر</li></ul><table><tr><th>فناوری</th><th>کاربرد</th></tr><tr><td>Tkinter/ttk</td><td>رابط گرافیکی</td></tr><tr><td>tokenize</td><td>تحلیل لغوی</td></tr><tr><td>ast</td><td>تحلیل نحوی</td></tr><tr><td>subprocess</td><td>اجرای پردازه جداگانه</td></tr><tr><td>unittest</td><td>آزمون خودکار</td></tr></table></section>
+<section id="architecture"><h2>۳. معماری و ساختار پروژه</h2><pre>pylex-studio/
+├── main.py
+├── pylex/
+│   ├── app.py
+│   ├── editor.py
+│   ├── analyzer.py
+│   └── runner.py
+├── tests/test_analyzer.py
+├── docs/PROJECT_GUIDE.html
+├── .github/workflows/tests.yml
+├── README.md
+├── CONTRIBUTING.md
+├── LICENSE
+└── .gitignore</pre><ul><li><code>main.py</code>: نقطه شروع.</li><li><code>app.py</code>: پنجره اصلی، منو و پنل‌ها.</li><li><code>editor.py</code>: ویرایشگر و شماره خطوط و هایلایت.</li><li><code>analyzer.py</code>: تحلیل‌گرهای لغوی و نحوی.</li><li><code>runner.py</code>: اجرای برنامه با مهلت زمانی.</li></ul></section>
+<section id="lexer"><h2>۴. تحلیل لغوی (Lexical Analysis)</h2><p>تحلیل لغوی نخستین مرحله تحلیل برنامه است. در این مرحله رشته کاراکترها به واحدهای معنادار به نام Token تبدیل می‌شود. برای مثال در <code>total = price + 5</code>، شناسه‌ها، عملگر انتساب، عملگر جمع و عدد توکن‌های جداگانه‌اند.</p><p>تابع <code>lexical_analysis(source)</code> در ماژول <code>analyzer.py</code> از کتابخانه استاندارد <code>tokenize</code> استفاده می‌کند. هر توکن دارای نوع، مقدار، شماره خط و ستون است. کلمات رزروشده با نوع KEYWORD مشخص می‌شوند.</p><pre>from pylex.analyzer import lexical_analysis
+tokens = lexical_analysis("if score >= 10:\\n    print('Pass')")
+for token in tokens:
+    print(token.token_type, token.value, token.line, token.column)</pre><p>دسته‌های متداول عبارت‌اند از KEYWORD، NAME، NUMBER، STRING، OP، INDENT و NEWLINE. خروجی در تب مستقل تحلیل لغوی نشان داده می‌شود.</p></section>
+<section id="parser"><h2>۵. تحلیل نحوی (Syntax Analysis)</h2><p>تحلیل نحوی بررسی می‌کند که توکن‌ها مطابق دستور زبان پایتون کنار هم قرار گرفته باشند. عبارت <code>if True print("x")</code> معتبر نیست، چون بعد از شرط دونقطه لازم است.</p><p>تابع <code>syntax_analysis(source)</code> از <code>ast.parse</code> استفاده می‌کند. در صورت موفقیت درخت AST ساخته می‌شود و تعداد گره‌های آن گزارش می‌شود؛ در صورت شکست، پیام SyntaxError و شماره خط و ستون ارائه می‌شود.</p><pre>from pylex.analyzer import syntax_analysis
+result = syntax_analysis("x = 10\\nprint(x)")
+print(result.success, result.message)</pre><p class="note">تفاوت دو مرحله: تحلیل لغوی می‌پرسد «این قطعه متن چه توکنی است؟»؛ تحلیل نحوی می‌پرسد «آیا این توکن‌ها ساختار معتبر پایتون می‌سازند؟»</p></section>
+<section id="editor"><h2>۶. امکانات ویرایشگر</h2><ul><li>شماره خطوط در ستون کناری</li><li>رنگ‌بندی پایه کلمات کلیدی، رشته‌ها، اعداد و کامنت‌ها</li><li>تغییر اندازه قلم با A+ و A-</li><li>تم روشن و تاریک</li><li>باز کردن و ذخیره فایل UTF-8</li><li>Undo/Redo و انتخاب همه</li><li>پنل‌های مستقل خروجی، تحلیل لغوی و تحلیل نحوی</li><li>میانبر Ctrl+N، Ctrl+O، Ctrl+S و F5</li></ul></section>
+<section id="run"><h2>۷. اجرای برنامه</h2><p>ماژول runner متن برنامه را در فایل موقت می‌نویسد و با مفسر جاری در یک پردازه فرزند اجرا می‌کند. خروجی استاندارد، خطای استاندارد و کد خروج در تب خروجی نمایش داده می‌شوند. زمان اجرا به صورت پیش‌فرض ۱۰ ثانیه محدود است. اجرای پردازه جداگانه مانع بسیاری از اختلال‌ها در پنجره اصلی می‌شود، اما به معنی ایزوله‌سازی امنیتی نیست.</p></section>
+<section id="install"><h2>۸. نصب و راه‌اندازی</h2><p>نیازمندی‌ها: Python 3.10 یا جدیدتر، Tkinter و Git. این پروژه وابستگی خارجی پایتون ندارد.</p><pre>git clone https://github.com/Amirh-Darvishi/pylex-studio.git
+cd pylex-studio
+python -m venv .venv
+
+# Windows PowerShell
+.venv\\Scripts\\Activate.ps1
+
+# Linux / macOS
+source .venv/bin/activate
+
+python main.py</pre><h3>چرا venv به جای Docker؟</h3><p>این برنامه دسکتاپ و دارای پنجره گرافیکی است. اجرای GUI در Docker به تنظیمات نمایشگر X11 یا Wayland و دسترسی‌های سیستم‌عامل نیاز دارد. venv نصب ساده‌تر و تجربه مناسب‌تری برای کاربران GitHub فراهم می‌کند. چون وابستگی خارجی نداریم، محیط مجازی بیشتر برای جداسازی محیط توسعه و تست مفید است.</p></section>
+<section id="tests"><h2>۹. آزمون‌ها و کنترل کیفیت</h2><p>آزمون‌های واحد سه رفتار پایه را بررسی می‌کنند: شناسایی کلمه کلیدی، پذیرش کد معتبر و رد کد نامعتبر.</p><pre>python -m unittest discover -s tests -v</pre><p>فایل GitHub Actions آزمون‌ها را در هر push و pull request اجرا می‌کند. این روند CI به شناسایی سریع خطاهای ناشی از تغییر کد کمک می‌کند.</p></section>
+<section id="security"><h2>۱۰. امنیت و محدودیت‌ها</h2><ul><li>کد با سطح دسترسی کاربر فعلی سیستم اجرا می‌شود.</li><li>مهلت زمانی از اجرای بی‌نهایت جلوگیری می‌کند، اما دسترسی فایل، شبکه یا پردازنده را کامل محدود نمی‌کند.</li><li>کدهای ناشناس را اجرا نکنید.</li><li>برای اجرای امن واقعی باید sandbox مبتنی بر سیستم‌عامل، کاربر محدود، محدودیت منابع و قطع شبکه طراحی شود.</li></ul></section>
+<section id="roadmap"><h2>۱۱. نقشه راه توسعه آینده</h2><ul><li>تب‌های واقعی چندفایلی و ذخیره وضعیت هر سند</li><li>جست‌وجو و جایگزینی و پرش به خط</li><li>هایلایت کاملاً مبتنی بر tokenize</li><li>تکمیل خودکار و راهنمای توابع</li><li>تحلیل معنایی مانند متغیرهای تعریف‌نشده</li><li>پشتیبانی از Language Server Protocol</li><li>ذخیره تنظیمات کاربر</li><li>بسته اجرایی Windows و Linux</li><li>محیط اجرای ایزوله برای کدهای ناشناس</li></ul></section>
+<section id="terms"><h2>۱۲. واژه‌نامه</h2><table><tr><th>اصطلاح</th><th>تعریف</th></tr><tr><td>IDE</td><td>محیط توسعه یکپارچه</td></tr><tr><td>Lexer</td><td>تحلیل‌گر لغوی</td></tr><tr><td>Token</td><td>واحد لغوی مانند شناسه یا عملگر</td></tr><tr><td>Parser</td><td>تحلیل‌گر نحوی</td></tr><tr><td>AST</td><td>درخت انتزاعی نحو</td></tr><tr><td>Subprocess</td><td>پردازه فرزند</td></tr><tr><td>venv</td><td>محیط مجازی پایتون</td></tr><tr><td>CI</td><td>یکپارچه‌سازی پیوسته و آزمون خودکار</td></tr></table></section>
+</div></main><footer style="text-align:center;padding:24px;color:#667">PyLex Studio · مستندات فارسی نسخه 1.0.0</footer></body></html>
