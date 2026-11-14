@@ -5,6 +5,11 @@ All notable changes to PyLex Studio are documented here.
 ## [1.2.0] - In development
 
 ### Added
+- Interactive pdb-based debugging in a child process.
+- Per-editor breakpoints, Continue, Step Into, Step Over, variable inspection, and stack inspection.
+- Debugger lifecycle and output-capture tests.
+
+### Added
 - Non-blocking Python code execution in a child process.
 - Stop execution control and Shift+F5 shortcut.
 - Execution status, duration, stdout, stderr, and exit-code reporting.
