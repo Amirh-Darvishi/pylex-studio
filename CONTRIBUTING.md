@@ -1,3 +1,9 @@
-# مشارکت
-برای باگ یا پیشنهاد ابتدا Issue بسازید. شاخه‌ای توصیفی ایجاد کنید، تغییرات را کوچک نگه دارید، آزمون بنویسید و پیش از Pull Request دستور زیر را اجرا کنید:
-`python -m unittest discover -s tests -v`
+# Contributing
+
+1. Open an issue to discuss bugs or proposed changes.
+2. Create a descriptive feature branch.
+3. Keep changes focused and add tests where appropriate.
+4. Install dependencies with `python -m pip install -r requirements.txt`.
+5. Run `python -m unittest discover -s tests -v` before opening a pull request.
+
+Please keep syntax highlighting (Pygments), lexical analysis (`tokenize`), and syntax analysis (`ast`) as separate responsibilities.
