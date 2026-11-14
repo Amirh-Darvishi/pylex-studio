@@ -69,6 +69,10 @@ class DebugSession:
             chunks.append(item)
         return "".join(chunks)
 
+    def wait(self, timeout=None):
+        """Wait for the debugged process to exit."""
+        return self.process.wait(timeout=timeout)
+
     def command(self, value):
         if self.done or self.process.stdin is None:
             return False
