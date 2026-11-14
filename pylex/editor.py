@@ -128,12 +128,12 @@ class CodeEditor(tk.Frame):
         except tk.TclError:
             selected = ""
         self.text.insert("insert", char + selected + pairs[char])
-        self.text.mark_set("insert", "insert-" + str(len(selected) + 1) + "c")
+        self.text.mark_set("insert", "insert-1c")
         return "break"
 
     def show_completions(self, event=None):
         """Show lightweight keyword and built-in completion suggestions."""
-        word = self.text.get("insert- wordstart", "insert")
+        word = self.text.get("insert wordstart", "insert")
         if not word:
             return "break"
         candidates = sorted(set(keyword.kwlist) | set(dir(builtins)))
@@ -169,7 +169,7 @@ class CodeEditor(tk.Frame):
         selection = self._completion_list.curselection()
         if selection:
             value = self._completion_list.get(selection[0])
-            self.text.delete("insert- wordstart", "insert")
+            self.text.delete("insert wordstart", "insert")
             self.text.insert("insert", value)
         self._hide_completions()
         self.text.focus_set()
