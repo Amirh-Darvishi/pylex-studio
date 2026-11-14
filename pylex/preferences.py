@@ -8,6 +8,7 @@ DEFAULTS = {
     "font_family": "Consolas",
     "font_size": 12,
     "show_project_explorer": True,
+    "timeout_seconds": 10,
 }
 
 
@@ -32,6 +33,15 @@ def load_preferences():
     except (TypeError, ValueError):
         values["font_size"] = DEFAULTS["font_size"]
     values["show_project_explorer"] = bool(values["show_project_explorer"])
+    timeout = values["timeout_seconds"]
+    if timeout is not None:
+        try:
+            timeout = int(timeout)
+        except (TypeError, ValueError):
+            timeout = DEFAULTS["timeout_seconds"]
+        if timeout not in {5, 10, 30, 60}:
+            timeout = DEFAULTS["timeout_seconds"]
+    values["timeout_seconds"] = timeout
     return values
 
 
