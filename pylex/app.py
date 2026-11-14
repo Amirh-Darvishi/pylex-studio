@@ -754,7 +754,11 @@ class PyLexApp(tk.Tk):
                 module = missing.group(1)
                 from .dependencies import PIP_NAMES
                 package = PIP_NAMES.get(module.split(".", 1)[0], module.split(".", 1)[0])
-                message = f"Missing library '{module}'. Install it with: python -m pip install {package}"
+                interpreter = python_environment()["executable"]
+                message = (
+                    f"Missing library '{module}'. Install it into the active interpreter with: "
+                    f'"{interpreter}" -m pip install "{package}"'
+                )
         from .analyzer import Diagnostic
         diagnostic = Diagnostic(
             error_type, message, line, 0, line, 0, source_line,
