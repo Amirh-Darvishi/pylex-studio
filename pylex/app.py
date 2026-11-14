@@ -10,7 +10,7 @@ from .analyzer import (
     lexical_analysis, syntax_analysis, format_tokens, collect_diagnostics,
 )
 from .runner import start_source
-from .dependencies import find_missing_imports
+from .dependencies import inspect_dependencies, python_environment
 from .debugger import DebugSession
 from .preferences import load_preferences, save_preferences
 
@@ -141,6 +141,7 @@ class PyLexApp(tk.Tk):
         self.lexical = self._text_panel("Lexical Analysis")
         self.syntax = self._text_panel("Syntax Analysis")
         self._errors_panel()
+        self._dependencies_panel()
 
         self.status = ttk.Label(self, text="Ready", padding=5)
         self.status.pack(fill="x")
@@ -169,6 +170,73 @@ class PyLexApp(tk.Tk):
         frame.columnconfigure(0, weight=1)
         self.tabs.add(frame, text=title)
         return text
+
+    def _dependencies_panel(self):
+        frame = ttk.Frame(self.tabs, padding=4)
+        actions = ttk.Frame(frame)
+        actions.pack(fill="x", pady=(0, 4))
+        ttk.Button(actions, text="Scan Current File", command=self.scan_dependencies).pack(side="left")
+        ttk.Button(actions, text="Copy Python Install Command", command=self.copy_install_command).pack(side="left", padx=4)
+        self.dependency_environment = ttk.Label(frame, text="Python environment: not scanned")
+        self.dependency_environment.pack(fill="x", pady=(2, 5))
+        columns = ("module", "status", "distribution", "version")
+        self.dependency_tree = ttk.Treeview(frame, columns=columns, show="headings", height=7)
+        for key, label in (("module", "Import"), ("status", "Status"),
+                           ("distribution", "Package / Source"), ("version", "Version")):
+            self.dependency_tree.heading(key, text=label)
+        self.dependency_tree.column("module", width=150)
+        self.dependency_tree.column("status", width=100, anchor="center")
+        self.dependency_tree.column("distribution", width=220)
+        self.dependency_tree.column("version", width=170)
+        self.dependency_tree.pack(fill="both", expand=True)
+        self.dependency_tree.tag_configure("missing", foreground="#d9534f")
+        self.dependency_tree.tag_configure("installed", foreground="#5b9b68")
+        self.tabs.add(frame, text="Dependencies")
+
+    def _update_dependency_view(self, dependencies, scan_error=None):
+        for item in self.dependency_tree.get_children():
+            self.dependency_tree.delete(item)
+        for dependency in dependencies:
+            version = dependency.version or ("—" if dependency.status != "missing" else "Not installed")
+            self.dependency_tree.insert(
+                "", "end",
+                values=(dependency.import_name, dependency.status,
+                        dependency.distribution, version),
+                tags=(dependency.status,),
+            )
+        env = python_environment()
+        mode = "venv" if env["virtual_environment"] else "base interpreter"
+        message = f"Python {env['version']} ({mode}) — {env['executable']}"
+        if scan_error:
+            message += " | " + scan_error
+        self.dependency_environment.configure(text=message)
+
+    def scan_dependencies(self):
+        document = self._active_document()
+        root = document["path"].parent if document and document["path"] else Path.cwd()
+        dependencies, error = inspect_dependencies(self.editor.get_content(), search_root=root)
+        self._update_dependency_view(dependencies, error)
+        self.tabs.select(self.dependency_tree.master)
+        missing = sum(item.status == "missing" for item in dependencies)
+        self.status.configure(
+            text=f"Dependency scan complete — {len(dependencies)} imports, {missing} missing."
+            if not error else "Dependency scan needs valid Python syntax."
+        )
+
+    def copy_install_command(self):
+        selected = self.dependency_tree.selection()
+        if not selected:
+            self.status.configure(text="Select a missing dependency first.")
+            return
+        values = self.dependency_tree.item(selected[0], "values")
+        if values[1] != "missing":
+            self.status.configure(text="The selected dependency is not missing.")
+            return
+        env = python_environment()
+        command = f'"{env["executable"]}" -m pip install "{values[2]}"'
+        self.clipboard_clear()
+        self.clipboard_append(command)
+        self.status.configure(text="Interpreter-specific install command copied.")
 
     def _errors_panel(self):
         frame = ttk.Frame(self.tabs, padding=4)
@@ -544,17 +612,34 @@ class PyLexApp(tk.Tk):
         source = self.editor.get_content()
         document = self._active_document()
         search_root = document["path"].parent if document and document["path"] else Path.cwd()
-        missing = find_missing_imports(source, search_root=search_root)
+        dependencies, scan_error = inspect_dependencies(source, search_root=search_root)
+        self._update_dependency_view(dependencies, scan_error)
         self._show(self.output, "")
+        env = python_environment()
+        self._append_output(
+            f"Python: {env['version']} | {env['executable']}\n"
+            f"Environment: {'virtual environment' if env['virtual_environment'] else 'base interpreter'}\n",
+            "system",
+        )
+        missing = [item for item in dependencies if item.status == "missing"]
+        if scan_error:
+            self._append_output(scan_error + "\n", "stderr")
         if missing:
             lines = [
-                "DEPENDENCY CHECK — possible missing third-party libraries",
-                "The following imports were not found in this Python environment:",
+                "DEPENDENCY CHECK — missing imports detected",
+                "Install into this exact interpreter using the commands below:",
             ]
-            lines.extend(f"  • {module}  →  python -m pip install {package}"
-                         for module, package in missing)
-            lines.append("Execution will continue; the real traceback will be shown if import fails.\n")
+            lines.extend(
+                f"  • {item.import_name} → {item.distribution}: "
+                f"{env['executable']} -m pip install {item.distribution}"
+                for item in missing
+            )
+            lines.append(
+                "Static scanning cannot detect every dynamic import; runtime errors are also reported.\n"
+            )
             self._append_output("\n".join(lines) + "\n", "system")
+        elif not scan_error:
+            self._append_output("Dependency check: no missing imports detected.\n", "system")
         self._append_output("Starting program...\n", "system")
         try:
             timeout = self.preferences["timeout_seconds"]
