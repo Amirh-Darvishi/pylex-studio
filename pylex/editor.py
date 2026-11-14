@@ -347,5 +347,10 @@ class CodeEditor(tk.Frame):
         self.refresh_gutter_marks()
 
     def set_font_size(self, size):
-        self.font_size = max(7, min(40, size))
+        self.font_size = max(7, min(40, int(size)))
         self.editor_font.configure(size=self.font_size)
+
+    def set_font_family(self, family):
+        family = str(family).strip()
+        if family:
+            self.editor_font.configure(family=family)
