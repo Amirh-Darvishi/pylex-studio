@@ -27,6 +27,9 @@ All notable changes to PyLex Studio are documented here.
 - Project folder explorer with recursive file browsing and double-click open.
 
 ### Improved
+- Add a dedicated dependency inspector showing standard-library, local, installed, and missing imports with package versions and module locations.
+- Report the exact active Python executable and virtual-environment state; generate pip install commands targeting that interpreter.
+- Expand dependency inspection tests for local modules, missing packages, installed versions, and syntax errors.
 - Stream stdout and stderr live into a color-coded output console.
 - Add controls to clear and save execution logs.
 - Preflight third-party imports and suggest exact pip installation commands for common package-name differences.
