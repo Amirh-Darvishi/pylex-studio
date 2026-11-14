@@ -43,6 +43,10 @@ class PyLexApp(tk.Tk):
         file_menu.add_command(label="Exit", command=self.close)
         menu.add_cascade(label="File", menu=file_menu)
 
+        edit_menu = tk.Menu(menu, tearoff=False)
+        edit_menu.add_command(label="Find / Replace...", command=self.find_replace)
+        menu.add_cascade(label="Edit", menu=edit_menu)
+
         tools_menu = tk.Menu(menu, tearoff=False)
         tools_menu.add_command(label="Analyze All", command=self.analyze_all)
         tools_menu.add_command(label="Lexical Analysis", command=self.analyze_lexical)
@@ -57,6 +61,7 @@ class PyLexApp(tk.Tk):
         self.bind_all("<Control-n>", lambda event: self.new_file())
         self.bind_all("<Control-o>", lambda event: self.open_file())
         self.bind_all("<Control-s>", lambda event: self.save_file())
+        self.bind_all("<Control-h>", lambda event: self.find_replace())
         self.bind_all("<F5>", lambda event: self.run_code())
         self.bind_all("<Shift-F5>", lambda event: self.stop_execution())
         self.bind_all("<F6>", lambda event: self.analyze_all())
@@ -352,6 +357,83 @@ class PyLexApp(tk.Tk):
         )
         self.execution = None
         self._execution_poll = None
+
+    def find_replace(self):
+        """Open a compact find-and-replace dialog for the active editor."""
+        dialog = tk.Toplevel(self)
+        dialog.title("Find and Replace")
+        dialog.transient(self)
+        dialog.resizable(False, False)
+        body = ttk.Frame(dialog, padding=10)
+        body.pack(fill="both", expand=True)
+        ttk.Label(body, text="Find").grid(row=0, column=0, sticky="w", pady=3)
+        find_entry = ttk.Entry(body, width=34)
+        find_entry.grid(row=0, column=1, columnspan=3, sticky="ew", pady=3)
+        ttk.Label(body, text="Replace").grid(row=1, column=0, sticky="w", pady=3)
+        replace_entry = ttk.Entry(body, width=34)
+        replace_entry.grid(row=1, column=1, columnspan=3, sticky="ew", pady=3)
+        status = ttk.Label(body, text="")
+        status.grid(row=2, column=0, columnspan=4, sticky="w", pady=4)
+
+        def find_next():
+            needle = find_entry.get()
+            if not needle:
+                status.configure(text="Enter text to find.")
+                return
+            text_widget = self.editor.text
+            start = text_widget.index("insert")
+            match = text_widget.search(needle, start, stopindex="end")
+            if not match:
+                match = text_widget.search(needle, "1.0", stopindex=start)
+            if match:
+                end = "{}+{}c".format(match, len(needle))
+                text_widget.tag_remove("sel", "1.0", "end")
+                text_widget.tag_add("sel", match, end)
+                text_widget.mark_set("insert", end)
+                text_widget.see(match)
+                text_widget.focus_set()
+                status.configure(text="Match found.")
+            else:
+                status.configure(text="No matches found.")
+
+        def replace_one():
+            needle = find_entry.get()
+            if not needle:
+                return
+            text_widget = self.editor.text
+            try:
+                selected = text_widget.get("sel.first", "sel.last")
+            except tk.TclError:
+                selected = ""
+            if selected == needle:
+                text_widget.delete("sel.first", "sel.last")
+                text_widget.insert("insert", replace_entry.get())
+                status.configure(text="One occurrence replaced.")
+            find_next()
+
+        def replace_all():
+            needle = find_entry.get()
+            if not needle:
+                return
+            text_widget = self.editor.text
+            count = 0
+            position = "1.0"
+            while True:
+                match = text_widget.search(needle, position, stopindex="end")
+                if not match:
+                    break
+                end = "{}+{}c".format(match, len(needle))
+                text_widget.delete(match, end)
+                text_widget.insert(match, replace_entry.get())
+                position = "{}+{}c".format(match, len(replace_entry.get()))
+                count += 1
+            status.configure(text="{} occurrence(s) replaced.".format(count))
+
+        ttk.Button(body, text="Find Next", command=find_next).grid(row=3, column=1, sticky="ew", padx=2)
+        ttk.Button(body, text="Replace", command=replace_one).grid(row=3, column=2, sticky="ew", padx=2)
+        ttk.Button(body, text="Replace All", command=replace_all).grid(row=3, column=3, sticky="ew", padx=2)
+        find_entry.focus_set()
+        dialog.bind("<Return>", lambda _event: find_next())
 
     def zoom(self, delta):
         self.editor.set_font_size(self.editor.font_size + delta)
