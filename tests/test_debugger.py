@@ -11,10 +11,21 @@ class DebuggerTests(unittest.TestCase):
         script_path = session.script_path
         try:
             self.assertTrue(session.continue_execution())
+            deadline = time.monotonic() + 5
+            output = ""
+            while time.monotonic() < deadline:
+                output += session.read_available()
+                if "debugger-ok" in output:
+                    break
+                if session.done:
+                    break
+                time.sleep(0.02)
+            self.assertIn("debugger-ok", output)
+            # pdb remains interactive at its post-run prompt until quit.
+            self.assertTrue(session.command("q"))
             session.wait(timeout=5)
             session._reader.join(timeout=2)
-            output = session.read_available()
-            self.assertIn("debugger-ok", output)
+            output += session.read_available()
         finally:
             session.close()
         self.assertFalse(script_path.exists())
