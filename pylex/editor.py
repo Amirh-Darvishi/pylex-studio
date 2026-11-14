@@ -23,6 +23,7 @@ class CodeEditor(tk.Frame):
         self._diagnostic_location = None
         self._completion_window = None
         self._completion_list = None
+        self._breakpoints = set()
 
         self.gutter = tk.Text(
             self, width=5, padx=5, takefocus=0, state="disabled",
@@ -221,7 +222,7 @@ class CodeEditor(tk.Frame):
         current = int(self.text.index("insert").split(".")[0])
         self.gutter.configure(state="normal")
         self.gutter.delete("1.0", "end")
-        self.gutter.insert("1.0", "\n".join(str(i) for i in range(1, count + 1)))
+        self.gutter.insert("1.0", "\n".join(("● " if i in self._breakpoints else "  ") + str(i) for i in range(1, count + 1)))
         self.gutter.tag_remove("gutter_current", "1.0", "end")
         self.gutter.tag_remove("gutter_error", "1.0", "end")
         self.gutter.tag_add("gutter_current", f"{current}.0", f"{current}.end")
@@ -230,6 +231,11 @@ class CodeEditor(tk.Frame):
             if 1 <= line <= count:
                 self.gutter.tag_add("gutter_error", f"{line}.0", f"{line}.end")
         self.gutter.configure(state="disabled")
+
+    def set_breakpoints(self, lines):
+        """Display breakpoint markers beside the corresponding line numbers."""
+        self._breakpoints = {int(line) for line in lines if int(line) > 0}
+        self.refresh_lines()
 
     def update_current_line(self, event=None):
         self.text.tag_remove("current_line", "1.0", "end")
