@@ -630,23 +630,31 @@ class PyLexApp(tk.Tk):
             messagebox.showerror("Save Output Error", str(exc))
 
     def _report_runtime_error(self, stderr):
-        missing = re.search(r"No module named ['\"]([^'\"]+)['\"]", stderr)
-        if not missing:
+        exception_matches = re.findall(
+            r"^([A-Za-z_][\\w.]*(?:Error|Exception)): (.*)$",
+            stderr, re.MULTILINE,
+        )
+        if not exception_matches:
             return
-        module = missing.group(1)
-        line_matches = re.findall(r'File "[^"]+", line (\d+)', stderr)
+        error_type, message = exception_matches[-1]
+        line_matches = re.findall(r'File "[^"]+", line (\\d+)', stderr)
         line = int(line_matches[-1]) if line_matches else 1
         source_lines = self.editor.get_content().splitlines()
         source_line = source_lines[line - 1] if 1 <= line <= len(source_lines) else ""
+        if error_type == "ModuleNotFoundError":
+            missing = re.search(r"No module named ['\"]([^'\"]+)['\"]", message)
+            if missing:
+                module = missing.group(1)
+                from .dependencies import PIP_NAMES
+                package = PIP_NAMES.get(module.split(".", 1)[0], module.split(".", 1)[0])
+                message = f"Missing library '{module}'. Install it with: python -m pip install {package}"
         from .analyzer import Diagnostic
         diagnostic = Diagnostic(
-            "ModuleNotFoundError",
-            f"Missing library '{module}'. Install it with: python -m pip install {module}",
-            line, 0, line, 0, source_line,
+            error_type, message, line, 0, line, 0, source_line,
         )
         self._set_diagnostics([diagnostic])
         self.tabs.select(self.error_tree.master)
-        self.status.configure(text=f"Missing dependency: {module}. See Errors and Output.")
+        self.status.configure(text=f"Runtime error: {error_type} — line {line}. See Errors and Output.")
 
     def toggle_breakpoint(self):
         line = int(self.editor.text.index("insert").split(".")[0])
