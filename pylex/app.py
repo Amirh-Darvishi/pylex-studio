@@ -564,11 +564,15 @@ class PyLexApp(tk.Tk):
         self._poll_execution()
 
     def stop_execution(self):
-        if self.execution is None or self.execution.done:
-            self.status.configure(text="No program is currently running.")
+        if self.execution is not None and not self.execution.done:
+            self.execution.force_stop()
+            self.status.configure(text="Force-stopping process and child processes...")
             return
-        self.execution.force_stop()
-        self.status.configure(text="Force-stopping process and child processes...")
+        if self.debug_session is not None and not self.debug_session.done:
+            self.debug_session.stop()
+            self.status.configure(text="Force-stopping debugger and child processes...")
+            return
+        self.status.configure(text="No program is currently running.")
 
     def _poll_execution(self):
         handle = self.execution
