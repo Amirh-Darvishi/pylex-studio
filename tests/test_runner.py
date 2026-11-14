@@ -52,6 +52,18 @@ class RunnerTests(unittest.TestCase):
         self.assertEqual(result.status, "timed_out")
         self.assertIn("timed out", result.stderr.lower())
 
+    def test_force_stop_works_with_unlimited_timeout(self):
+        handle = start_source(
+            "import time\nprint('ready', flush=True)\ntime.sleep(10)",
+            timeout=None,
+        )
+        deadline = time.monotonic() + 2
+        while handle.process.poll() is None and time.monotonic() < deadline:
+            time.sleep(0.01)
+        self.assertTrue(handle.force_stop())
+        result = handle.wait(5)
+        self.assertEqual(result.status, "stopped")
+
     def test_force_stop_terminates_running_process(self):
         handle = start_source("import time\nprint('ready', flush=True)\ntime.sleep(10)")
         deadline = time.monotonic() + 2
