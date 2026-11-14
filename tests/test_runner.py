@@ -33,6 +33,12 @@ class RunnerTests(unittest.TestCase):
         self.assertFalse(handle.done)
         self.assertEqual(handle.wait(5).status, "finished")
 
+    def test_missing_library_is_captured_as_runtime_error(self):
+        result = start_source("import pylex_test_missing_package_abc123").wait(5)
+        self.assertNotEqual(result.exit_code, 0)
+        self.assertIn("ModuleNotFoundError", result.stderr)
+        self.assertIn("pylex_test_missing_package_abc123", result.stderr)
+
     def test_timeout_terminates_process(self):
         result = start_source("import time\ntime.sleep(3)", timeout=0.15).wait(5)
         self.assertEqual(result.status, "timed_out")
