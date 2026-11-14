@@ -324,7 +324,7 @@ class PyLexApp(tk.Tk):
             messagebox.showerror("Execution Error", str(exc))
             self.status.configure(text="Could not start Python process.")
             return
-        self._show(self.output, "Program is running...\\n")
+        self._show(self.output, "Program is running...\n")
         self.status.configure(text="Running — press Shift+F5 or Stop to cancel.")
         self._poll_execution()
 
@@ -344,8 +344,8 @@ class PyLexApp(tk.Tk):
         result = self.execution.result
         report = result.stdout
         if result.stderr:
-            report += ("\\n" if report else "") + "Errors:\\n" + result.stderr
-        report += f"\\n\\nStatus: {result.status}\\nExit code: {result.exit_code}\\nDuration: {result.duration:.2f}s"
+            report += ("\n" if report else "") + "Errors:\n" + result.stderr
+        report += f"\n\nStatus: {result.status}\nExit code: {result.exit_code}\nDuration: {result.duration:.2f}s"
         self._show(self.output, report)
         self.status.configure(
             text=f"Execution {result.status} — exit code {result.exit_code}."
