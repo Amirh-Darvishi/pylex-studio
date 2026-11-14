@@ -540,7 +540,9 @@ class PyLexApp(tk.Tk):
             self.status.configure(text="A program is already running. Force Stop it before starting another.")
             return
         source = self.editor.get_content()
-        missing = find_missing_imports(source)
+        document = self._active_document()
+        search_root = document["path"].parent if document and document["path"] else Path.cwd()
+        missing = find_missing_imports(source, search_root=search_root)
         self._show(self.output, "")
         if missing:
             lines = [
