@@ -10,6 +10,9 @@ All notable changes to PyLex Studio are documented here.
 - Execution status, duration, stdout, stderr, and exit-code reporting.
 - Automatic process termination after the configured timeout.
 - Runner tests for output capture, cancellation, timeout, backwards compatibility, and temporary-file cleanup.
+- Basic keyword and built-in completion using Ctrl+Space.
+- Automatic bracket and quote pairing.
+- Find and replace dialog with Ctrl+H.
 
 ### Improved
 - Preserved the existing synchronous `run_source` API for compatibility.
