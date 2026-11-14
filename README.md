@@ -62,7 +62,11 @@ python -m pip install -r requirements.txt
 python main.py
 ```
 
-## File and project management (1.2.0 development)\n\nUse File → Open Project Folder to browse a project. Double-click supported files in the explorer to open them in tabs. Each tab tracks its own unsaved changes; use Ctrl+W to close the active tab.\n\n## Analysis and diagnostics
+## File and project management (1.2.0 development)
+
+Use File → Open Project Folder to browse a project. Double-click supported files in the explorer to open them in tabs. Each tab tracks its own unsaved changes; use Ctrl+W to close the active tab.
+
+## Analysis and diagnostics
 
 The lexical analyzer uses Python `tokenize` and reports token start/end positions. The syntax analyzer uses `ast.parse`. Diagnostics preserve concrete exception types (for example, `IndentationError`), are de-duplicated when the tokenizer and parser report the same issue, and can be selected in the Errors panel to navigate to the corresponding editor position. Editor columns are zero-based internally; the UI displays one-based columns.
 
