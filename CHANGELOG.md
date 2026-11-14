@@ -11,7 +11,8 @@ All notable changes to PyLex Studio are documented here.
 - Automatic process termination after the configured timeout.
 - Runner tests for output capture, cancellation, timeout, backwards compatibility, and temporary-file cleanup.
 - Basic keyword and built-in completion using Ctrl+Space.
-- Automatic bracket and quote pairing.
+- Automatic bracket and quote pairing, including correct caret placement around selected text.
+- Keyboard-navigable keyword and built-in completion suggestions.
 - Find and replace dialog with Ctrl+H.
 - Multiple open documents in independent editor tabs.
 - Per-document dirty state, tab indicators, save prompts, and close-tab handling.
