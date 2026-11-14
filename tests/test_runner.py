@@ -1,4 +1,6 @@
-"""Tests for asynchronous Python execution."""
+"""Tests for streaming, cancellable Python process execution."""
+import os
+import subprocess
 import sys
 import time
 import unittest
@@ -16,17 +18,32 @@ class RunnerTests(unittest.TestCase):
         self.assertEqual(result.exit_code, 3)
         self.assertEqual(result.status, "finished")
 
+    def test_streams_output_before_process_finishes(self):
+        handle = start_source(
+            "import time\nprint('first', flush=True)\ntime.sleep(0.5)\nprint('second')",
+            timeout=3,
+        )
+        deadline = time.monotonic() + 2
+        events = []
+        while time.monotonic() < deadline and not any("first" in item[1] for item in events):
+            events.extend(handle.read_available())
+            time.sleep(0.02)
+        self.assertTrue(any(channel == "stdout" and "first" in value
+                            for channel, value in events))
+        self.assertFalse(handle.done)
+        self.assertEqual(handle.wait(5).status, "finished")
+
     def test_timeout_terminates_process(self):
         result = start_source("import time\ntime.sleep(3)", timeout=0.15).wait(5)
         self.assertEqual(result.status, "timed_out")
         self.assertIn("timed out", result.stderr.lower())
 
-    def test_stop_terminates_running_process(self):
+    def test_force_stop_terminates_running_process(self):
         handle = start_source("import time\nprint('ready', flush=True)\ntime.sleep(10)")
         deadline = time.monotonic() + 2
         while handle.process.poll() is None and time.monotonic() < deadline:
             time.sleep(0.01)
-        self.assertTrue(handle.stop())
+        self.assertTrue(handle.force_stop())
         result = handle.wait(5)
         self.assertEqual(result.status, "stopped")
 
