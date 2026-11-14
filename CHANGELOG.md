@@ -2,7 +2,23 @@
 
 All notable changes to PyLex Studio are documented here.
 
-## [1.1.1] - In development\n\n### Added\n- Structured diagnostics with exact exception types, source lines, and editor coordinates.\n- Errors panel with clickable diagnostics that navigate to the corresponding line and column.\n- Current-line emphasis, diagnostic line highlighting, and synchronized line-number gutter.\n- Analyze All and Clear Results commands, plus separate Output, Lexical, Syntax, and Errors panels.\n- Token end positions and expanded test coverage for diagnostic de-duplication, source spans, and coordinate conversion.\n- 16 automated tests pass in the development environment.\n\n### Improved\n- De-duplicated matching tokenizer/parser reports while preferring the parser diagnostic.\n- Improved analysis status messages and invalidated stale diagnostics after source edits.\n\n## [1.1.0] - 2026-11-14
+## [1.2.0] - In development
+
+### Added
+- Non-blocking Python code execution in a child process.
+- Stop execution control and Shift+F5 shortcut.
+- Execution status, duration, stdout, stderr, and exit-code reporting.
+- Automatic process termination after the configured timeout.
+- Runner tests for output capture, cancellation, timeout, backwards compatibility, and temporary-file cleanup.
+
+### Improved
+- Preserved the existing synchronous `run_source` API for compatibility.
+- Kept the GUI responsive while user code is running.
+
+### Security
+- Execution is not sandboxed and uses the current user's permissions.
+
+## [1.1.0] - 2026-11-14
 
 ### Added
 - Pygments-based Python syntax highlighting.
