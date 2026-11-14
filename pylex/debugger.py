@@ -1,0 +1,128 @@
+"""Interactive pdb-backed debugging for Python source files."""
+from pathlib import Path
+import queue
+import subprocess
+import sys
+import tempfile
+import threading
+
+
+class DebugSession:
+    """Control a pdb child process and collect its interactive output."""
+
+    def __init__(self, process, script_path):
+        self.process = process
+        self.script_path = Path(script_path)
+        self._output = queue.Queue()
+        self._reader = threading.Thread(target=self._read_output, daemon=True)
+        self._reader.start()
+
+    @classmethod
+    def start(cls, source):
+        script_path = None
+        try:
+            with tempfile.NamedTemporaryFile(
+                mode="w", suffix=".py", encoding="utf-8", delete=False
+            ) as script:
+                script.write(source)
+                script_path = Path(script.name)
+            process = subprocess.Popen(
+                [sys.executable, "-m", "pdb", str(script_path)],
+                stdin=subprocess.PIPE,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT,
+                text=True,
+                encoding="utf-8",
+                errors="replace",
+                bufsize=1,
+            )
+            return cls(process, script_path)
+        except Exception:
+            if script_path is not None:
+                script_path.unlink(missing_ok=True)
+            raise
+
+    @property
+    def done(self):
+        return self.process.poll() is not None
+
+    def _read_output(self):
+        try:
+            while True:
+                chunk = self.process.stdout.read(1)
+                if not chunk:
+                    break
+                self._output.put(chunk)
+        finally:
+            self._output.put(None)
+
+    def read_available(self):
+        """Return currently available debugger output without blocking."""
+        chunks = []
+        while True:
+            try:
+                item = self._output.get_nowait()
+            except queue.Empty:
+                break
+            if item is None:
+                continue
+            chunks.append(item)
+        return "".join(chunks)
+
+    def command(self, value):
+        if self.done or self.process.stdin is None:
+            return False
+        try:
+            self.process.stdin.write(value.rstrip("\n") + "\n")
+            self.process.stdin.flush()
+            return True
+        except (BrokenPipeError, OSError, ValueError):
+            return False
+
+    def set_breakpoint(self, line):
+        return self.command(f"b {int(line)}")
+
+    def clear_breakpoint(self, line):
+        return self.command(f"cl {int(line)}")
+
+    def continue_execution(self):
+        return self.command("c")
+
+    def step(self):
+        return self.command("s")
+
+    def next(self):
+        return self.command("n")
+
+    def inspect_variables(self):
+        return self.command("p locals()")
+
+    def evaluate(self, expression):
+        """Evaluate a Python expression in the current paused frame."""
+        expression = str(expression).strip()
+        if not expression or "\n" in expression:
+            return False
+        return self.command(f"p {expression}")
+
+    def stop(self):
+        if self.done:
+            return False
+        self.command("q")
+        try:
+            self.process.terminate()
+        except OSError:
+            pass
+        return True
+
+    def close(self):
+        if not self.done:
+            self.stop()
+        try:
+            self.process.wait(timeout=2)
+        except subprocess.TimeoutExpired:
+            self.process.kill()
+            self.process.wait()
+        try:
+            self.script_path.unlink(missing_ok=True)
+        except OSError:
+            pass
