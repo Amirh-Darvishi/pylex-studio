@@ -132,4 +132,5 @@ def start_source(source, timeout=10):
 def run_source(source, timeout=10):
     """Backward-compatible blocking API returning stdout, stderr, and exit code."""
     result = start_source(source, timeout=timeout).wait()
-    return result.stdout, result.stderr, result.exit_code
+    exit_code = -1 if result.status == "timed_out" else result.exit_code
+    return result.stdout, result.stderr, exit_code
