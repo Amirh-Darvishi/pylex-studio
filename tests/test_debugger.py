@@ -30,6 +30,17 @@ class DebuggerTests(unittest.TestCase):
             session.close()
         self.assertFalse(script_path.exists())
 
+    def test_force_stop_closes_unresponsive_debuggee(self):
+        session = DebugSession.start("import time\ntime.sleep(30)\n")
+        try:
+            self.assertTrue(session.continue_execution())
+            time.sleep(0.1)
+            self.assertTrue(session.stop())
+            session.wait(timeout=5)
+            self.assertTrue(session.done)
+        finally:
+            session.close()
+
     def test_breakpoint_and_step_commands_are_available(self):
         session = DebugSession.start("value = 1\nvalue += 1\nprint(value)\n")
         try:
