@@ -631,13 +631,13 @@ class PyLexApp(tk.Tk):
 
     def _report_runtime_error(self, stderr):
         exception_matches = re.findall(
-            r"^([A-Za-z_][\\w.]*(?:Error|Exception)): (.*)$",
+            r"^([A-Za-z_][\w.]*(?:Error|Exception)): (.*)$",
             stderr, re.MULTILINE,
         )
         if not exception_matches:
             return
         error_type, message = exception_matches[-1]
-        line_matches = re.findall(r'File "[^"]+", line (\\d+)', stderr)
+        line_matches = re.findall(r'File "[^"]+", line (\d+)', stderr)
         line = int(line_matches[-1]) if line_matches else 1
         source_lines = self.editor.get_content().splitlines()
         source_line = source_lines[line - 1] if 1 <= line <= len(source_lines) else ""
