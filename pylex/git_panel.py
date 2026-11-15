@@ -58,10 +58,7 @@ class GitPanel(ttk.Frame):
         self.tree.heading("path", text="Changed File")
         self.tree.column("status", width=75, anchor="center", stretch=False)
         self.tree.column("path", width=450)
-        ybar = ttk.Scrollbar(self, orient="vertical", command=self.tree.yview)
-        self.tree.configure(yscrollcommand=ybar.set)
-        self.tree.pack(side="left", fill="both", expand=True)
-        ybar.pack(side="left", fill="y")
+        self.tree.pack(fill="both", expand=True)
 
         commit = ttk.LabelFrame(self, text="Commit", padding=5)
         commit.pack(fill="x", pady=(5, 4))
