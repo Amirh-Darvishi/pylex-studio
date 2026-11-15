@@ -267,19 +267,19 @@ class PyLexApp(tk.Tk):
             default_shell=self.preferences.get("terminal_shell", ""),
             on_shell_change=self._save_terminal_shell,
         )
-        self.tabs.add(self.terminal_panel, text="Terminal")
+        self.tabs.add(self.terminal_panel, text="›  Terminal")
         self.quality_panel = QualityPanel(
             lower, self._quality_context, self._quality_document,
             self._apply_formatted_source, self._navigate_quality_diagnostic,
             status_callback=lambda message: self.status.configure(text=message),
             project_format_guard=self._can_format_project,
         )
-        self.tabs.add(self.quality_panel, text="Quality")
+        self.tabs.add(self.quality_panel, text="✧  Quality")
         self.git_panel = GitPanel(
             lower, lambda: self.project.root if self.project else None,
             status_callback=lambda message: self.status.configure(text=message),
         )
-        self.tabs.add(self.git_panel, text="Git")
+        self.tabs.add(self.git_panel, text="⑂  Git")
 
         self.status = ttk.Label(
             self, text="Ready", style="PyLex.Status.TLabel"
@@ -310,7 +310,12 @@ class PyLexApp(tk.Tk):
         text.grid(row=row, column=0, columnspan=2, sticky="nsew")
         frame.rowconfigure(row, weight=1)
         frame.columnconfigure(0, weight=1)
-        self.tabs.add(frame, text=title)
+        panel_icons = {
+            "Output": "●  Output",
+            "Lexical Analysis": "⌁  Lexical",
+            "Syntax Analysis": "✓  Syntax",
+        }
+        self.tabs.add(frame, text=panel_icons.get(title, title))
         return text
 
     def _terminal_context(self):
@@ -452,7 +457,7 @@ class PyLexApp(tk.Tk):
         self.dependency_tree.pack(fill="both", expand=True)
         self.dependency_tree.tag_configure("missing", foreground="#d9534f")
         self.dependency_tree.tag_configure("installed", foreground="#5b9b68")
-        self.tabs.add(frame, text="Dependencies")
+        self.tabs.add(frame, text="▦  Dependencies")
 
     def _interpreter_for_project(self, project=None):
         """Resolve project override, local .venv, global setting, or current Python."""
@@ -719,7 +724,7 @@ class PyLexApp(tk.Tk):
         self.error_tree.pack(fill="both", expand=True)
         self.error_tree.bind("<<TreeviewSelect>>", self._navigate_to_selected_error)
         self.error_tree.bind("<Double-1>", self._navigate_to_selected_error)
-        self.tabs.add(frame, text="Errors")
+        self.tabs.add(frame, text="⚠  Problems")
 
     def _show(self, panel, content):
         panel.configure(state="normal")
@@ -1094,7 +1099,7 @@ class PyLexApp(tk.Tk):
         self.editor = editor
         editor.set_font_family(self.preferences["font_family"])
         editor.set_font_size(self.preferences["font_size"])
-        editor.set_theme(self.dark)
+        editor.set_theme(self.dark, self.theme_palette)
         self._sync_active_document()
         self.editor.set_breakpoints(self.breakpoints.get(editor, set()))
         return editor
@@ -2062,7 +2067,7 @@ class PyLexApp(tk.Tk):
         self.theme_palette = palette
         self.configure(bg=palette["window_bg"])
         for editor in self.documents:
-            editor.set_theme(self.dark)
+            editor.set_theme(self.dark, palette)
         for panel in (self.output, self.lexical, self.syntax):
             panel.configure(
                 bg=palette["editor_bg"], fg=palette["editor_fg"],
@@ -2070,7 +2075,10 @@ class PyLexApp(tk.Tk):
                 selectbackground=palette["selection_bg"],
                 selectforeground=palette["editor_fg"],
             )
-        self.terminal_panel.set_theme(self.dark)
+            panel.tag_configure("stderr", foreground=palette["danger"])
+            panel.tag_configure("stdout", foreground=palette["success"])
+            panel.tag_configure("system", foreground=palette["accent"])
+        self.terminal_panel.set_theme(self.dark, palette)
         if hasattr(self, "project_tree"):
             self.project_tree.tag_configure("directory", foreground=palette["accent"])
             for kind in ("python", "web", "markup", "style", "data"):
