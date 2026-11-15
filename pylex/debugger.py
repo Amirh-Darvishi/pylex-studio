@@ -125,6 +125,8 @@ class DebugSession:
                     and not self._completion_sent
                     and "(Pdb) " in line_buffer
                 ):
+                    # The post-mortem-finished line and the new prompt may
+                    # arrive in one OS read; handle that chunk boundary too.
                     self._completion_sent = True
                     self.command("q")
             tail = decoder.decode(b"", final=True)
