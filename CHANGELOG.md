@@ -7,6 +7,7 @@
 - Added a compact, grouped toolbar for common file, run, tool, and analysis workflows.
 - Added ttkbootstrap 2 as the themed widget layer and a consistent, recolorable Bootstrap icon system for toolbar, workspace files, and tool panels.
 - Expanded Settings with a reset-to-defaults action and a language roadmap for Python, JavaScript, HTML, and CSS.
+- Added workspace Quick Open (`Ctrl+P`) with ranked file-name and path filtering.
 - Applied the selected interface font consistently to notebook tabs and other themed controls while retaining the existing Tkinter editor and application services.
 
 ### Design goals
