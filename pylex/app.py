@@ -391,15 +391,73 @@ class PyLexApp(tk.Tk):
                         cursor="hand2",
                     )
                     item_button.pack(side="left", fill="x", expand=True)
+                    shortcut_label = None
                     if shortcut:
-                        tk.Label(
+                        shortcut_label = tk.Label(
                             row, text=shortcut,
                             background=self.theme_palette["menu_bg"],
                             foreground=self.theme_palette["muted"],
                             font=(self._resolved_ui_font(),
                                   max(7, self.preferences.get("ui_font_size", 9)-1)),
                             padx=8,
-                        ).pack(side="right")
+                        )
+                        shortcut_label.pack(side="right")
+
+                    # Hover feedback belongs to every command row inside the popup,
+                    # not merely to the File/Edit category button in the toolbar.
+                    hover_state = {"job": None}
+
+                    def highlight_menu_row(_event=None, target=row, button_widget=item_button,
+                                            shortcut_widget=shortcut_label):
+                        if hover_state["job"] is not None:
+                            try:
+                                self.after_cancel(hover_state["job"])
+                            except tk.TclError:
+                                pass
+                            hover_state["job"] = None
+                        active_bg = self.theme_palette["elevated"]
+                        target.configure(background=active_bg)
+                        button_widget.configure(
+                            background=active_bg,
+                            foreground=self.theme_palette["accent"],
+                        )
+                        if shortcut_widget is not None:
+                            shortcut_widget.configure(
+                                background=active_bg,
+                                foreground=self.theme_palette["menu_fg"],
+                            )
+
+                    def clear_menu_row_hover(_event=None, target=row, button_widget=item_button,
+                                             shortcut_widget=shortcut_label):
+                        def settle():
+                            hover_state["job"] = None
+                            try:
+                                px, py = self.winfo_pointerxy()
+                                inside = (
+                                    target.winfo_rootx() <= px < target.winfo_rootx() + target.winfo_width()
+                                    and target.winfo_rooty() <= py < target.winfo_rooty() + target.winfo_height()
+                                )
+                            except tk.TclError:
+                                inside = False
+                            if not inside:
+                                normal_bg = self.theme_palette["menu_bg"]
+                                target.configure(background=normal_bg)
+                                button_widget.configure(
+                                    background=normal_bg,
+                                    foreground=self.theme_palette["menu_fg"],
+                                )
+                                if shortcut_widget is not None:
+                                    shortcut_widget.configure(
+                                        background=normal_bg,
+                                        foreground=self.theme_palette["muted"],
+                                    )
+                        hover_state["job"] = self.after(45, settle)
+
+                    for hover_widget in (row, item_button, shortcut_label):
+                        if hover_widget is not None:
+                            hover_widget.bind("<Enter>", highlight_menu_row, add="+")
+                            hover_widget.bind("<Leave>", clear_menu_row_hover, add="+")
+
                     if submenu_items is not None:
                         item_button.bind(
                             "<Enter>",
