@@ -163,9 +163,13 @@ def discover_interpreters(extra_paths: Iterable[str] = (), timeout: float = 6.0)
 
 
 def virtual_environment_python(environment_path: os.PathLike | str) -> Path:
-    """Return the platform-specific Python executable inside a venv."""
+    """Return the canonical platform-specific Python executable inside a venv."""
     root = Path(environment_path).expanduser()
-    return root / ("Scripts/python.exe" if os.name == "nt" else "bin/python")
+    executable = root / ("Scripts/python.exe" if os.name == "nt" else "bin/python")
+    # Windows may expose temporary directories through an 8.3 alias in one
+    # code path and the long name in another. Canonicalize this helper's
+    # result so it matches the path retained by probe_interpreter().
+    return Path(os.path.realpath(os.path.abspath(executable)))
 
 
 def create_virtual_environment(
