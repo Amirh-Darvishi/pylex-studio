@@ -286,6 +286,20 @@ class PyLexApp(tk.Tk):
             ("Integrated Terminal", self.open_terminal), ("Git Source Control", self.open_git_tools),
             ("Python Interpreter...", self.manage_interpreter), ("Dependencies", self.scan_dependencies),
         ])
+        self.run_button = ttk.Button(
+            bar, text="Run", command=self.run_code, style="PyLex.Primary.TButton",
+            image=self._icon("play-fill", self.theme_palette.get("success")), compound="left",
+        )
+        self.run_button.pack(side="left", padx=(8, 4))
+        self.stop_button = ttk.Button(
+            bar, text="Stop", command=self.stop_execution, style="PyLex.Danger.TButton",
+            image=self._icon("stop-fill", self.theme_palette.get("danger")), compound="left",
+        )
+        self.stop_button.pack(side="left", padx=(0, 6))
+        self._toolbar_icon_bindings.extend([
+            (self.run_button, "play-fill", "success"),
+            (self.stop_button, "stop-fill", "danger"),
+        ])
         spacer = ttk.Frame(bar, style="PyLex.Toolbar.TFrame")
         spacer.pack(side="left", fill="x", expand=True)
         self.theme_button = ttk.Button(
@@ -1025,6 +1039,7 @@ class PyLexApp(tk.Tk):
         if document is not None:
             document["dirty"] = True
             self.editor_tabs.tab(document["frame"], text=self._tab_label(document))
+            self._refresh_open_editors()
             if self.editor is editor:
                 self._sync_active_document()
                 if self.diagnostics:
@@ -1345,6 +1360,7 @@ class PyLexApp(tk.Tk):
         frame = document["frame"]
         self.editor_tabs.forget(frame)
         del self.documents[self.editor]
+        self._refresh_open_editors()
         if not self.documents:
             self._create_document()
         else:
@@ -2325,7 +2341,8 @@ class PyLexApp(tk.Tk):
         dialog.resizable(False, False)
         body = ttk.Frame(dialog, padding=26)
         body.pack(fill="both", expand=True)
-        ttk.Label(body, text="PyLex Studio", style="PyLex.AboutTitle.TLabel").pack(anchor="w")
+        self._build_logo(body, 72)
+        ttk.Label(body, text="PyLex Studio", style="PyLex.AboutTitle.TLabel").pack(anchor="w", pady=(12, 0))
         ttk.Label(
             body, text=f"Version {__version__}",
             style="PyLex.Muted.TLabel",
@@ -2550,6 +2567,9 @@ class PyLexApp(tk.Tk):
                 self.project_tree.tag_configure(
                     kind, foreground=palette.get(f"file_{kind}", palette["editor_fg"])
                 )
+        if hasattr(self, "run_button"):
+            self.run_button.configure(image=self._icon("play-fill", palette["success"]))
+            self.stop_button.configure(image=self._icon("stop-fill", palette["danger"]))
         if hasattr(self, "theme_button"):
             self.theme_button.configure(
                 text="Light theme" if self.dark else "Dark theme",
