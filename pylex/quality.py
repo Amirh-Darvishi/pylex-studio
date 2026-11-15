@@ -89,7 +89,12 @@ def parse_pytest_nodeids(output):
         line = raw.strip()
         if "::" not in line or line.startswith(("=", "<")):
             continue
-        candidate = line.split(" ", 1)[0]
+        # Quiet collection normally emits one node ID per line. Keep the full
+        # ID (including parameter IDs containing spaces) and tolerate the
+        # bullet prefixes used by some pytest plugins.
+        candidate = line.lstrip("*- ").strip()
+        if ".py::" in candidate:
+            candidate = candidate.split(" [", 1)[0]
         if "::" in candidate and candidate not in seen:
             seen.add(candidate)
             found.append(candidate)
@@ -165,6 +170,9 @@ class QualityPanel(ttk.Frame):
         self.test_tree.column("nodeid", width=650)
         self.test_tree.column("result", width=110, anchor="center")
         self.test_tree.pack(fill="both", expand=True)
+        # Double-clicking a discovered test (or pressing Enter) runs that test.
+        self.test_tree.bind("<Double-1>", self._run_test_from_event)
+        self.test_tree.bind("<Return>", self._run_test_from_event)
         self.notebook.add(tests_frame, text="Test Explorer")
 
         diagnostics_frame = ttk.Frame(self.notebook, padding=4)
@@ -458,6 +466,16 @@ class QualityPanel(ttk.Frame):
         index = int(selected[0].split("-", 1)[1])
         self.navigate_diagnostic(self._diagnostics[index])
 
+    def _run_test_from_event(self, event=None):
+        """Run the row under the pointer, or the current row on Enter."""
+        if event is not None and getattr(event, "y", None) is not None:
+            item = self.test_tree.identify_row(event.y)
+            if item:
+                self.test_tree.selection_set(item)
+                self.test_tree.focus(item)
+        self.run_selected_test()
+        return "break"
+
     def discover_tests(self):
         try:
             root, interpreter, env = self._context()
@@ -477,13 +495,26 @@ class QualityPanel(ttk.Frame):
                     )
                 self.notebook.select(0)
                 self._set_status(f"Discovered {len(self._tests)} test(s).")
-            elif "No module named pytest" in stderr:
+            elif "No module named pytest" in stderr or "No module named pytest" in stdout:
                 self._tool_missing("pytest")
+                self._set_status("pytest is missing from the selected interpreter. Use Install Tools.")
             else:
-                self._set_status("Test discovery failed; see Tool Output.")
+                # Keep the collection error visible and make the failure actionable.
+                detail = (stderr or stdout).strip()
+                self._set_status(
+                    "Test discovery failed; inspect Tool Output for collection/import errors."
+                )
+                if not detail:
+                    self._append_output(
+                        f"pytest collection exited with code {code} and produced no diagnostic.\\n"
+                    )
 
         self._start(
-            tool_argv(interpreter, "pytest", ("--collect-only", "-q", str(root))),
+            tool_argv(
+                interpreter,
+                "pytest",
+                ("--collect-only", "-q", "--disable-warnings", "--no-header", str(root)),
+            ),
             root,
             env,
             callback=completed,
