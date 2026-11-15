@@ -27,6 +27,14 @@ class CommandPalette:
     def show(self) -> tk.Toplevel:
         """Open a context-menu-like popup aligned to the launcher frame."""
         root = self.master.winfo_toplevel()
+        previous = getattr(root, "_pylex_command_palette_window", None)
+        if previous is not None:
+            try:
+                if previous.winfo_exists():
+                    previous.destroy()
+            except tk.TclError:
+                pass
+            root._pylex_command_palette_window = None
         dialog = tk.Toplevel(root)
         dialog.withdraw()
         dialog.overrideredirect(True)
