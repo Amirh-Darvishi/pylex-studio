@@ -1,73 +1,534 @@
 <!doctype html>
-<html lang="fa" dir="rtl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>مستندات جامع PyLex Studio</title>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="راهنمای کامل کاربری، معماری، نصب، تحلیل کد، اجرا، دیباگ، کیفیت، Git و توسعه PyLex Studio نسخه 1.10.0">
+<title>راهنمای جامع PyLex Studio 1.10.0</title>
 <style>
-body{margin:0;background:#f3f6fb;color:#202938;font:16px/2 Tahoma,sans-serif}
-header{background:linear-gradient(120deg,#14213d,#3157a4);color:white;padding:48px 8%}
-main{max-width:1100px;margin:28px auto;padding:0 18px;display:grid;grid-template-columns:230px 1fr;gap:20px}
-nav,section{background:white;border:1px solid #dce3ee;border-radius:12px;padding:20px;margin-bottom:16px}
-nav{position:sticky;top:12px;height:max-content}a{display:block;color:#3157a4;text-decoration:none}
-h2{border-bottom:1px solid #ddd;padding-bottom:8px}pre{background:#101827;color:#e8edf5;padding:15px;border-radius:8px;direction:ltr;text-align:left;overflow:auto}
-code{background:#edf1f8;padding:2px 5px;border-radius:4px}.note{background:#edf4ff;border-right:4px solid #3157a4;padding:12px}
-table{border-collapse:collapse;width:100%}td,th{border:1px solid #ddd;padding:8px;text-align:right}
-@media(max-width:750px){main{grid-template-columns:1fr}nav{position:static}}
-</style></head><body>
-<header><h1>PyLex Studio</h1><p>مستندات جامع پروژه؛ معرفی، معماری، تحلیل لغوی و نحوی، نصب، آزمون، امنیت</p><b>نسخه 1.10.0 | Python 3.10+ | Tkinter | Pygments</b></header>
-<main><nav><b>فهرست</b>
-<a href="#intro">۱. معرفی</a><a href="#requirements">۲. نیازمندی‌ها</a><a href="#architecture">۳. معماری</a><a href="#lexer">۴. تحلیل لغوی</a><a href="#parser">۵. تحلیل نحوی</a><a href="#editor">۶. امکانات ویرایشگر</a><a href="#run">۷. اجرای کد</a><a href="#interpreters">۸. مفسر و محیط مجازی</a><a href="#install">۹. نصب</a><a href="#tests">۱۰. آزمون</a><a href="#diagnostics">۱۱. گزارش خطاها</a><a href="#security">۱۲. امنیت</a><a href="#roadmap">۱۳. توسعه آینده</a><a href="#terms">۱۴. واژه‌نامه</a></nav>
-<div>
-<section id="intro"><h2>۱. معرفی پروژه</h2><p><b>PyLex Studio</b> یک ویرایشگر دسکتاپ سبک برای زبان پایتون است. کاربر می‌تواند کد بنویسد، فایل باز و ذخیره کند، برنامه را اجرا کند و دو مرحله تحلیل لغوی و نحوی را به صورت مستقل ببیند.</p>
-<section id="requirements"><h2>۲. اهداف و نیازمندی‌ها</h2><ul><li>شناخت کلمات کلیدی پایتون مانند if، for، def، class و return</li><li>تبدیل متن به توکن و بررسی دستور زبان</li><li>ویرایش فایل، فونت، بزرگ‌نمایی و تم</li><li>اجرای کد و نمایش خروجی و خطا</li><li> ساختار ماژولار و تست‌پذیر</li></ul><table><tr><th>فناوری</th><th>کاربرد</th></tr><tr><td>Tkinter/ttk</td><td>رابط گرافیکی</td></tr><tr><td>tokenize</td><td>تحلیل لغوی</td></tr><tr><td>ast</td><td>تحلیل نحوی</td></tr><tr><td>Pygments</td><td>رنگ‌بندی نحوی در ویرایشگر</td></tr><tr><td>subprocess</td><td>اجرای پردازه جداگانه</td></tr><tr><td>unittest</td><td>آزمون خودکار</td></tr></table></section>
-<section id="architecture"><h2>۳. معماری و ساختار پروژه</h2><pre>pylex-studio/
+:root{color-scheme:light;--ink:#202938;--muted:#5d6879;--paper:#fff;--bg:#f2f5fa;--line:#dce3ed;--blue:#2854a5;--soft:#edf4ff;--code:#111827}
+*{box-sizing:border-box}html{scroll-behavior:smooth}body{margin:0;background:var(--bg);color:var(--ink);font:16px/2 Tahoma,Arial,sans-serif}
+header{background:linear-gradient(125deg,#14213d,#315da9);color:#fff;padding:42px max(6%,calc((100% - 1280px)/2))}
+header h1{font-size:2.2rem;margin:0 0 8px}header p{margin:4px 0;color:#e8efff}.version{display:inline-block;margin-top:12px;padding:3px 12px;border:1px solid #a9c2f5;border-radius:20px}
+.layout{max-width:1400px;margin:24px auto;padding:0 18px;display:grid;grid-template-columns:270px minmax(0,1fr);gap:20px;align-items:start}
+nav,.content section{background:var(--paper);border:1px solid var(--line);border-radius:12px;padding:18px;margin-bottom:16px}
+nav{position:sticky;top:12px;max-height:calc(100vh - 24px);overflow:auto}nav strong{display:block;margin-bottom:8px}nav a{display:block;color:var(--blue);text-decoration:none;padding:2px 0;font-size:.91rem}nav a:hover{text-decoration:underline}
+.content section section{border:0;border-top:1px solid var(--line);border-radius:0;padding:12px 0 0;margin:16px 0 0}
+h2{font-size:1.35rem;border-bottom:1px solid var(--line);padding-bottom:7px;margin-top:0}h3{font-size:1.08rem;margin-bottom:4px}p{margin:8px 0}li{margin:3px 0}
+pre{background:var(--code);color:#e8edf5;padding:15px;border-radius:9px;direction:ltr;text-align:left;overflow:auto;white-space:pre;line-height:1.6;font:13px/1.65 Consolas,monospace}
+code{background:#edf1f7;padding:2px 5px;border-radius:4px;direction:ltr;unicode-bidi:embed;font: .92em Consolas,monospace}
+pre code{background:transparent;padding:0}.note{background:var(--soft);border-right:4px solid var(--blue);padding:12px 15px;border-radius:5px}
+.warn{background:#fff5e8;border-right:4px solid #d88922;padding:12px 15px;border-radius:5px}
+table{border-collapse:collapse;width:100%;display:block;overflow-x:auto}td,th{border:1px solid var(--line);padding:8px 10px;text-align:right;vertical-align:top;min-width:110px}th{background:#f0f4fa}
+kbd{display:inline-block;background:#f3f5f8;border:1px solid #cbd3df;border-bottom-width:2px;border-radius:5px;padding:0 6px;font:12px Consolas,monospace;direction:ltr}
+footer{text-align:center;padding:26px;color:var(--muted)}
+@media(max-width:850px){.layout{grid-template-columns:1fr}nav{position:static;max-height:none}header{padding:30px 6%}header h1{font-size:1.7rem}}
+</style>
+</head>
+<body>
+<header>
+<h1>PyLex Studio</h1>
+<p>راهنمای جامع کاربری و فنی پروژه؛ از نصب و کار با ویرایشگر تا معماری، اجرا، اشکال‌زدایی و توسعه</p>
+<p class="version">نسخه مستندات: 1.10.0 · Python 3.10+ · Tkinter · Pygments</p>
+</header>
+<div class="layout">
+<nav aria-label="فهرست راهنما">
+<strong>فهرست مطالب</strong>
+<a href="#overview">۱. معرفی و دامنه پروژه</a>
+<a href="#features">۲. قابلیت‌های نسخه 1.10.0</a>
+<a href="#requirements">۳. نیازمندی‌ها و نصب</a>
+<a href="#quickstart">۴. شروع سریع</a>
+<a href="#interface">۵. محیط برنامه و گردش کار</a>
+<a href="#editor">۶. ویرایشگر هوشمند</a>
+<a href="#analysis">۷. تحلیل لغوی، نحوی و خطاها</a>
+<a href="#workspace">۸. پروژه و Workspace</a>
+<a href="#execution">۹. اجرا و مدیریت خروجی</a>
+<a href="#dependencies">۱۰. وابستگی‌ها و pip</a>
+<a href="#interpreters">۱۱. مفسر و محیط مجازی</a>
+<a href="#debugger">۱۲. اشکال‌زدایی</a>
+<a href="#terminal">۱۳. ترمینال یکپارچه</a>
+<a href="#quality">۱۴. Formatter، Linter و تست</a>
+<a href="#git">۱۵. کنترل نسخه Git</a>
+<a href="#preferences">۱۶. تنظیمات و ذخیره‌سازی</a>
+<a href="#shortcuts">۱۷. میانبرهای صفحه‌کلید</a>
+<a href="#architecture">۱۸. معماری و ساختار کد</a>
+<a href="#testing">۱۹. آزمون و CI</a>
+<a href="#security">۲۰. امنیت و محدودیت‌ها</a>
+<a href="#troubleshooting">۲۱. عیب‌یابی متداول</a>
+<a href="#contributing">۲۲. مشارکت و گردش توسعه</a>
+<a href="#roadmap">۲۳. مسیر توسعه</a>
+<a href="#glossary">۲۴. واژه‌نامه</a>
+<a href="#hands-on">۲۵. آموزش عملی: ساخت و اجرای پروژه</a>
+<a href="#workflows">۲۶. سناریوهای رایج و گردش‌کارها</a>
+<a href="#panels">۲۷. راهنمای کامل پنل‌ها و نتایج</a>
+<a href="#file-support">۲۸. انواع فایل و رفتار مرورگر پروژه</a>
+<a href="#interpreter-priority">۲۹. انتخاب مفسر و محیط اجرا در عمل</a>
+<a href="#faq">۳۰. پرسش‌های پرتکرار</a>
+</nav>
+<div class="content">
+<section id="overview">
+<h2>۱. معرفی و دامنه پروژه</h2>
+<p><strong>PyLex Studio</strong> یک برنامه دسکتاپ برای نوشتن، بررسی، اجرا و مدیریت پروژه‌های Python است. رابط گرافیکی با Tkinter و ttk ساخته شده و منطق برنامه در ماژول‌های جداگانه نگهداری می‌شود تا اجزای رابط کاربری، تحلیل کد و سرویس‌های پردازه‌ای تا حد ممکن از یکدیگر مستقل باشند.</p>
+<p>این پروژه در ابتدا بر ویرایش کد و تحلیل مقدماتی لغوی و نحوی تمرکز داشت و در نسخه‌های بعدی به محیط کاری یکپارچه‌تری گسترش یافت: مدیریت فایل و Workspace، مفسر و محیط مجازی، اجرای غیرهم‌زمان، دیباگر، ترمینال، ابزارهای کیفیت کد و پنل Git.</p>
+<div class="note"><strong>مرز مهم محصول:</strong> PyLex Studio یک محیط توسعه دسکتاپ سبک است؛ در نسخه 1.10.0 ادعای برابری با IDEهای بزرگ، پشتیبانی کامل از Language Server Protocol یا اجرای امن در Sandbox مطرح نمی‌کند.</div>
+<h3>اهداف اصلی</h3>
+<ul><li>فراهم‌کردن گردش کار ساده برای ویرایش و اجرای کد Python.</li><li>تفکیک رنگ‌بندی ویرایشگر از تحلیل لغوی و اعتبارسنجی نحوی.</li><li>استفاده از مفسر انتخاب‌شده پروژه در اجرا، دیباگ و ابزارهای کیفیت.</li><li>نمایش خروجی، خطاها و تشخیص‌های قابل کلیک با محل دقیق در فایل.</li><li>اجرای کارهای زمان‌بر خارج از حلقه اصلی رابط Tkinter.</li><li>نگهداری کد ماژولار و پوشش رفتارهای مهم با آزمون خودکار.</li></ul>
+</section>
+<section id="features">
+<h2>۲. قابلیت‌های نسخه 1.10.0</h2>
+<table><tr><th>حوزه</th><th>قابلیت‌ها</th></tr>
+<tr><td>ویرایش</td><td>تب‌های چندفایلی، وضعیت تغییرات ذخیره‌نشده، شماره خطوط، رنگ‌بندی Pygments، تکمیل واژگان پایه، جفت‌سازی براکت و کوتیشن، تورفتگی هوشمند، جست‌وجو و جایگزینی.</td></tr>
+<tr><td>تحلیل</td><td>تحلیل لغوی با tokenize، تحلیل نحوی با ast، گزارش خطا و پرش به خط و ستون.</td></tr>
+<tr><td>Workspace</td><td>بازکردن پوشه پروژه، مرور فایل‌ها، تشخیص نوع فایل و تعیین مسیر کاری اجرای برنامه.</td></tr>
+<tr><td>اجرا</td><td>اجرای غیرهم‌زمان، نمایش زنده stdout و stderr، زمان اجرا، کد خروج، توقف اجباری و مهلت زمانی قابل تنظیم.</td></tr>
+<tr><td>Python</td><td>کشف مفسرها، انتخاب سراسری یا مخصوص پروژه، ساخت .venv، بررسی pip و مدیریت نصب بسته‌ها.</td></tr>
+<tr><td>دیباگر</td><td>دیباگر مبتنی بر pdb با breakpoint، ادامه، گام‌به‌گام، بررسی متغیرها و پشته فراخوانی و ارزیابی عبارت.</td></tr>
+<tr><td>ترمینال</td><td>چند نشست ماندگار Shell، جریان خروجی، تاریخچه فرمان، وقفه Ctrl+C و پایان‌دادن به پردازه‌ها.</td></tr>
+<tr><td>کیفیت</td><td>قالب‌بندی Black، بررسی Ruff، کشف و اجرای تست‌های pytest.</td></tr>
+<tr><td>Git</td><td>وضعیت مخزن، diff، stage/unstage، commit، branch، fetch، push، fast-forward pull، history و stash.</td></tr>
+<tr><td>پایداری</td><td>ذخیره پایدار ترجیحات با نوشتن اتمیک، آزمون خودکار و CI در Windows و Ubuntu.</td></tr></table>
+<p>جزئیات و محدودیت هر قابلیت در بخش مربوط به آن توضیح داده شده است. قابلیت‌هایی که به ابزار بیرونی وابسته‌اند، فقط در صورت نصب ابزار مربوطه فعال یا قابل استفاده‌اند.</p>
+</section>
+<section id="requirements">
+<h2>۳. نیازمندی‌ها و نصب</h2>
+<h3>پیش‌نیازها</h3>
+<ul><li>Python نسخه 3.10 یا جدیدتر.</li><li>Tkinter/ttk؛ در بیشتر نصب‌های رسمی Python روی Windows موجود است. در توزیع‌های Linux ممکن است بسته جداگانه‌ای مانند <code>python3-tk</code> لازم باشد.</li><li>Git برای پنل کنترل نسخه و عملیات مخزن.</li><li>Pygments برای رنگ‌بندی نحوی.</li><li>Black، Ruff و pytest برای امکانات قالب‌بندی، lint و Test Explorer؛ این ابزارها در فایل نیازمندی پروژه تعریف شده‌اند.</li></ul>
+<h3>دریافت سورس</h3>
+<pre>git clone https://github.com/Amirh-Darvishi/pylex-studio.git
+cd pylex-studio</pre>
+<h3>ساخت محیط مجازی</h3>
+<pre># Windows PowerShell
+python -m venv .venv
+.venv\Scripts\Activate.ps1
+
+# Linux / macOS
+python3 -m venv .venv
+source .venv/bin/activate</pre>
+<p>اگر PowerShell اجرای اسکریپت فعال‌سازی را مسدود کرد، می‌توانید به‌جای تغییر سیاست سیستم، مستقیماً از مفسر محیط مجازی استفاده کنید: <code>..venv\Scripts\python.exe -m pip ...</code> و <code>..venv\Scripts\python.exe main.py</code>.</p>
+<h3>نصب وابستگی‌ها و اجرا</h3>
+<pre>python -m pip install --upgrade pip
+python -m pip install -r requirements.txt
+python main.py</pre>
+<p>فایل <code>requirements.txt</code> وابستگی Pygments و ابزارهای توسعه Black، Ruff و pytest را فهرست می‌کند. برای اجرای خود برنامه، Pygments وابستگی خارجی اصلی رابط ویرایشگر است؛ Black، Ruff و pytest برای ابزارهای کیفیت و آزمون لازم‌اند.</p>
+<h3>چرا venv و نه Docker؟</h3>
+<p>PyLex Studio برنامه دسکتاپ Tkinter است و باید به پنجره‌های سیستم‌عامل دسترسی داشته باشد. اجرای GUI داخل Docker معمولاً به پیکربندی اضافی X11/Wayland یا راهکارهای نمایشگر نیاز دارد. محیط مجازی Python نصب ساده‌تر، تفکیک وابستگی‌ها و تجربه مناسب‌تری برای توسعه دسکتاپ فراهم می‌کند. Docker می‌تواند برای سناریوهای CI یا محیط‌های کنترل‌شده جداگانه مفید باشد، اما روش پیش‌فرض اجرای برنامه نیست.</p>
+</section>
+<section id="quickstart">
+<h2>۴. شروع سریع</h2>
+<ol><li>برنامه را با <code>python main.py</code> اجرا کنید.</li><li>از منوی File یک فایل Python باز کنید یا سند جدید بسازید.</li><li>برای پروژه چندفایلی، پوشه ریشه پروژه را به‌عنوان Workspace باز کنید.</li><li>کد را بنویسید و با Ctrl+S ذخیره کنید.</li><li>برای اجرای کد از Run یا F5 استفاده کنید؛ خروجی را در پنل Output ببینید.</li><li>برای بررسی ساختار کد از Analyze All یا F6 استفاده کنید.</li><li>در صورت نیاز مفسر پروژه را از Tools → Python Interpreter انتخاب کنید.</li><li>برای دیباگ، ترمینال، کیفیت کد و Git از منوی Tools یا پنل مربوطه استفاده کنید.</li></ol>
+<div class="note">برای اجرای یک فایل که به ماژول‌های هم‌سطح یا پوشه‌های پروژه وابسته است، ابتدا Workspace را روی ریشه پروژه تنظیم کنید. این کار مسیر کاری و مسیر جست‌وجوی import را درست‌تر می‌کند.</div>
+</section>
+<section id="interface">
+<h2>۵. محیط برنامه و گردش کار</h2>
+<p>پنجره اصلی اجزای ویرایش، پنل پروژه و پنل‌های نتیجه را کنار هم قرار می‌دهد. بسته به فضای موجود، می‌توان پنل‌های جانبی را نمایش یا پنهان کرد. نام برخی پنل‌ها در رابط انگلیسی است تا با مستندات و پیام‌های ابزارها هماهنگ باشد.</p>
+<ul><li><strong>Editor:</strong> محل ویرایش سند فعال. هر فایل بازشده سند و وضعیت ذخیره‌نشده مستقل دارد.</li><li><strong>Workspace/Project Explorer:</strong> مرور پوشه‌ها و فایل‌های پروژه و بازکردن فایل با دوبار کلیک.</li><li><strong>Output:</strong> خروجی استاندارد، خطای استاندارد، وضعیت اجرا، مدت اجرا و کد خروج.</li><li><strong>Lexical Analysis:</strong> فهرست توکن‌های تولیدشده از متن منبع.</li><li><strong>Syntax Analysis:</strong> نتیجه اعتبارسنجی AST و اطلاعات خلاصه آن.</li><li><strong>Errors:</strong> فهرست خطاهای قابل ناوبری.</li><li><strong>Dependencies:</strong> گزارش importها و وضعیت ماژول‌ها و بسته‌ها.</li><li><strong>Quality:</strong> ابزارهای Black، Ruff و pytest.</li><li><strong>Terminal:</strong> نشست‌های Shell مستقل از پنل Output.</li><li><strong>Git:</strong> وضعیت مخزن و عملیات کنترل نسخه.</li></ul>
+<p>پنل Output با ترمینال یکسان نیست: Output برای اجرای کنترل‌شده فایل/بافر و دریافت نتیجه برنامه است؛ Terminal یک Shell ماندگار برای اجرای فرمان‌های دلخواه کاربر است.</p>
+</section>
+<section id="editor">
+<h2>۶. ویرایشگر هوشمند</h2>
+<h3>رنگ‌بندی نحوی</h3>
+<p>رنگ‌بندی با Pygments انجام می‌شود و دسته‌هایی مانند keyword، builtin، string، comment، number، function، class، operator و خطاهای lexer را از هم متمایز می‌کند. این رنگ‌بندی صرفاً نمایش بصری است و جایگزین اجرای تحلیل‌گر یا بررسی معنایی نیست.</p>
+<h3>ویرایش چندفایلی</h3>
+<p>فایل‌ها در تب‌های مستقل باز می‌شوند. هر تب وضعیت تغییرات ذخیره‌نشده خود را دارد. هنگام بستن تب یا کنارگذاشتن سند تغییرکرده، برنامه برای ذخیره، رد تغییرات یا لغو عملیات تأیید می‌گیرد. بازکردن دوباره همان مسیر از ایجاد تب تکراری جلوگیری می‌کند.</p>
+<h3>امکانات کمکی</h3>
+<ul><li>شماره خطوط و برجسته‌سازی خط جاری.</li><li>تورفتگی خودکار پس از سربرگ بلوک‌های Python مانند <code>if</code>، <code>for</code>، <code>while</code>، <code>def</code> و <code>class</code>.</li><li>Backspace آگاه از تورفتگی و Shift+Tab برای کاهش تورفتگی خطوط.</li><li>بستن خودکار براکت‌ها و کوتیشن‌ها و برجسته‌سازی براکت متناظر.</li><li>تکمیل پایه کلمات کلیدی و built-inهای Python با Ctrl+Space؛ این قابلیت IntelliSense معنایی کامل نیست.</li><li>تغییر فونت و اندازه قلم، تم روشن/تاریک و Undo/Redo.</li><li>جست‌وجو و جایگزینی متن.</li></ul>
+</section>
+<section id="analysis">
+<h2>۷. تحلیل لغوی، نحوی و خطاها</h2>
+<h3>تحلیل لغوی (Lexical Analysis)</h3>
+<p>تحلیل لغوی متن منبع را به Token تبدیل می‌کند. PyLex از ماژول استاندارد <code>tokenize</code> استفاده می‌کند. هر توکن نوع، مقدار، شماره خط و ستون شروع و پایان دارد. برای نام‌ها، تشخیص keyword با ماژول <code>keyword</code> و تشخیص built-inها با فضای نام <code>builtins</code> انجام می‌شود.</p>
+<pre>from pylex.analyzer import lexical_analysis
+
+source = "if score >= 10:\n    print('Pass')"
+for token in lexical_analysis(source):
+    print(token.token_type, token.value,
+          token.line, token.column,
+          token.end_line, token.end_column)</pre>
+<p>نمونه دسته‌ها: <code>KEYWORD</code>، <code>NAME</code>، <code>BUILTIN</code>، <code>NUMBER</code>، <code>STRING</code>، <code>OP</code>، <code>INDENT</code> و <code>NEWLINE</code>. موقعیت ستون در داده داخلی توکن صفرمبنا است.</p>
+<h3>تحلیل نحوی (Syntax Analysis)</h3>
+<p>تحلیل نحوی بررسی می‌کند آیا توکن‌ها و عبارت‌ها مطابق دستور زبان Python کنار هم قرار گرفته‌اند یا خیر. PyLex از <code>ast.parse</code> استفاده می‌کند. در صورت موفقیت، درخت AST ساخته می‌شود و تعداد گره‌های آن برای گزارش خلاصه شمرده می‌شود. در صورت خطا، نوع خطا، پیام و موقعیت منبع برگردانده می‌شود.</p>
+<pre>from pylex.analyzer import syntax_analysis
+
+result = syntax_analysis("value = 10\nprint(value)")
+print(result.success)
+print(result.message)
+print(result.details)</pre>
+<h3>تفاوت رنگ‌بندی با تحلیل</h3>
+<p>Pygments برای برجسته‌سازی بصری متن است؛ <code>tokenize</code> برای تولید توکن‌های واقعی زبان و <code>ast</code> برای اعتبارسنجی ساختار نحوی است. ممکن است متن رنگ‌بندی شود ولی از نظر نحوی نامعتبر باشد؛ همچنین رنگ‌بندی به‌تنهایی معنای متغیرها یا درستی برنامه را تضمین نمی‌کند.</p>
+<h3>پنل Errors و موقعیت‌ها</h3>
+<p>PyLex خطاهای توکن‌سازی و parser را به تشخیص‌های ساخت‌یافته تبدیل و موارد تکراری را تا حد امکان حذف می‌کند. با کلیک یا دوبار کلیک روی تشخیص، مکان‌نما به خط و ستون مربوطه می‌رود و خط منبع برجسته می‌شود. موقعیت ستون در منطق داخلی ویرایشگر صفرمبنا است؛ نمایش خطا در رابط می‌تواند به‌شکل یک‌مبنا ارائه شود. پس از تغییر کد، تحلیل را دوباره اجرا کنید تا گزارش قدیمی با متن جدید اشتباه نشود.</p>
+</section>
+<section id="workspace">
+<h2>۸. پروژه و Workspace</h2>
+<p>Workspace یک پوشه ریشه است که زمینه مشترک فایل‌ها و پردازه‌های پروژه را مشخص می‌کند. مدل <code>Project</code> مسیر ریشه را resolve و نرمال می‌کند و توابعی برای ساخت مسیر نسبی، بررسی قرارگرفتن فایل در پروژه و تعیین working directory دارد.</p>
+<ul><li>پوشه پروژه را باز کنید تا درخت فایل‌ها و زیرپوشه‌ها نمایش داده شود.</li><li>فایل‌های متنی پشتیبانی‌شده را در تب ویرایشگر باز کنید.</li><li>فایل‌های باینری یا رسانه‌ای به‌جای نمایش به‌صورت متن، به برنامه پیش‌فرض سیستم سپرده می‌شوند.</li><li>مسیرهای اجرای پروژه از ریشه Workspace استفاده می‌کنند؛ برای فایل خارج از پروژه، پوشه همان فایل می‌تواند مبنای مسیر کاری شود.</li><li>مسیرهای پروژه در سرویس‌های اجرا و Git به‌صورت کنترل‌شده resolve می‌شوند.</li></ul>
+<p>تشخیص نوع فایل بر اساس پسوند و نگاشت داخلی انجام می‌شود؛ این تشخیص برای تجربه مرورگر فایل است و جایگزین اعتبارسنجی محتوای فایل یا اسکن امنیتی نیست.</p>
+</section>
+<section id="execution">
+<h2>۹. اجرا و مدیریت خروجی</h2>
+<p>کد در یک پردازه فرزند Python اجرا می‌شود تا حلقه رویداد Tkinter در زمان اجرای برنامه مسدود نشود. خروجی <code>stdout</code> و خطاهای <code>stderr</code> به‌صورت زنده خوانده و در Output نمایش داده می‌شوند. نتیجه شامل کد خروج، وضعیت و مدت اجرا است.</p>
+<h3>فایل ذخیره‌شده و بافر ذخیره‌نشده</h3>
+<p>فایل Python ذخیره‌شده و بدون تغییر از مسیر واقعی خودش اجرا می‌شود؛ این رفتار برای import کردن ماژول‌های هم‌پوشه مهم است. بافر ذخیره‌نشده در فایل موقت اجرا می‌شود، اما working directory و محیط پروژه به آن داده می‌شود. بنابراین اگر تغییرات ذخیره‌نشده روی import نسبی یا مسیر فایل اثر بگذارند، نتیجه ممکن است با اجرای نسخه ذخیره‌شده تفاوت داشته باشد.</p>
+<h3>مهلت زمانی و توقف</h3>
+<p>مهلت اجرا از Preferences قابل تنظیم است (۵، ۱۰، ۳۰ یا ۶۰ ثانیه یا Unlimited). با Stop یا Shift+F5 می‌توان پردازه اجرا و فرزندان آن را متوقف کرد. مهلت زمانی از اجرای ناخواسته طولانی جلوگیری می‌کند اما محدودیت کامل CPU، حافظه، فایل یا شبکه نیست.</p>
+<h3>نمونه مستقل سرویس اجرا</h3>
+<pre>from pylex.runner import start_source
+
+handle = start_source(
+    "print('Hello from PyLex')",
+    timeout=10,
+)
+result = handle.wait()
+print(result.stdout)
+print(result.stderr)
+print(result.exit_code, result.status, result.duration)</pre>
+<p>API غیرهم‌زمان امکان خواندن خروجی زنده و درخواست توقف را فراهم می‌کند. API سازگاری <code>run_source</code> نیز برای استفاده مسدودکننده در کدهای قدیمی‌تر حفظ شده است.</p>
+</section>
+<section id="dependencies">
+<h2>۱۰. وابستگی‌ها و pip</h2>
+<p>بازرس وابستگی‌ها importهای پیدا‌شده در کد را به گروه‌هایی مانند کتابخانه استاندارد، ماژول محلی پروژه، بسته نصب‌شده و ماژول مفقود دسته‌بندی می‌کند. در صورت امکان نسخه نصب‌شده، مسیر ماژول و نام بسته توزیعی متناظر نمایش داده می‌شود. برای نمونه، نام import و نام بسته قابل نصب در pip همیشه یکسان نیستند.</p>
+<p>بررسی ایستا نمی‌تواند همه importهای پویا، importهای شرطی یا ماژول‌هایی را که در زمان اجرا ساخته می‌شوند تشخیص دهد. در نتیجه، خطای واقعی <code>ModuleNotFoundError</code> هنگام اجرا همچنان مرجع نهایی برای وابستگی‌های لازم در مسیر اجرای واقعی است.</p>
+<p>دستور نصب پیشنهادی باید با مفسر انتخاب‌شده اجرا شود. PyLex برای این منظور از الگوی <code>python -m pip</code> با مسیر executable همان مفسر استفاده می‌کند تا بسته اشتباهاً در Python دیگری نصب نشود.</p>
+</section>
+<section id="interpreters">
+<h2>۱۱. مفسر Python و محیط مجازی</h2>
+<p>از منوی Tools → Python Interpreter می‌توان مفسرهای موجود را بررسی و انتخاب کرد. هر نامزد با اجرای همان executable و دریافت اطلاعات نسخه، پیاده‌سازی، معماری، مسیر اجرایی و وضعیت virtual environment اعتبارسنجی می‌شود.</p>
+<h3>ترتیب انتخاب مفسر</h3>
+<ol><li>اگر برای Workspace مفسر مشخص شده باشد، همان انتخاب اولویت دارد.</li><li>در غیر این صورت، PyLex محیط‌های متعارف پروژه مانند <code>.venv</code>، <code>venv</code> و <code>env</code> را بررسی می‌کند.</li><li>در نهایت از مفسر عمومی انتخاب‌شده یا کشف‌شده استفاده می‌شود.</li></ol>
+<p>در Windows، جست‌وجو PATH و Python Launcher را نیز بررسی می‌کند. در سیستم‌های دیگر، مفسر جاری و نام‌های رایج در PATH بررسی می‌شوند. تشخیص venv بر پایه تفاوت <code>sys.prefix</code> و <code>sys.base_prefix</code> است، نه صرفاً وجود متغیر محیطی <code>VIRTUAL_ENV</code>.</p>
+<h3>ساخت محیط مجازی پروژه</h3>
+<p>از گزینه Create Project .venv برای ایجاد محیط مجازی داخل Workspace استفاده کنید. برنامه از بازنویسی پوشه هدف غیرخالی جلوگیری می‌کند و ساخت محیط را در پس‌زمینه انجام می‌دهد. پس از موفقیت، محیط برای همان Workspace انتخاب می‌شود.</p>
+<pre>python -m venv .venv
+python -m pip install -r requirements.txt</pre>
+<p>فعال‌سازی shell برای اجرای برنامه از داخل PyLex ضروری نیست؛ برنامه مسیر مستقیم executable انتخاب‌شده را به سرویس اجرا، دیباگر، بازرس وابستگی و ابزارهای کیفیت می‌دهد.</p>
+<div class="warn"><strong>نکته انتقال پروژه:</strong> پوشه‌های venv معمولاً قابل انتقال مطمئن بین رایانه‌ها نیستند، چون فایل‌های اجرایی و entry pointها ممکن است مسیر مطلق داشته باشند. پوشه .venv را در Git ثبت نکنید؛ روی سیستم مقصد آن را دوباره بسازید و وابستگی‌ها را نصب کنید.</div>
+</section>
+<section id="debugger">
+<h2>۱۲. اشکال‌زدایی (Debugger)</h2>
+<p>دیباگر PyLex بر پایه <code>pdb</code> و در یک پردازه فرزند اجرا می‌شود. از Tools → Start Debugging یا کنترل‌های مربوطه برای آغاز نشست استفاده کنید. دیباگر برای مشاهده روند اجرای کد است و با اجرای عادی در Output تفاوت دارد.</p>
+<h3>قابلیت‌های اصلی</h3>
+<ul><li>تعیین breakpoint عادی، شرطی و موقت.</li><li>Continue برای ادامه تا توقف بعدی.</li><li>Step Into برای ورود به فراخوانی تابع.</li><li>Step Over برای عبور از فراخوانی بدون ورود به آن.</li><li>Run Until برای ادامه تا خط مشخص.</li><li>Return برای اجرای تا بازگشت تابع جاری.</li><li>Jump برای تغییر محل اجرای خط در محدوده‌های مجاز pdb.</li><li>مشاهده متغیرها، آرگومان‌های تابع و stack frameها.</li><li>ارزیابی عبارت در زمینه frame جاری.</li><li>فعال/غیرفعال‌کردن، نادیده‌گرفتن یا پاک‌کردن breakpointها.</li></ul>
+<p>دستورات دیباگر به ورودی محدود و اعتبارسنجی‌شده تبدیل می‌شوند؛ ارزیابی عبارت‌ها همچنان کد Python را در فرایند در حال دیباگ اجرا می‌کند. از ارزیابی عبارت ناشناس یا مخرب خودداری کنید.</p>
+</section>
+<section id="terminal">
+<h2>۱۳. ترمینال یکپارچه</h2>
+<p>از Tools → Integrated Terminal یا دکمه Terminal یک نشست Shell باز کنید. هر تب یک پردازه Shell ماندگار دارد؛ بنابراین فرمان‌هایی مانند <code>cd</code>، تغییر متغیر محیطی و فعال‌سازی محیط مجازی در همان نشست باقی می‌مانند.</p>
+<ul><li>Windows: PowerShell و Command Prompt؛ Git Bash در صورت نصب و شناسایی.</li><li>Linux/macOS: Bash، Zsh یا POSIX shellهای در دسترس.</li><li>ایجاد چند نشست مستقل و انتخاب Shell هنگام ساخت نشست.</li><li>ارسال فرمان، نمایش غیرهم‌زمان خروجی و تاریخچه Up/Down برای همان نشست.</li><li>Interrupt یا Ctrl+C برای قطع فرمان foreground بدون بستن لزوماً کل نشست.</li><li>Kill برای پایان‌دادن به پردازه Shell و فرزندان آن؛ Clear فقط نمایش را پاک می‌کند.</li></ul>
+<p>نشست جدید در ریشه Workspace یا پوشه فایل فعال شروع می‌شود. اگر مفسر پروژه انتخاب شده باشد، مسیر Scripts/bin آن به ابتدای PATH اضافه می‌شود و اطلاعات venv به محیط نشست منتقل می‌شود.</p>
+<div class="warn"><strong>محدودیت مهم ترمینال:</strong> پیاده‌سازی فعلی از pipeهای ورودی/خروجی استفاده می‌کند و شبیه‌ساز کامل ConPTY/PTY نیست. فرمان‌های معمول، pip، Python و promptهای خطی پشتیبانی می‌شوند؛ برنامه‌های تمام‌صفحه TUI، ابزارهای نیازمند terminal device واقعی یا واکنش به resize ممکن است مانند ترمینال مستقل رفتار نکنند.</div>
+</section>
+<section id="quality">
+<h2>۱۴. Formatter، Linter و Test Explorer</h2>
+<p>پنل Tools → Formatter, Linter &amp; Test Explorer ابزارهای کیفیت را با مفسر انتخاب‌شده Workspace اجرا می‌کند. اجرای ابزارها در پس‌زمینه است تا رابط کاربری پاسخ‌گو بماند.</p>
+<h3>Black</h3>
+<ul><li><strong>Format Buffer:</strong> متن تب فعال را به Black می‌دهد و خروجی قالب‌بندی را به همان بافر برمی‌گرداند؛ سند تغییرکرده و تا زمان ذخیره، unsaved باقی می‌ماند.</li><li><strong>Format Project:</strong> قالب‌بندی فایل‌های پروژه را انجام می‌دهد. برای جلوگیری از اختلاف میان بافر حافظه و فایل دیسک، وقتی تب‌های ذخیره‌نشده وجود داشته باشند عملیات مسدود می‌شود.</li></ul>
+<h3>Ruff</h3>
+<p>Lint Buffer و Lint Project مشکلات کد را در قالب تشخیص‌های ساخت‌یافته نمایش می‌دهند. هر تشخیص شامل rule، فایل، خط، ستون و پیام است. با دوبار کلیک روی مورد می‌توان به فایل و محل گزارش‌شده رفت.</p>
+<h3>pytest Test Explorer</h3>
+<p>Discover Tests شناسه تست‌ها (node ID) را کشف می‌کند. می‌توان کل مجموعه یا تست انتخاب‌شده را اجرا کرد؛ دوبار کلیک یا Enter روی تست کشف‌شده نیز اجرای آن را آغاز می‌کند. خروجی و وضعیت خاتمه در Tool Output نمایش داده می‌شود.</p>
+<h3>نصب ابزارها</h3>
+<p>Install Tools بسته‌های Black، Ruff و pytest را در مفسر انتخاب‌شده نصب یا به‌روزرسانی می‌کند. پیکربندی Ruff، Black و pytest در <code>pyproject.toml</code> قرار دارد. توقف عملیات کیفیت از کنترل Stop انجام می‌شود.</p>
+<pre>python -m black .
+python -m ruff check .
+python -m pytest -v</pre>
+</section>
+<section id="git">
+<h2>۱۵. کنترل نسخه Git</h2>
+<p>پنل Tools → Git Source Control با Git اجرایی نصب‌شده روی سیستم کار می‌کند و برای عملیات محلی به Python package یا حساب GitHub نیاز ندارد. برای عملیات remote مانند fetch/push باید remote و روش احراز هویت Git روی سیستم درست تنظیم شده باشد.</p>
+<h3>قابلیت‌ها</h3>
+<ul><li>نمایش branch جاری، upstream و تعداد commitهای ahead/behind.</li><li>نمایش فایل‌های تغییرکرده و تفکیک تغییرات staged و unstaged.</li><li>مشاهده diff جداگانه برای تغییرات staged و unstaged.</li><li>stage/unstage یک فایل یا همه تغییرات.</li><li>ساخت branch و جابه‌جایی بین branchها.</li><li>ثبت commit از تغییرات staged با پیام الزامی.</li><li>Fetch، Push و Pull؛ Pull فقط با fast-forward انجام می‌شود تا merge ناخواسته ایجاد نشود.</li><li>مشاهده تاریخچه commitها و stash کردن working tree، شامل فایل‌های untracked.</li><li>Discard تغییرات با تأیید؛ حذف پوشه‌های untracked به‌صورت بازگشتی عمداً غیرفعال است.</li></ul>
+<h3>ملاحظات ایمنی</h3>
+<p>فرمان‌ها با آرایه آرگومان اجرا می‌شوند، نه از طریق shell؛ مسیر عملیات به مخزن Workspace محدود می‌شود و promptهای تعاملی Git غیرفعال‌اند. قبل از commit، diff و فهرست staged را بازبینی کنید. Discard می‌تواند تغییرات محلی را از بین ببرد؛ از فایل‌های مهم نسخه پشتیبان داشته باشید.</p>
+</section>
+<section id="preferences">
+<h2>۱۶. تنظیمات و ذخیره‌سازی</h2>
+<p>از View → Preferences... تنظیمات کاربری را تغییر دهید. گزینه‌های مستندشده شامل تم روشن/تاریک، خانواده و اندازه فونت، نمایش Project Explorer، مهلت اجرای کد و انتخاب مفسر هستند. ترجیحات در فایل <code>.pylex_studio.json</code> در پوشه Home کاربر ذخیره می‌شوند و بین اجراهای برنامه باقی می‌مانند.</p>
+<p>ذخیره تنظیمات با نوشتن در فایل موقت هم‌پوشه، flush و fsync و سپس جایگزینی اتمیک فایل مقصد انجام می‌شود. این روش احتمال باقی‌ماندن فایل تنظیمات نیمه‌نوشته را در صورت قطع فرایند کاهش می‌دهد؛ با این حال، پشتیبان‌گیری از فایل تنظیمات در صورت اهمیت تنظیمات شخصی همچنان کار معقولی است.</p>
+<p>تنظیمات شخصی خارج از پوشه پروژه نگهداری می‌شوند؛ بنابراین معمولاً نباید فایل تنظیمات Home را به مخزن Git پروژه اضافه کرد.</p>
+</section>
+<section id="shortcuts">
+<h2>۱۷. میانبرهای صفحه‌کلید</h2>
+<table><tr><th>میانبر</th><th>عملکرد</th></tr>
+<tr><td><kbd>Ctrl</kbd> + <kbd>N</kbd></td><td>ساخت سند جدید</td></tr>
+<tr><td><kbd>Ctrl</kbd> + <kbd>O</kbd></td><td>بازکردن فایل</td></tr>
+<tr><td><kbd>Ctrl</kbd> + <kbd>S</kbd></td><td>ذخیره سند</td></tr>
+<tr><td><kbd>Ctrl</kbd> + <kbd>W</kbd></td><td>بستن تب فعال</td></tr>
+<tr><td><kbd>F5</kbd></td><td>اجرای کد</td></tr>
+<tr><td><kbd>Shift</kbd> + <kbd>F5</kbd></td><td>توقف اجباری اجرای جاری</td></tr>
+<tr><td><kbd>F6</kbd></td><td>Analyze All</td></tr>
+<tr><td><kbd>Ctrl</kbd> + <kbd>Space</kbd></td><td>نمایش پیشنهادهای تکمیل پایه Python</td></tr>
+<tr><td><kbd>Ctrl</kbd> + <kbd>/</kbd></td><td>تغییر وضعیت comment برای خط یا بلوک انتخاب‌شده</td></tr>
+<tr><td><kbd>Ctrl</kbd> + <kbd>D</kbd></td><td>تکثیر خط یا انتخاب</td></tr>
+<tr><td><kbd>Alt</kbd> + <kbd>↑</kbd> / <kbd>↓</kbd></td><td>انتقال خط جاری</td></tr>
+<tr><td><kbd>Ctrl</kbd> + <kbd>G</kbd></td><td>رفتن به خط مشخص</td></tr>
+<tr><td><kbd>Ctrl</kbd> + <kbd>H</kbd></td><td>جست‌وجو و جایگزینی</td></tr>
+<tr><td><kbd>Shift</kbd> + <kbd>Tab</kbd></td><td>کاهش تورفتگی خطوط انتخاب‌شده یا خط جاری</td></tr>
+</table>
+<p>میانبرها ممکن است با توجه به فوکوس کنترل فعال یا سیستم‌عامل تفاوت داشته باشند. برای عملیات بدون میانبر از منوهای برنامه استفاده کنید.</p>
+</section>
+<section id="architecture">
+<h2>۱۸. معماری و ساختار کد</h2>
+<p>ساختار کلی مخزن در نسخه 1.10.0 به‌صورت زیر است. فایل‌های آزمون، ماژول‌های اصلی و تنظیمات پروژه در کنار هم قرار دارند:</p>
+<pre>pylex-studio/
 ├── main.py
 ├── pylex/
+│   ├── __init__.py
 │   ├── app.py
 │   ├── editor.py
+│   ├── editor_features.py
 │   ├── analyzer.py
 │   ├── runner.py
 │   ├── debugger.py
 │   ├── dependencies.py
 │   ├── interpreters.py
 │   ├── preferences.py
+│   ├── terminal.py
+│   ├── quality.py
+│   ├── git.py
+│   ├── git_panel.py
 │   ├── core/
+│   │   ├── __init__.py
 │   │   ├── project.py
 │   │   └── file_types.py
 │   └── services/
+│       ├── __init__.py
 │       └── execution.py
 ├── tests/
-│   ├── test_interpreters.py
-│   ├── test_execution_service.py
-│   └── ...
-├── docs/PROJECT_GUIDE.html
-├── .github/workflows/tests.yml
+├── docs/
+│   └── PROJECT_GUIDE.html
+├── .github/workflows/
+│   └── tests.yml
+├── requirements.txt
+├── pyproject.toml
 ├── README.md
 ├── CHANGELOG.md
-├── requirements.txt
-└── .gitignore</pre><ul><li><code>main.py</code>: نقطه شروع.</li><li><code>app.py</code>: پنجره اصلی، منو و پنل‌ها.</li><li><code>editor.py</code>: ویرایشگر، شماره خطوط و رنگ‌بندی مبتنی بر Pygments.</li><li><code>analyzer.py</code>: تحلیل‌گرهای لغوی و نحوی.</li><li><code>runner.py</code>: اجرای برنامه با مهلت زمانی.</li></ul></section>
-<section id="lexer"><h2>۴. تحلیل لغوی (Lexical Analysis)</h2><p>تحلیل لغوی نخستین مرحله تحلیل برنامه است. در این مرحله رشته کاراکترها به واحدهای معنادار به نام Token تبدیل می‌شود. برای مثال در <code>total = price + 5</code>، شناسه‌ها، عملگر انتساب، عملگر جمع و عدد توکن‌های جداگانه‌اند.</p><p>تابع <code>lexical_analysis(source)</code> در ماژول <code>analyzer.py</code> از کتابخانه استاندارد <code>tokenize</code> استفاده می‌کند. هر توکن دارای نوع، مقدار، شماره خط و ستون شروع و پایان است. کلمات رزروشده با نوع KEYWORD مشخص می‌شوند.</p><pre>from pylex.analyzer import lexical_analysis
-tokens = lexical_analysis("if score >= 10:\\n    print('Pass')")
-for token in tokens:
-    print(token.token_type, token.value, token.line, token.column)</pre><p>دسته‌های متداول عبارت‌اند از KEYWORD، NAME، NUMBER، STRING، OP، INDENT و NEWLINE. خروجی در تب مستقل تحلیل لغوی نشان داده می‌شود.</p></section>
-<section id="parser"><h2>۵. تحلیل نحوی (Syntax Analysis)</h2><p>تحلیل نحوی بررسی می‌کند که توکن‌ها مطابق دستور زبان پایتون کنار هم قرار گرفته باشند. عبارت <code>if True print("x")</code> معتبر نیست، چون بعد از شرط دونقطه لازم است.</p><p>تابع <code>syntax_analysis(source)</code> از <code>ast.parse</code> استفاده می‌کند. در صورت موفقیت درخت AST ساخته می‌شود و تعداد گره‌های آن گزارش می‌شود؛ در صورت شکست، پیام SyntaxError و شماره خط و ستون ارائه می‌شود.</p><pre>from pylex.analyzer import syntax_analysis
-result = syntax_analysis("x = 10\\nprint(x)")
-print(result.success, result.message)</pre><p class="note">تفاوت دو مرحله: تحلیل لغوی می‌پرسد «این قطعه متن چه توکنی است؟»؛ تحلیل نحوی می‌پرسد «آیا این توکن‌ها ساختار معتبر پایتون می‌سازند؟»</p></section>
-<section id="editor"><h2>۶. امکانات ویرایشگر</h2><ul><li>شماره خطوط در ستون کناری</li><li>رنگ‌بندی مبتنی بر Pygments برای کلمات کلیدی، Built-inها، رشته‌ها، اعداد، کامنت‌ها، نام توابع و کلاس‌ها</li><li>تغییر اندازه قلم با A+ و A-</li><li>تم روشن و تاریک</li><li>باز کردن و ذخیره فایل UTF-8</li><li>Undo/Redo و انتخاب همه</li><li>پنل‌های مستقل خروجی، تحلیل لغوی، تحلیل نحوی و خطاها</li><li>شماره خطوط هماهنگ با اسکرول و برجسته‌سازی خط جاری</li><li>هایلایت خط دارای خطا و پرش مستقیم از گزارش خطا به خط و ستون در ویرایشگر</li><li>میانبر Ctrl+N، Ctrl+O، Ctrl+S، F5 و F6 برای Analyze All</li></ul></section>
-<section id="run"><h2>۷. اجرای برنامه</h2><p>ماژول runner متن برنامه را در فایل موقت می‌نویسد و با مفسر انتخاب‌شده برای Workspace در یک پردازه فرزند اجرا می‌کند. خروجی استاندارد، خطای استاندارد و کد خروج در تب خروجی نمایش داده می‌شوند. زمان اجرا به صورت پیش‌فرض ۱۰ ثانیه محدود است. اجرای پردازه جداگانه مانع بسیاری از اختلال‌ها در پنجره اصلی می‌شود، اما به معنی ایزوله‌سازی امنیتی نیست.</p></section>
-<section id="interpreters"><h2>۸. مدیریت Python Interpreter و Virtual Environment</h2><p>از نسخه 1.4.0 شناسایی و انتخاب مفسرهای نصب‌شده فراهم شده است. PyLex هر مسیر را با اجرای همان فایل اجرایی و دریافت اطلاعات نسخه، پیاده‌سازی، معماری، مسیر prefix و وضعیت محیط مجازی اعتبارسنجی می‌کند. تشخیص محیط مجازی بر اساس تفاوت <code>sys.prefix</code> و <code>sys.base_prefix</code> است و به متغیر محیطی <code>VIRTUAL_ENV</code> وابسته نیست.</p><ul><li>کشف مفسر جاری و مسیرهای رایج PATH؛ در Windows همچنین استفاده از Python Launcher</li><li>انتخاب مفسر به صورت Global یا مختص Workspace</li><li>اولویت انتخاب پروژه، سپس شناسایی خودکار <code>.venv</code>، <code>venv</code> و <code>env</code> و در نهایت مفسر عمومی</li><li>ساخت محیط مجازی پروژه در پوشه <code>.venv</code> بدون حذف یا بازنویسی محتوای موجود</li><li>اجرای برنامه، دیباگر و اسکن وابستگی‌ها با همان مفسر انتخاب‌شده</li><li>اجرای pip از طریق <code>python -m pip</code> برای جلوگیری از نصب در مفسر اشتباه</li><li>نمایش وضعیت pip و امکان تعمیر یا نصب آن با ensurepip</li></ul><p>PyLex برای اجرای برنامه نیازی به فعال‌سازی shell محیط مجازی ندارد؛ مسیر مستقیم executable انتخاب‌شده به پردازه اجرا داده می‌شود. محیط مجازی قابل انتقال مطمئن بین سیستم‌ها نیست و نباید در Git ثبت شود؛ آن را با requirements.txt روی سیستم مقصد دوباره بسازید.</p></section><section id="install"><h2>۹. نصب و راه‌اندازی</h2><p>نیازمندی‌ها: Python 3.10 یا جدیدتر، Tkinter و Git. برای رنگ‌بندی نحوی، نصب وابستگی Pygments از فایل requirements.txt لازم است.</p><pre>git clone https://github.com/Amirh-Darvishi/pylex-studio.git
-cd pylex-studio
-python -m venv .venv
+└── .gitignore</pre>
+<table><tr><th>ماژول</th><th>مسئولیت</th></tr>
+<tr><td><code>main.py</code></td><td>نقطه ورود؛ ساخت PyLexApp و شروع حلقه mainloop.</td></tr>
+<tr><td><code>pylex/app.py</code></td><td>پنجره اصلی، منوها، toolbar، اتصال پنل‌ها و هماهنگی workflow.</td></tr>
+<tr><td><code>pylex/editor.py</code></td><td>کنترل ویرایشگر، تب‌ها، نمایش متن و اتصال رنگ‌بندی.</td></tr>
+<tr><td><code>pylex/editor_features.py</code></td><td>توابع کمکی ویرایش متن و رفتارهای هوشمند قابل آزمون.</td></tr>
+<tr><td><code>pylex/analyzer.py</code></td><td>TokenInfo، AnalysisResult، Diagnostic و منطق tokenize/AST.</td></tr>
+<tr><td><code>pylex/core/project.py</code></td><td>مدل Project، نرمال‌سازی مسیر، containment و زمینه کاری پروژه.</td></tr>
+<tr><td><code>pylex/core/file_types.py</code></td><td>دسته‌بندی پسوندها و اطلاعات نمایشی نوع فایل.</td></tr>
+<tr><td><code>pylex/services/execution.py</code></td><td>مرز سرویس اجرای برنامه و اتصال زمینه پروژه به runner/debugger.</td></tr>
+<tr><td><code>pylex/runner.py</code></td><td>اجرای subprocess، جمع‌آوری زنده خروجی، timeout و توقف درخت پردازه.</td></tr>
+<tr><td><code>pylex/debugger.py</code></td><td>نشست pdb، فرمان‌های دیباگر و بازرسی وضعیت اجرا.</td></tr>
+<tr><td><code>pylex/interpreters.py</code></td><td>کشف و اعتبارسنجی مفسرها، ساخت venv و عملیات pip.</td></tr>
+<tr><td><code>pylex/dependencies.py</code></td><td>تحلیل importها و بررسی نصب بودن ماژول‌ها و بسته‌ها.</td></tr>
+<tr><td><code>pylex/preferences.py</code></td><td>مدل و ذخیره پایدار ترجیحات کاربر.</td></tr>
+<tr><td><code>pylex/terminal.py</code></td><td>کشف Shellها و مدیریت نشست‌های ترمینال.</td></tr>
+<tr><td><code>pylex/quality.py</code></td><td>اجرای Black، Ruff و pytest و تبدیل نتایج به تشخیص‌ها.</td></tr>
+<tr><td><code>pylex/git.py</code></td><td>سرویس Git محدود به Workspace و اجرای shell-free فرمان‌ها.</td></tr>
+<tr><td><code>pylex/git_panel.py</code></td><td>رابط گرافیکی پنل Source Control.</td></tr>
+<tr><td><code>tests/</code></td><td>آزمون‌های واحد و رگرسیون ماژول‌ها.</td></tr></table>
+<h3>اصول طراحی</h3>
+<ul><li><strong>Separation of concerns:</strong> رابط کاربری، منطق دامنه و اجرای پردازه‌ها در ماژول‌های جدا قرار دارند.</li><li><strong>Explicit context:</strong> سرویس‌های اجرا مسیر کاری، environment و executable را صریح دریافت می‌کنند.</li><li><strong>Non-blocking UI:</strong> کارهای طولانی با thread/queue و پردازه فرزند مدیریت می‌شوند تا Tkinter پاسخ‌گو بماند.</li><li><strong>Testability:</strong> منطق‌های خالص و سرویس‌ها تا حد امکان جدا از پنجره اصلی آزمون‌پذیرند.</li><li><strong>Safe subprocess construction:</strong> فرمان‌ها با آرایه آرگومان و بدون shell=True ساخته می‌شوند.</li></ul>
+</section>
+<section id="testing">
+<h2>۱۹. آزمون و CI</h2>
+<h3>اجرای آزمون‌ها در سیستم محلی</h3>
+<pre>python -m unittest discover -s tests -v
+python -m pytest -v
+python -m compileall -q pylex tests</pre>
+<p>unittest و pytest هر دو برای اجرای مجموعه آزمون‌ها پیکربندی شده‌اند. فایل <code>pyproject.toml</code> مسیر کشف pytest و تنظیمات Black و Ruff را نگهداری می‌کند.</p>
+<h3>کنترل کیفیت کد</h3>
+<pre>python -m black --check .
+python -m ruff check .</pre>
+<p>اگر ابزارها در محیط فعال نصب نیستند، ابتدا <code>python -m pip install -r requirements.txt</code> را اجرا کنید. در پروژه‌های بزرگ می‌توان اجرای ابزارها را به مسیرهای تغییرکرده محدود کرد، اما پیش از ادغام باید مجموعه بررسی‌های CI پروژه سبز باشد.</p>
+<h3>GitHub Actions</h3>
+<p>Workflow موجود در <code>.github/workflows/tests.yml</code> تست‌ها را در ماتریس Windows و Ubuntu و Python 3.10، 3.11 و 3.13 اجرا می‌کند. بررسی Black در job مشخص CI نیز اجرا می‌شود. نتیجه workflow در تب Actions مخزن قابل مشاهده است.</p>
+<h3>راهنمای افزودن آزمون</h3>
+<ul><li>برای هر رفتار جدید یک تست موفق و برای ورودی نامعتبر یک تست خطا در نظر بگیرید.</li><li>برای عملیات فایل و پردازه، مسیر موقت و پاک‌سازی منابع را بررسی کنید.</li><li>برای عملیات وابسته به سیستم‌عامل، تفاوت Windows و POSIX را در طراحی تست لحاظ کنید.</li><li>از وابستگی آزمون‌ها به وضعیت واقعی حساب کاربری، مسیر شخصی یا تنظیمات محلی پرهیز کنید.</li></ul>
+</section>
+<section id="security">
+<h2>۲۰. امنیت و محدودیت‌ها</h2>
+<div class="warn"><strong>هشدار امنیتی:</strong> اجرای کد در PyLex Studio Sandbox امنیتی نیست. برنامه با مجوزهای کاربر جاری سیستم اجرا می‌شود؛ کد می‌تواند به فایل‌ها، شبکه و منابعی دسترسی پیدا کند که همان کاربر مجاز به استفاده از آن‌هاست.</div>
+<ul><li>Timeout فقط مدت اجرا را محدود می‌کند؛ محدودکننده جامع منابع یا مرز امنیتی نیست.</li><li>توقف درخت پردازه تلاش می‌کند پردازه اصلی و فرزندان آن را خاتمه دهد؛ این ویژگی معادل sandbox نیست.</li><li>ترمینال یک Shell واقعی سیستم را اجرا می‌کند؛ فرمان‌ها با سطح دسترسی کاربر انجام می‌شوند.</li><li>فرمان‌های Git با آرایه آرگومان و در محدوده Workspace اجرا می‌شوند؛ بااین‌حال، عملیات destructive همچنان نیازمند دقت کاربر است.</li><li>Dependency inspection ایستا است و تمام importهای پویا را کشف نمی‌کند.</li><li>پیشنهاد تکمیل کد، semantic IntelliSense یا بررسی کامل نوع‌ها نیست.</li><li>ترمینال فعلی PTY/ConPTY کامل نیست.</li></ul>
+<p>برای اجرای امن کد ناشناس، به یک sandbox واقعی مبتنی بر سیستم‌عامل یا ماشین مجازی محدودشده، کاربر کم‌دسترسی، محدودیت CPU و حافظه، کنترل فایل‌سیستم و سیاست شبکه نیاز است. تا زمان پیاده‌سازی و آزمون چنین مرزی، کد ناشناس را اجرا نکنید.</p>
+</section>
+<section id="troubleshooting">
+<h2>۲۱. عیب‌یابی متداول</h2>
+<h3>برنامه با خطای Tkinter اجرا نمی‌شود</h3>
+<p>بررسی کنید نصب Python شما Tkinter را دارد. در Linux بسته Tkinter توزیع را نصب کنید؛ در Windows از نصب رسمی Python با مؤلفه Tcl/Tk استفاده کنید. سپس <code>python -m tkinter</code> را برای بررسی وجود پنجره آزمایشی اجرا کنید.</p>
+<h3>Pygments نصب نیست یا رنگ‌بندی انجام نمی‌شود</h3>
+<pre>python -m pip install "Pygments>=2.18,<3.0"
+python -c "import pygments; print(pygments.__version__)"</pre>
+<p>دستور را با همان Python محیطی اجرا کنید که برنامه را با آن شروع می‌کنید.</p>
+<h3>بسته در برنامه پیدا نمی‌شود</h3>
+<p>از Tools → Python Interpreter executable انتخاب‌شده را بررسی کنید. سپس از Dependency Inspector وضعیت ماژول را ببینید و نصب را با همان مفسر انجام دهید. فعال‌بودن venv در ترمینال خارجی لزوماً به این معنا نیست که PyLex همان مفسر را انتخاب کرده است.</p>
+<h3>import محلی پروژه کار نمی‌کند</h3>
+<p>پوشه ریشه پروژه را به‌عنوان Workspace باز کنید. برای فایل ذخیره‌شده، مسیر واقعی فایل و ریشه پروژه در اجرای برنامه نقش دارند. برای تغییرات ذخیره‌نشده، فایل موقت اجرا می‌شود؛ اگر ساختار import پیچیده است، فایل را ذخیره و دوباره اجرا کنید.</p>
+<h3>ترمینال فرمان تعاملی یا تمام‌صفحه را درست اجرا نمی‌کند</h3>
+<p>ترمینال PyLex از pipe استفاده می‌کند و PTY کامل نیست. برای ابزارهای تمام‌صفحه، رابط‌های تعاملی پیچیده یا نیازمند terminal resize از Windows Terminal، ترمینال سیستم یا ترمینال مستقل استفاده کنید.</p>
+<h3>Git fetch/push احراز هویت نمی‌شود</h3>
+<p>ابتدا در ترمینال مستقل بررسی کنید Git نصب و remote درست تنظیم شده است و credential manager یا SSH key معتبر است. پنل PyLex promptهای تعاملی را غیرفعال می‌کند؛ بنابراین ابتدا احراز هویت Git را خارج از برنامه تکمیل کنید.</p>
+<h3>اجرای کد متوقف نمی‌شود یا timeout رخ می‌دهد</h3>
+<p>وضعیت خروجی و timeout انتخاب‌شده را بررسی کنید. در صورت نیاز Stop یا Shift+F5 را بزنید. timeout را فقط برای برنامه‌های مورد اعتماد و زمانی که واقعاً لازم است روی Unlimited قرار دهید.</p>
+<h3>تنظیمات پس از اجرا باقی نمی‌مانند</h3>
+<p>مطمئن شوید پوشه Home کاربر قابل نوشتن است و فایل <code>.pylex_studio.json</code> توسط ابزار همگام‌سازی یا آنتی‌ویروس قفل نشده است. در صورت خرابی تنظیمات، قبل از هر تغییری از فایل نسخه پشتیبان بگیرید.</p>
+</section>
+<section id="contributing">
+<h2>۲۲. مشارکت و گردش توسعه</h2>
+<ol><li>مخزن را fork یا clone کنید و یک branch با نام مشخص برای تغییر بسازید.</li><li>تغییر را محدود به یک موضوع نگه دارید و مستندات و تست متناظر را به‌روزرسانی کنید.</li><li>آزمون‌های unittest و pytest و بررسی‌های Black/Ruff را اجرا کنید.</li><li>تغییرات را با Git diff بازبینی کنید؛ فایل‌های محیط مجازی، تنظیمات شخصی و خروجی‌های موقت را commit نکنید.</li><li>Pull Request با توضیح هدف، پیاده‌سازی، تست‌ها و اثرات کاربری بسازید.</li><li>پیش از ادغام، CI و تست دستی رابط در Windows را بررسی کنید.</li><li>برای انتشار نسخه، ابتدا تغییرات main و Tag نسخه را هماهنگ کنید و سپس GitHub Release را منتشر کنید.</li></ol>
+<h3>فرمان‌های پایه توسعه</h3>
+<pre>git switch -c feature/short-description
+python -m unittest discover -s tests -v
+python -m pytest -v
+python -m black --check .
+python -m ruff check .
+git status
+git diff</pre>
+<p>نسخه برنامه در metadata مرکزی بسته نگهداری می‌شود؛ هنگام آماده‌سازی انتشار، نسخه برنامه، README، CHANGELOG و راهنمای پروژه باید با نسخه نهایی هماهنگ باشند.</p>
+</section>
+<section id="roadmap">
+<h2>۲۳. مسیر توسعه</h2>
+<p>نسخه 1.10.0 مرحله تثبیت کیفیت و مستندات در نقشه راه فعلی است. موارد زیر ایده‌ها و زمینه‌های احتمالی برای نسخه‌های بعدی هستند، نه قابلیت‌هایی که در نسخه 1.10.0 پیاده‌سازی‌شده فرض شوند:</p>
+<ul><li>تکمیل تجربه چندسندی و مدیریت نشست‌های کاری.</li><li>تکمیل خودکار معنایی، نمایش امضای توابع و راهنمای مستندات.</li><li>یکپارچگی عمیق‌تر با Language Server Protocol.</li><li>پشتیبانی از refactoring و تحلیل معنایی مانند متغیرهای تعریف‌نشده.</li><li>ترمینال مبتنی بر PTY/ConPTY کامل برای برنامه‌های تمام‌صفحه.</li><li>بسته‌بندی و انتشار نصب‌کننده‌های بومی برای سیستم‌عامل‌های هدف.</li><li>Sandbox واقعی و قابل ارزیابی برای اجرای کد غیرقابل اعتماد.</li><li>بهبود دسترس‌پذیری، آزمون‌های GUI و پوشش سناریوهای پیچیده.</li></ul>
+<p>اولویت هر قابلیت باید پس از بررسی نیاز کاربران، هزینه نگهداری، ریسک امنیتی و امکان آزمون‌پذیری تعیین شود.</p>
+</section>
+<section id="glossary">
+<h2>۲۴. واژه‌نامه</h2>
+<table><tr><th>اصطلاح</th><th>تعریف</th></tr>
+<tr><td>IDE</td><td>محیط توسعه یکپارچه؛ مجموعه‌ای از ابزارهای ویرایش، اجرا و توسعه نرم‌افزار.</td></tr>
+<tr><td>Lexer</td><td>تحلیل‌گر لغوی که متن را به Token تبدیل می‌کند.</td></tr>
+<tr><td>Token</td><td>واحد لغوی مانند شناسه، عدد، رشته یا عملگر.</td></tr>
+<tr><td>Parser</td><td>تحلیل‌گر ساختار نحوی زبان.</td></tr>
+<tr><td>AST</td><td>درخت انتزاعی نحو که ساختار برنامه را نمایش می‌دهد.</td></tr>
+<tr><td>Diagnostic</td><td>گزارش ساخت‌یافته مشکل همراه با نوع، پیام و موقعیت منبع.</td></tr>
+<tr><td>Workspace</td><td>پوشه ریشه‌ای که زمینه فایل‌ها، مسیر اجرا و ابزارهای پروژه را تعیین می‌کند.</td></tr>
+<tr><td>Interpreter</td><td>فایل اجرایی Python که کد را اجرا می‌کند.</td></tr>
+<tr><td>venv</td><td>محیط مجازی برای جداسازی بسته‌های Python یک پروژه.</td></tr>
+<tr><td>Subprocess</td><td>پردازه فرزند جدا از پردازه اصلی برنامه.</td></tr>
+<tr><td>stdout/stderr</td><td>جریان خروجی استاندارد و جریان خطای استاندارد پردازه.</td></tr>
+<tr><td>Breakpoint</td><td>نقطه توقف اجرای برنامه در دیباگر.</td></tr>
+<tr><td>Formatter</td><td>ابزار یکدست‌سازی قالب کد؛ در این پروژه Black.</td></tr>
+<tr><td>Linter</td><td>ابزار کشف الگوهای خطا و مشکلات کیفیت کد؛ در این پروژه Ruff.</td></tr>
+<tr><td>Test Explorer</td><td>رابط کشف و اجرای تست‌ها؛ در این پروژه مبتنی بر pytest.</td></tr>
+<tr><td>Git</td><td>سیستم کنترل نسخه توزیع‌شده.</td></tr>
+<tr><td>Stage</td><td>انتخاب تغییرات برای ورود به commit بعدی.</td></tr>
+<tr><td>Commit</td><td>ثبت یک snapshot از تغییرات در تاریخچه Git.</td></tr>
+<tr><td>CI</td><td>اجرای خودکار build/test/check در پاسخ به تغییرات مخزن.</td></tr>
+<tr><td>PTY/ConPTY</td><td>رابط شبه‌ترمینال برای برنامه‌های تعاملی خط فرمان.</td></tr>
+<tr><td>Sandbox</td><td>محیط اجرای محدودشده با مرزهای امنیتی و منابع کنترل‌شده.</td></tr>
+</table>
+</section>
+</div>
+</div>
 
-# Windows PowerShell
-.venv\\Scripts\\Activate.ps1
+<section id="hands-on">
+<h2>۲۵. آموزش عملی: ساخت و اجرای اولین پروژه</h2>
+<p>این تمرین از یک پوشه خالی شروع می‌شود و مسیر کامل کار با PyLex Studio را نشان می‌دهد. هدف این است که فقط دکمه‌ها را نشناسید، بلکه بدانید هر مرحله چه اثری روی پروژه و محیط Python دارد.</p>
+<h3>گام ۱: ساخت پوشه و بازکردن Workspace</h3>
+<p>در File Explorer یک پوشه مانند <code>hello_pylex</code> بسازید. در PyLex Studio گزینه <strong>File → Open Workspace...</strong> یا دکمه <strong>Open Workspace</strong> را انتخاب کنید و همان پوشه را باز کنید. پوشه در Project Explorer سمت چپ دیده می‌شود. Workspace به برنامه می‌گوید ریشه پروژه کجاست؛ مسیر کاری، بررسی importها، ترمینال، ابزارهای کیفیت و پنل Git از این زمینه استفاده می‌کنند.</p>
+<h3>گام ۲: ساخت فایل Python</h3>
+<p>از <strong>File → New</strong> یا Ctrl+N یک سند جدید بسازید. کد زیر را وارد کنید:</p>
+<pre>def greet(name):
+    message = f"Hello, {name}!"
+    return message
 
-# Linux / macOS
-source .venv/bin/activate
+if __name__ == "__main__":
+    print(greet("PyLex Studio"))</pre>
+<p>با <strong>File → Save</strong> یا Ctrl+S فایل را در پوشه Workspace با نام <code>main.py</code> ذخیره کنید. عنوان تب نام فایل را نشان می‌دهد؛ نشان تغییر کنار تب یعنی هنوز تغییر ذخیره‌نشده دارید. تا زمانی که ذخیره نکرده‌اید، محتوای تب با فایل روی دیسک یکسان نیست.</p>
+<h3>گام ۳: شناخت رنگ‌ها و ابزارهای ویرایش</h3>
+<p>کلمات کلیدی، رشته‌ها، اعداد، commentها و نام تابع‌ها با رنگ‌های متفاوت مشخص می‌شوند. این رنگ‌ها فقط برای خوانایی‌اند. برای تکمیل کلمات پایه Python، مکان‌نما را بعد از چند حرف نام قرار دهید و Ctrl+Space را بزنید. برای کامنت‌کردن چند خط، بلوک را انتخاب و Ctrl+/ را فشار دهید. Ctrl+D خط/انتخاب را تکثیر می‌کند و Alt+Up/Down خط جاری را جابه‌جا می‌کند.</p>
+<h3>گام ۴: تحلیل کد پیش از اجرا</h3>
+<p>از <strong>Tools → Analyze All</strong> یا F6 استفاده کنید. تب Lexical Analysis توکن‌های متن را نمایش می‌دهد؛ Syntax Analysis نتیجه parse شدن متن به AST را نشان می‌دهد؛ Errors خطاهای قابل ناوبری را فهرست می‌کند. برای مشاهده جداگانه هر مرحله از <strong>Tools → Lexical Analysis</strong> یا <strong>Tools → Syntax Analysis</strong> استفاده کنید.</p>
+<p>برای دیدن نحوه گزارش خطا، موقتاً دونقطه بعد از <code>if</code> را حذف کنید و دوباره Analyze All بزنید. در Errors نوع خطا، شماره خط، ستون، پیام و خط منبع را می‌بینید. روی ردیف خطا کلیک یا دوبار کلیک کنید تا مکان‌نما به محل گزارش‌شده برود. پس از اصلاح متن، تحلیل را دوباره اجرا کنید؛ تغییر کد باعث می‌شود تشخیص‌های قبلی منقضی شوند.</p>
+<h3>گام ۵: اجرای برنامه</h3>
+<p>با F5 یا دکمه <strong>Run</strong> برنامه را اجرا کنید. تب Output به‌صورت خودکار نمایش داده می‌شود. stdout و stderr با رنگ‌های متفاوت، همراه با پیام‌های سیستمی نشان داده می‌شوند. در پایان، وضعیت اجرا، کد خروج و مدت اجرا را بررسی کنید. کد خروج صفر معمولاً نشان‌دهنده پایان موفق برنامه است؛ مقدار غیرصفر معمولاً به خطای برنامه یا شکست پردازه اشاره دارد.</p>
+<p>برای توقف برنامه‌ای که منتظر ورودی یا در حلقه بی‌نهایت است از <strong>Force Stop Run</strong> یا Shift+F5 استفاده کنید. این عمل پردازه اجرا را خاتمه می‌دهد و با پاک‌کردن متن Output فرق دارد. دکمه Clear Output فقط نمایش خروجی را پاک می‌کند. برای نگهداری نتیجه از Save Output استفاده کنید.</p>
+<h3>گام ۶: انتخاب Python مناسب</h3>
+<p>از <strong>Tools → Python Interpreter...</strong> یا دکمه Python، فهرست مفسرهای کشف‌شده را باز کنید. نسخه و مسیر executable را بررسی کنید. اگر Workspace محیط <code>.venv</code> دارد، آن را انتخاب کنید یا از گزینه ساخت Project .venv استفاده کنید. پس از انتخاب، اجرای برنامه، دیباگر، Dependency Inspector و ابزارهای کیفیت باید از همان executable استفاده کنند.</p>
+<h3>گام ۷: بررسی وابستگی‌ها</h3>
+<p>برای پروژه‌ای که از کتابخانه بیرونی استفاده می‌کند، تب <strong>Dependencies</strong> را باز و <strong>Scan Current File</strong> را اجرا کنید. ستون Import نام استفاده‌شده در کد، Status وضعیت تشخیص، Package / Source نام توزیع یا منبع و Version نسخه نصب‌شده را نشان می‌دهد. اگر بسته‌ای مفقود است، مطمئن شوید مفسر انتخابی همان محیطی است که می‌خواهید و سپس دستور نصب پیشنهادی را با همان Python اجرا کنید.</p>
+<h3>گام ۸: دیباگ در صورت نیاز</h3>
+<p>در خط موردنظر مکان‌نما را قرار دهید و F9 را برای breakpoint بزنید. با Ctrl+F5 یا Tools → Start Debugging اجرای دیباگ را شروع کنید. وقتی اجرا متوقف شد، Continue با Ctrl+F10، Step Into با F11 و Step Over با F10 قابل استفاده‌اند. Variables، Arguments و Stack وضعیت frame جاری را نمایش می‌دهند. پس از پایان کار Stop Debugging را بزنید تا نشست دیباگر بسته شود.</p>
+<h3>گام ۹: بررسی کیفیت و تست</h3>
+<p>تب Quality را باز کنید. ابتدا Discover Tests را برای کشف تست‌های pytest اجرا کنید. سپس Ruff را برای یافتن مشکلات کد اجرا کنید و در صورت نیاز Black را روی بافر فعال اجرا کنید. قالب‌بندی بافر فعلی نتیجه را در همان تب اعمال می‌کند؛ برای نگهداری آن Ctrl+S بزنید. پیش از Format Project همه تب‌های تغییرکرده را ذخیره یا ببندید؛ برنامه این شرط را برای جلوگیری از اختلاف میان حافظه و دیسک اعمال می‌کند.</p>
+<h3>گام ۱۰: ذخیره و کنترل نسخه</h3>
+<p>اگر پوشه پروژه مخزن Git باشد، تب Git وضعیت تغییرات را نشان می‌دهد. ابتدا diff را بررسی کنید، سپس فایل‌های موردنظر را stage کنید، پیام commit بنویسید و Commit را اجرا کنید. Fetch اطلاعات remote را می‌گیرد؛ Push commitهای محلی را ارسال می‌کند؛ Pull فقط در حالت fast-forward انجام می‌شود. پیش از Pull، تغییرات محلی را ذخیره یا commit کنید تا Git مجبور به ادغام خودکار نشود.</p>
+<div class="note"><strong>نتیجه تمرین:</strong> اکنون یک پروژه کوچک دارید که از Workspace و ویرایش چندفایلی تا تحلیل، اجرا، دیباگ، بررسی وابستگی، کیفیت و Git را در یک گردش‌کار تجربه کرده است.</div>
+</section>
+<section id="workflows">
+<h2>۲۶. سناریوهای رایج و گردش‌کارها</h2>
+<h3>بازکردن پروژه‌ای که از قبل وجود دارد</h3>
+<ol><li>File → Open Workspace را انتخاب کنید و پوشه ریشه را باز کنید.</li><li>درخت فایل را با دکمه Refresh به‌روز کنید.</li><li>روی فایل دوبار کلیک کنید تا در تب جدید باز شود.</li><li>اگر پروژه محیط مجازی دارد، مطمئن شوید نام آن در <code>.venv</code>، <code>venv</code> یا <code>env</code> قرار دارد یا مفسر را دستی انتخاب کنید.</li><li>پیش از اجرا، مسیر کاری و Dependencies را بررسی کنید.</li></ol>
+<h3>رفع خطای SyntaxError یا IndentationError</h3>
+<ol><li>Analyze All را اجرا کنید.</li><li>در تب Errors ردیف خطا را انتخاب کنید.</li><li>به متن خط و ستون گزارش‌شده توجه کنید؛ محل خطا گاهی جایی است که parser دیگر نمی‌تواند ساختار را ادامه دهد، نه لزوماً اولین نویسه اشتباه.</li><li>براکت‌ها، کوتیشن‌ها، دونقطه و تورفتگی بلوک را بررسی کنید.</li><li>پس از اصلاح دوباره Analyze All و سپس Run را اجرا کنید.</li></ol>
+<h3>حل ModuleNotFoundError</h3>
+<ol><li>از متن خطا نام ماژول import‌شده را بردارید.</li><li>Tools → Python Interpreter را باز کنید و مسیر Python فعال را کنترل کنید.</li><li>در Dependencies روی Scan Current File بزنید.</li><li>اگر ماژول بخشی از پروژه نیست و در محیط نصب نشده، از Copy Python Install Command یا ترمینال همان محیط برای نصب بسته درست استفاده کنید.</li><li>دوباره اجرا کنید. نام import ممکن است با نام بسته pip متفاوت باشد؛ برای مثال <code>yaml</code> معمولاً از توزیع <code>PyYAML</code> می‌آید.</li></ol>
+<h3>اجرای برنامه‌ای که ورودی می‌خواهد</h3>
+<p>برای ورودی تعاملی ساده از Terminal استفاده کنید؛ Output برای مشاهده خروجی اجرای کنترل‌شده است و جایگزین Shell تعاملی نیست. اگر برنامه به terminal device واقعی، رابط تمام‌صفحه یا رفتارهای خاص TTY نیاز دارد، آن را در ترمینال مستقل سیستم اجرا کنید.</p>
+<h3>قالب‌بندی بدون از دست دادن تغییرات</h3>
+<p>برای فرمت‌کردن فقط تب جاری از Format Buffer استفاده کنید و نتیجه را بازبینی و ذخیره کنید. برای Format Project ابتدا همه تب‌های dirty را ذخیره کنید. پروژه را پیش از قالب‌بندی گروهی commit کنید تا بتوانید تغییرات Black را با diff بازبینی یا در صورت لزوم برگردانید.</p>
+<h3>بررسی تغییرات پیش از Commit</h3>
+<ol><li>Git → Refresh/Status را به‌روزرسانی کنید.</li><li>فایل تغییرکرده را انتخاب کنید و diff unstaged را ببینید.</li><li>فقط فایل‌هایی را stage کنید که باید وارد commit شوند.</li><li>diff staged را جداگانه بازبینی کنید؛ staged و unstaged دو مجموعه متفاوت‌اند.</li><li>پیام معنادار بنویسید و Commit کنید.</li><li>پس از بررسی branch و remote، در صورت نیاز Push کنید.</li></ol>
+</section>
+<section id="panels">
+<h2>۲۷. راهنمای کامل پنل‌ها و نتایج</h2>
+<table><tr><th>پنل</th><th>چه زمانی استفاده شود؟</th><th>چه چیزی نشان می‌دهد؟</th><th>اقدام بعدی</th></tr>
+<tr><td>Output</td><td>بعد از Run یا Debug</td><td>stdout، stderr، پیام‌های سیستم، زمان/وضعیت و کد خروج</td><td>رفع خطا، توقف پردازه، پاک‌کردن یا ذخیره خروجی</td></tr>
+<tr><td>Lexical Analysis</td><td>برای فهم توکن‌های منبع</td><td>نوع توکن، مقدار و موقعیت آن در متن</td><td>بررسی keyword، identifier، string، number و operator</td></tr>
+<tr><td>Syntax Analysis</td><td>برای بررسی دستور زبان</td><td>نتیجه parse و خلاصه AST یا پیام خطا</td><td>اصلاح ساختار نحوی و اجرای دوباره تحلیل</td></tr>
+<tr><td>Errors</td><td>پس از Analyze All</td><td>نوع خطا، خط، ستون، پیام و خط منبع</td><td>انتخاب ردیف برای رفتن به محل خطا</td></tr>
+<tr><td>Dependencies</td><td>هنگام آماده‌سازی محیط یا خطای import</td><td>ماژول، وضعیت، توزیع/منبع و نسخه</td><td>انتخاب مفسر درست و نصب بسته لازم</td></tr>
+<tr><td>Terminal</td><td>برای فرمان‌های Shell و کارهای تعاملی ساده</td><td>نشست‌های Shell، خروجی و تاریخچه هر نشست</td><td>اجرای فرمان، Ctrl+C، پاک‌کردن یا بستن نشست</td></tr>
+<tr><td>Quality</td><td>پیش از commit یا تحویل پروژه</td><td>نتیجه Black، Ruff و pytest</td><td>اصلاح تشخیص‌ها، قالب‌بندی و اجرای تست‌ها</td></tr>
+<tr><td>Git</td><td>برای ثبت و همگام‌سازی تغییرات</td><td>branch، upstream، ahead/behind و فهرست تغییرات</td><td>diff، stage، commit، fetch، push یا pull</td></tr></table>
+<h3>چطور نتیجه‌ها را تفسیر کنیم؟</h3>
+<ul><li><strong>تحلیل موفق:</strong> یعنی متن در مرحله tokenize و parse با خطای نحوی متوقف نشده است؛ اثبات نمی‌کند برنامه از نظر منطقی درست است.</li><li><strong>کد خروج صفر:</strong> معمولاً برنامه عادی تمام شده؛ اما ممکن است خروجی مورد انتظار تولید نشده باشد، پس نتیجه را از نظر منطقی هم بررسی کنید.</li><li><strong>Ruff بدون تشخیص:</strong> یعنی ruleهای فعال Ruff موردی گزارش نکرده‌اند؛ تضمین‌کننده نبود همه باگ‌ها نیست.</li><li><strong>تست‌های موفق:</strong> یعنی تست‌های کشف‌شده اجرا شده‌اند و موفق بوده‌اند؛ کیفیت تست‌ها و پوشش رفتار همچنان مهم است.</li><li><strong>Git clean:</strong> یعنی Git تغییر ثبت‌نشده‌ای در working tree یا index گزارش نمی‌کند؛ به معنای Push شدن commitهای محلی نیست. ahead/behind را نیز بررسی کنید.</li></ul>
+</section>
+<section id="file-support">
+<h2>۲۸. انواع فایل و رفتار مرورگر پروژه</h2>
+<p>Project Explorer فقط برای فایل‌های Python نیست. دسته‌بندی پسوندها و MIME type برای گروه‌های رایج انجام می‌شود:</p>
+<table><tr><th>گروه</th><th>نمونه پسوندها</th><th>رفتار کلی</th></tr>
+<tr><td>Python</td><td><code>.py</code>، <code>.pyw</code>، <code>.pyi</code></td><td>فایل منبع Python؛ قابل بازشدن در ویرایشگر</td></tr>
+<tr><td>Web</td><td><code>.js</code>، <code>.ts</code>، <code>.jsx</code>، <code>.vue</code></td><td>فایل متنی منبع وب</td></tr>
+<tr><td>Markup</td><td><code>.html</code>، <code>.xml</code>، <code>.md</code>، <code>.svg</code></td><td>متن و مستندات</td></tr>
+<tr><td>Style</td><td><code>.css</code>، <code>.scss</code>، <code>.less</code></td><td>فایل متنی stylesheet</td></tr>
+<tr><td>Data / Config</td><td><code>.json</code>، <code>.yaml</code>، <code>.toml</code>، <code>.ini</code>، <code>.env</code></td><td>داده ساخت‌یافته و تنظیمات متنی</td></tr>
+<tr><td>Shell</td><td><code>.sh</code>، <code>.ps1</code>، <code>.bat</code></td><td>اسکریپت خط فرمان</td></tr>
+<tr><td>Compiled / Native</td><td><code>.c</code>، <code>.cpp</code>، <code>.java</code>، <code>.rs</code></td><td>فایل منبع زبان‌های دیگر؛ ویرایش متنی در صورت تشخیص متن</td></tr>
+<tr><td>Binary</td><td><code>.pyc</code>، <code>.dll</code>، <code>.exe</code>، <code>.bin</code></td><td>به‌عنوان متن باز نمی‌شود</td></tr>
+<tr><td>Media</td><td><code>.png</code>، <code>.mp3</code>، <code>.mp4</code></td><td>با برنامه پیش‌فرض سیستم باز می‌شود</td></tr>
+<tr><td>Document / Archive / Database / Font</td><td><code>.pdf</code>، <code>.docx</code>، <code>.zip</code>، <code>.sqlite</code>، <code>.ttf</code></td><td>نمایش نوع و واگذاری به برنامه سیستم در صورت غیرمتنی بودن</td></tr></table>
+<p>برای پسوند ناشناخته، برنامه MIME type و نمونه‌ای از محتوا را بررسی می‌کند. فایل UTF-8 بدون بایت NUL می‌تواند متن شناخته شود. فایل غیرمتنی به برنامه پیش‌فرض سیستم واگذار می‌شود. تشخیص پسوند/محتوا تضمین کامل نوع واقعی یا بی‌خطر بودن فایل نیست. خواندن متن با UTF-8، UTF-8 BOM و CP1252 امتحان می‌شود؛ فایل غیرقابل‌خواندن به‌عنوان متن با خطا رد می‌شود.</p>
+</section>
+<section id="interpreter-priority">
+<h2>۲۹. انتخاب مفسر و محیط اجرا در عمل</h2>
+<p>انتخاب Python فقط یک تنظیم ظاهری نیست؛ مشخص می‌کند کدام نسخه Python و کدام مجموعه بسته‌ها برای اجرای برنامه و ابزارهای توسعه استفاده شود.</p>
+<h3>ترتیب اولویت</h3>
+<ol><li>مفسر صریح ذخیره‌شده برای همان Workspace، اگر معتبر باشد.</li><li>محیط مجازی شناخته‌شده در ریشه پروژه، به‌ترتیب پوشه‌های <code>.venv</code>، <code>venv</code> و <code>env</code>.</li><li>مفسر سراسری انتخاب‌شده در Preferences.</li><li>مفسر Python جاری برنامه در صورت نبود تنظیم دیگر.</li></ol>
+<h3>چه زمانی مفسر پروژه را انتخاب کنیم؟</h3>
+<p>وقتی دو پروژه نسخه Python یا dependencyهای متفاوت دارند، برای هر Workspace مفسر جدا انتخاب کنید. انتخاب سراسری برای پروژه‌هایی مناسب است که از یک محیط مشترک استفاده می‌کنند. در صورت جابه‌جایی پوشه پروژه یا حذف venv، مسیر ذخیره‌شده ممکن است دیگر معتبر نباشد؛ مفسر را دوباره انتخاب کنید.</p>
+<h3>چرا pip نصب کرده‌ام اما برنامه ماژول را پیدا نمی‌کند؟</h3>
+<p>اغلب علت این است که <code>pip</code> متعلق به Python دیگری بوده است. در ترمینال از <code>python -m pip show package-name</code> استفاده کنید، اما ابتدا مطمئن شوید فرمان <code>python</code> همان executable انتخاب‌شده در PyLex است. روش قطعی‌تر، اجرای مسیر کامل Python انتخاب‌شده به شکل <code>FULL_PATH_TO_PYTHON -m pip install package-name</code> است. PyLex نیز دستور نصب را با executable انتخاب‌شده می‌سازد.</p>
+<h3>چرا پس از کپی پروژه باید venv را دوباره بسازم؟</h3>
+<p>venv مسیرهای داخلی و اسکریپت‌هایی دارد که ممکن است به محل Python اصلی یا مسیر محیط قبلی وابسته باشند. مخزن باید کد و فهرست dependencyها را نگه دارد، نه کپی محیط نصب‌شده روی یک رایانه. محیط را در مقصد دوباره بسازید و dependencyها را نصب کنید.</p>
+</section>
+<section id="faq">
+<h2>۳۰. پرسش‌های پرتکرار</h2>
+<h3>آیا PyLex Studio فقط یک ویرایشگر متن است؟</h3>
+<p>خیر. علاوه بر ویرایشگر، ابزار تحلیل لغوی و نحوی، اجرای برنامه، مدیریت مفسر و محیط مجازی، بررسی وابستگی، دیباگر pdb، ترمینال، Black، Ruff، pytest و Git دارد. بااین‌حال، بعضی قابلیت‌های پیشرفته IDEهای بزرگ مانند تحلیل معنایی کامل یا LSP در دامنه نسخه 1.10.0 نیستند.</p>
+<h3>آیا می‌توان پروژه‌ای با چند فایل Python اجرا کرد؟</h3>
+<p>بله. پوشه ریشه را به‌عنوان Workspace باز کنید و فایل اصلی را اجرا کنید. فایل ذخیره‌شده از مسیر واقعی خود اجرا می‌شود و Workspace مسیر کاری و زمینه import را فراهم می‌کند. ساختار package و importها باید مطابق قواعد Python باشد.</p>
+<h3>آیا PyLex همه خطاهای برنامه را قبل از اجرا پیدا می‌کند؟</h3>
+<p>خیر. تحلیل لغوی و نحوی خطاهای ساختاری را بررسی می‌کند؛ Ruff مجموعه‌ای از مشکلات استاتیک را تشخیص می‌دهد. خطاهای منطقی، داده‌ای، شبکه‌ای، محیطی و بسیاری از خطاهای زمان اجرا فقط هنگام اجرای برنامه یا تست مشخص می‌شوند.</p>
+<h3>آیا می‌توان برنامه را با ورودی تعاملی اجرا کرد؟</h3>
+<p>برای فرمان‌های تعاملی ساده از Terminal استفاده کنید. Output برای دریافت stdout/stderr اجرای کنترل‌شده است. برنامه‌هایی که به TTY کامل نیاز دارند ممکن است به ترمینال سیستم احتیاج داشته باشند.</p>
+<h3>آیا اجرای برنامه ایمن و محدودشده است؟</h3>
+<p>خیر. پردازه با مجوز کاربر جاری اجرا می‌شود. فایل‌ها، شبکه و منابعی که کاربر به آن‌ها دسترسی دارد ممکن است در دسترس کد باشند. هرگز کد ناشناس را صرفاً به دلیل اجرا شدن در PyLex قابل اعتماد فرض نکنید.</p>
+<h3>آیا Git باید جداگانه نصب شود؟</h3>
+<p>بله. پنل Git به executable واقعی Git وابسته است. اگر Git در PATH نباشد، پنل نمی‌تواند عملیات مخزن را انجام دهد. همچنین احراز هویت remote باید از قبل در Git سیستم تنظیم شده باشد.</p>
+<h3>چرا Format Project در حضور تب تغییرکرده اجرا نمی‌شود؟</h3>
+<p>چون Black فایل‌های روی دیسک را قالب‌بندی می‌کند و ممکن است با متن ذخیره‌نشده در تب‌ها تعارض ایجاد کند. تب‌های تغییرکرده را ذخیره یا ببندید و دوباره عملیات را اجرا کنید.</p>
+<h3>چرا پنل Git چیزی نشان نمی‌دهد؟</h3>
+<p>Workspace باید داخل یک مخزن Git باشد؛ یعنی خود پوشه یا یکی از والدهای آن باید مخزن معتبر داشته باشد. اگر Git نصب نیست یا پوشه انتخاب‌شده بیرون از مخزن است، ابتدا مخزن را ایجاد یا پوشه ریشه درست را باز کنید.</p>
+<h3>کجا باید خطا را گزارش کنم؟</h3>
+<p>ابتدا نسخه برنامه، سیستم‌عامل، نسخه Python انتخاب‌شده و مراحل بازتولید خطا را ثبت کنید. اگر خطا traceback دارد، متن کامل آن را نگه دارید. سپس در مخزن GitHub پروژه یک Issue با عنوان روشن، مراحل بازتولید، نتیجه مورد انتظار و نتیجه واقعی ایجاد کنید. پیش از انتشار اطلاعات شخصی، مسیرهای خصوصی، tokenها و محتوای محرمانه را از گزارش حذف کنید.</p>
+</section>
 
-python -m pip install -r requirements.txt
-python main.py</pre><h3>چرا venv به جای Docker؟</h3><p>این برنامه دسکتاپ و دارای پنجره گرافیکی است. اجرای GUI در Docker به تنظیمات نمایشگر X11 یا Wayland و دسترسی‌های سیستم‌عامل نیاز دارد. venv نصب ساده‌تر و تجربه مناسب‌تری برای کاربران GitHub فراهم می‌کند. Pygments تنها وابستگی خارجی برنامه است و با requirements.txt نصب می‌شود.</p></section>
-<section id="tests"><h2>۹. آزمون‌ها و کنترل کیفیت</h2><p>مجموعه آزمون‌های واحد، تحلیل لغوی و نحوی، اجرای کد، مدیریت Workspace، شناسایی فایل، ترجیحات کاربر، کشف مفسرها، ساخت محیط مجازی و هدایت اجرا به مفسر انتخاب‌شده را بررسی می‌کند.</p><pre>python -m unittest discover -s tests -v</pre><p>فایل GitHub Actions آزمون‌ها را در هر push و pull request اجرا می‌کند. این روند CI به شناسایی سریع خطاهای ناشی از تغییر کد کمک می‌کند.</p></section>
-<section id="diagnostics"><h2>۱۰. گزارش خطاها و ناوبری</h2><p>از نسخه 1.1.1 یک پنل Errors در دسترس است که نوع دقیق استثنا مانند SyntaxError و IndentationError، شماره خط، ستون و پیام خطا را نمایش می‌دهد. ستون‌ها در منطق داخلی ویرایشگر صفرمبنا هستند؛ در رابط کاربری شماره ستون به شکل یک‌مبنا نمایش داده می‌شود.</p><p>در صورت گزارش یک خطای یکسان از tokenize و ast، گزارش تکراری حذف می‌شود. انتخاب یا دوبار کلیک روی یک خطا، مکان‌نما را به محل خطا منتقل می‌کند و خط مربوطه را برجسته می‌سازد. با ویرایش کد، گزارش‌های قدیمی نامعتبر می‌شوند و باید تحلیل دوباره اجرا شود.</p><p>برای اجرای تحلیل کامل از Analyze All یا کلید F6 استفاده کنید. برای پاک‌کردن خروجی‌ها از Clear Results استفاده کنید.</p></section>
-<section id="security"><h2>۱۱. امنیت و محدودیت‌ها</h2><ul><li>کد با سطح دسترسی کاربر فعلی سیستم اجرا می‌شود.</li><li>مهلت زمانی از اجرای بی‌نهایت جلوگیری می‌کند، اما دسترسی فایل، شبکه یا پردازنده را کامل محدود نمی‌کند.</li><li>کدهای ناشناس را اجرا نکنید.</li><li>برای اجرای امن واقعی باید sandbox مبتنی بر سیستم‌عامل، کاربر محدود، محدودیت منابع و قطع شبکه طراحی شود.</li></ul></section>
-<section id="roadmap"><h2>۱۲. نقشه راه توسعه آینده</h2><ul><li>تب‌های واقعی چندفایلی و ذخیره وضعیت هر سند</li><li>جست‌وجو و جایگزینی و پرش به خط</li><li>هایلایت کاملاً مبتنی بر tokenize</li><li>تکمیل خودکار و راهنمای توابع</li><li>تحلیل معنایی مانند متغیرهای تعریف‌نشده</li><li>پشتیبانی از Language Server Protocol</li><li>ذخیره تنظیمات کاربر</li><li>بسته اجرایی Windows و Linux</li><li>محیط اجرای ایزوله برای کدهای ناشناس</li></ul></section>
-<section id="terms"><h2>۱۳. واژه‌نامه</h2><table><tr><th>اصطلاح</th><th>تعریف</th></tr><tr><td>IDE</td><td>محیط توسعه یکپارچه</td></tr><tr><td>Lexer</td><td>تحلیل‌گر لغوی</td></tr><tr><td>Token</td><td>واحد لغوی مانند شناسه یا عملگر</td></tr><tr><td>Parser</td><td>تحلیل‌گر نحوی</td></tr><tr><td>AST</td><td>درخت انتزاعی نحو</td></tr><tr><td>Subprocess</td><td>پردازه فرزند</td></tr><tr><td>venv</td><td>محیط مجازی پایتون</td></tr><tr><td>CI</td><td>یکپارچه‌سازی پیوسته و آزمون خودکار</td></tr></table></section>
-</div></main><footer style="text-align:center;padding:24px;color:#667">PyLex Studio · مستندات فارسی نسخه 1.10.0</footer></body></html>
+<footer>PyLex Studio · راهنمای فارسی نسخه 1.10.0 · منبع: مخزن رسمی پروژه</footer>
+</body>
+</html>
