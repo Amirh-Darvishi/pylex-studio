@@ -6,11 +6,11 @@ from pylex.ui.theme import THEMES, get_theme
 
 
 class ThemeDefinitionTests(unittest.TestCase):
-    def test_dark_theme_is_the_default_and_uses_darkly(self):
+    def test_dark_theme_is_the_default_and_uses_vapor(self):
         self.assertIs(get_theme("dark"), THEMES["dark"])
         self.assertEqual(get_theme(None)["bootstrap_theme"], "vapor-dark")
 
-    def test_light_theme_uses_flatly(self):
+    def test_light_theme_uses_minty(self):
         self.assertEqual(get_theme("light")["bootstrap_theme"], "minty-light")
 
     def test_both_themes_define_required_classic_widget_colors(self):
