@@ -1529,7 +1529,7 @@ class PyLexApp(tk.Tk):
             path = self._project_for_document(self._active_document()).root / path
         path = path.resolve()
         target = None
-        for _editor, document in self.documents.items():
+        for editor, document in self.documents.items():
             if document.get("path") is not None and Path(document["path"]).resolve() == path:
                 target = editor
                 self.editor_tabs.select(document["frame"])
@@ -2496,7 +2496,7 @@ class PyLexApp(tk.Tk):
         except OSError as exc:
             messagebox.showerror('Rename', str(exc), parent=self)
             return
-        for editor, document in self.documents.items():
+        for _editor, document in self.documents.items():
             opened = document.get("path")
             if opened and (opened == path or was_directory and path in opened.parents):
                 document["path"] = destination / opened.relative_to(path) if opened != path else destination
