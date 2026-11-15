@@ -45,8 +45,10 @@ class CodeEditor(tk.Frame):
         self.text.configure(yscrollcommand=self._yscroll, xscrollcommand=self.sx.set)
         self.gutter.pack(side="left", fill="y")
         self.text.pack(side="left", fill="both", expand=True)
-        self.sy.pack(side="right", fill="y")
-        self.sx.pack(side="bottom", fill="x")
+        # Keep native scrolling, but hide the visual bars for a cleaner editor.
+        self.text.bind("<Shift-MouseWheel>", self._horizontal_wheel, add="+")
+        self.text.bind("<Button-4>", lambda _event: self._wheel_units(-3), add="+")
+        self.text.bind("<Button-5>", lambda _event: self._wheel_units(3), add="+")
 
         self.text.bind("<<Modified>>", self._changed)
         self.text.bind("<KeyRelease>", self._cursor_changed)
@@ -108,6 +110,16 @@ class CodeEditor(tk.Frame):
             self.update_current_line()
             if self.on_change:
                 self.on_change()
+
+    def _wheel_units(self, units):
+        self.text.yview_scroll(units, "units")
+        self.gutter.yview_scroll(units, "units")
+        return "break"
+
+    def _horizontal_wheel(self, event):
+        units = -int(event.delta / 120) if event.delta else 0
+        self.text.xview_scroll(units * 3, "units")
+        return "break"
 
     def _scroll(self, *args):
         self.text.yview(*args)
@@ -487,5 +499,16 @@ class CodeEditor(tk.Frame):
 
     def set_font_family(self, family):
         family = str(family).strip()
-        if family:
-            self.editor_font.configure(family=family)
+        if not family:
+            return
+        try:
+            installed = set(tkfont.families(self))
+        except tk.TclError:
+            installed = set()
+        if installed and family not in installed:
+            family = next(
+                (candidate for candidate in ("Cascadia Code", "Consolas", "Courier New")
+                 if candidate in installed),
+                "TkFixedFont",
+            )
+        self.editor_font.configure(family=family)
