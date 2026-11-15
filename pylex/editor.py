@@ -73,6 +73,8 @@ class CodeEditor(tk.Frame):
         self.text.bind("<KeyPress>", self._auto_pair, add="+")
         self.text.bind("<Control-space>", self.show_completions)
         self.text.bind("<Control-a>", self._select_all)
+        self.text.bind("<Button-3>", self._show_context_menu, add="+")
+        self.text.bind("<Shift-F10>", self._show_context_menu, add="+")
         self._configure_tags()
         self.text.edit_modified(False)
         self.refresh_lines()
@@ -303,6 +305,33 @@ class CodeEditor(tk.Frame):
                 self.text.tag_add("matching_bracket", f"1.0+{position}c", f"1.0+{position + 1}c")
             self.text.tag_raise("matching_bracket")
             self.text.tag_raise("sel")
+
+    def _show_context_menu(self, event=None):
+        """Show editor actions that match the current text selection and caret."""
+        menu = tk.Menu(self, tearoff=False)
+        try:
+            has_selection = bool(self.text.tag_ranges("sel"))
+        except tk.TclError:
+            has_selection = False
+        menu.add_command(label="Undo", command=lambda: self.text.edit_undo())
+        menu.add_command(label="Redo", command=lambda: self.text.edit_redo())
+        menu.add_separator()
+        menu.add_command(label="Cut", command=lambda: self.text.event_generate("<<Cut>>"), state="normal" if has_selection else "disabled")
+        menu.add_command(label="Copy", command=lambda: self.text.event_generate("<<Copy>>"), state="normal" if has_selection else "disabled")
+        menu.add_command(label="Paste", command=lambda: self.text.event_generate("<<Paste>>"))
+        menu.add_command(label="Select All", command=self._select_all)
+        menu.add_separator()
+        menu.add_command(label="Duplicate Line / Selection", command=self._duplicate_line)
+        menu.add_command(label="Toggle Line Comment", command=self._toggle_comment)
+        menu.add_command(label="Go to Line…", command=self._go_to_line)
+        menu.add_separator()
+        menu.add_command(label="Show Completions", command=self.show_completions)
+        menu.add_command(label="Format / Analyze", command=lambda: self.event_generate("<<PyLexAnalyze>>"))
+        try:
+            menu.tk_popup(event.x_root, event.y_root)
+        finally:
+            menu.grab_release()
+        return "break"
 
     def _select_all(self, event=None):
         self.text.tag_add("sel", "1.0", "end-1c")
