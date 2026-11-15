@@ -69,13 +69,15 @@ class QualityPanel(ttk.Frame):
     """Non-blocking Black/Ruff/pytest workbench bound to the active workspace."""
 
     def __init__(self, master, context_provider, document_provider,
-                 apply_source, navigate_diagnostic, status_callback=None):
+                 apply_source, navigate_diagnostic, status_callback=None,
+                 project_format_guard=None):
         super().__init__(master, padding=5)
         self.context_provider = context_provider
         self.document_provider = document_provider
         self.apply_source = apply_source
         self.navigate_diagnostic = navigate_diagnostic
         self.status_callback = status_callback or (lambda _message: None)
+        self.project_format_guard = project_format_guard or (lambda: True)
         self._events = queue.Queue()
         self._worker = None
         self._process = None
@@ -148,10 +150,11 @@ class QualityPanel(ttk.Frame):
         return root, str(interpreter), dict(env)
 
     def _document(self):
-        path, source = self.document_provider()
+        editor, path, source = self.document_provider()
         if path is None:
-            raise ValueError("Save the current Python file before using this action.")
-        return Path(path).expanduser().resolve(), str(source)
+            root, _interpreter, _env = self._context()
+            path = root / "untitled.py"
+        return editor, Path(path).expanduser().resolve(), str(source)
 
     def _set_status(self, message):
         self.status.configure(text=message)
@@ -254,14 +257,14 @@ class QualityPanel(ttk.Frame):
     def format_buffer(self):
         try:
             root, interpreter, env = self._context()
-            path, source = self._document()
+            editor, path, source = self._document()
         except Exception as exc:
             messagebox.showerror("Format Buffer", str(exc), parent=self.winfo_toplevel())
             return
 
         def completed(code, stdout, stderr):
             if code == 0:
-                self.apply_source(stdout)
+                self.apply_source(editor, stdout)
                 self._set_status("Current editor buffer formatted with Black.")
             elif "No module named black" in stderr:
                 self._tool_missing("Black")
@@ -276,6 +279,8 @@ class QualityPanel(ttk.Frame):
             root, interpreter, env = self._context()
         except Exception as exc:
             messagebox.showerror("Format Project", str(exc), parent=self.winfo_toplevel())
+            return
+        if not self.project_format_guard():
             return
         if not messagebox.askyesno(
             "Format Project",
