@@ -52,6 +52,8 @@ class CommandRegistryTests(unittest.TestCase):
             self.registry.register(command)
         with self.assertRaises(ValueError):
             self.registry.register(Command(" ", "Invalid", "", lambda: None))
+        with self.assertRaises(ValueError):
+            self.registry.register(Command(" file.open ", "Invalid", "", lambda: None))
 
     def test_execute_runs_known_command_once(self):
         self.assertTrue(self.registry.execute("file.save"))
