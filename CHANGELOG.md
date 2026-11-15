@@ -8,6 +8,7 @@
 - Added ttkbootstrap as the themed widget layer while retaining the existing Tkinter editor and application services.
 
 ### Design goals
+- Keep file-type presentation extensible for future JavaScript, CSS, and HTML editing support.
 - Keep the dark theme as the default and provide a coordinated light theme.
 - Preserve existing editor, execution, debugger, terminal, Git, and quality workflows during the visual refresh.
 
