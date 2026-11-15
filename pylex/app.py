@@ -33,6 +33,10 @@ class PyLexApp(tk.Tk):
     """Main application window and coordinator for editor tools."""
 
     def __init__(self):
+        # Tk must become DPI-aware before its root window is created; otherwise
+        # Windows bitmap-scales the UI and softens text and icon glyphs.
+        if sys.platform == "win32":
+            ttkb.enable_high_dpi_awareness()
         super().__init__()
         # Keep the IDE fully opaque: top-level alpha blending softens text,
         # icons and thin borders on Windows, especially on high-DPI displays.
