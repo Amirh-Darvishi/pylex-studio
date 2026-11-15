@@ -2,7 +2,7 @@
 
 All notable changes to PyLex Studio are documented here.
 
-## [1.6.0] - In development
+## [1.6.0] - 2026-11-15
 
 ### Added
 - Expanded pdb controls with conditional and temporary breakpoints, Run Until, Run Until Return, Jump to Line, function argument inspection, and pretty-printed expression evaluation.
