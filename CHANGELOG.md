@@ -1,5 +1,17 @@
 # Changelog
 
+## [2.0.0] - Unreleased
+
+### Added
+- Began the modern interface refresh with a unified dark/light theme foundation.
+- Added a compact, grouped toolbar for common file, run, tool, and analysis workflows.
+- Added ttkbootstrap as the themed widget layer while retaining the existing Tkinter editor and application services.
+
+### Design goals
+- Keep the dark theme as the default and provide a coordinated light theme.
+- Preserve existing editor, execution, debugger, terminal, Git, and quality workflows during the visual refresh.
+
+
 All notable changes to PyLex Studio are documented here.
 
 ## [1.10.0] - Unreleased
