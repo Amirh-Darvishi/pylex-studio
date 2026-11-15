@@ -1,6 +1,8 @@
 """Tests for streaming, cancellable Python process execution."""
 import os
 import subprocess
+import tempfile
+from pathlib import Path
 import sys
 import time
 import unittest
@@ -49,6 +51,16 @@ class RunnerTests(unittest.TestCase):
         result = handle.wait(5)
         self.assertEqual(result.status, "finished")
         self.assertIn("hello PyLex", result.stdout)
+
+    def test_saved_file_accepts_interactive_stdin(self):
+        with tempfile.TemporaryDirectory() as folder:
+            script = Path(folder) / "ask.py"
+            script.write_text("answer = input('Answer: ')\nprint(answer.upper())\n", encoding="utf-8")
+            handle = start_file(script, timeout=5)
+            self.assertTrue(handle.send_input("pylex"))
+            result = handle.wait(5)
+            self.assertEqual(result.status, "finished")
+            self.assertIn("PYLEX", result.stdout)
 
     def test_missing_library_is_captured_as_runtime_error(self):
         result = start_source("import pylex_test_missing_package_abc123").wait(5)
