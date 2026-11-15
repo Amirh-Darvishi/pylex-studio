@@ -329,9 +329,9 @@ class CodeEditor(tk.Frame):
         self.text.see("insert")
 
     def _delete_current_line(self):
-        line = self.text.index("insert").split(".")[0]
+        line = int(self.text.index("insert").split(".")[0])
         self.text.delete(f"{line}.0", f"{line + 1}.0")
-        self.text.mark_set("insert", f"{max(1, int(line))}.0")
+        self.text.mark_set("insert", f"{max(1, line)}.0")
         self.refresh_lines()
         self._cursor_changed()
 
