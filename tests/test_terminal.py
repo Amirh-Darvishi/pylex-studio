@@ -33,6 +33,16 @@ class TerminalHelperTests(unittest.TestCase):
         self.assertEqual(env["VIRTUAL_ENV"], r"C:\project\.venv")
         self.assertNotIn("PYTHONHOME", env)
 
+    def test_active_editor_context_is_preserved_in_terminal_environment(self):
+        base = {
+            "PATH": "system-path",
+            "PYLEX_ACTIVE_FILE": r"C:\workspace\src\main.py",
+            "PYLEX_WORKSPACE_ROOT": r"C:\workspace",
+        }
+        env = terminal_environment(base)
+        self.assertEqual(env["PYLEX_ACTIVE_FILE"], r"C:\workspace\src\main.py")
+        self.assertEqual(env["PYLEX_WORKSPACE_ROOT"], r"C:\workspace")
+
     def test_base_environment_is_not_mutated(self):
         base = {"PATH": "original"}
         terminal_environment(base, r"C:\venv\Scripts\python.exe")
