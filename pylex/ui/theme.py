@@ -115,7 +115,10 @@ class ThemeManager:
         self.style.configure("TCheckbutton", font=ui_font)
         self.style.configure("TRadiobutton", font=ui_font)
         self.style.configure("TMenubutton", font=ui_font)
-        self.style.configure("TLabelframe.Label", font=(ui_font_family, ui_font_size, "bold"))
+        self.style.configure(
+            "TLabelframe.Label",
+            font=(ui_font_family, ui_font_size, "bold"),
+        )
         self.style.configure("TNotebook", tabmargins=(4, 5, 4, 0))
         self.style.configure("TSeparator", background=palette["border"])
 
@@ -157,8 +160,14 @@ class ThemeManager:
         )
         self.style.map(
             "PyLex.Menu.TMenubutton",
-            background=[("active", palette["selection_bg"]), ("pressed", palette["selection_bg"])],
-            foreground=[("active", palette["accent"]), ("pressed", palette["accent"])],
+            background=[
+                ("active", palette["selection_bg"]),
+                ("pressed", palette["selection_bg"]),
+            ],
+            foreground=[
+                ("active", palette["accent"]),
+                ("pressed", palette["accent"]),
+            ],
         )
         self.style.configure(
             "PyLex.Activity.TFrame",
