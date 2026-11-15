@@ -4,7 +4,6 @@ import sys
 import tempfile
 import unittest
 from pathlib import Path
-from unittest.mock import patch
 
 from pylex.interpreters import (
     create_virtual_environment, discover_interpreters, ensure_pip, find_project_environment,
