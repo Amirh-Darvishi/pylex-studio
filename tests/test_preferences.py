@@ -19,8 +19,13 @@ class PreferencesTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as folder:
             with patch("pylex.preferences.Path.home", return_value=Path(folder)):
                 values = dict(DEFAULTS)
-                values.update(theme="light", font_family="Cascadia Code", font_size=16,
-                              ui_font_family="Segoe UI", ui_font_size=10)
+                values.update(
+                    theme="light",
+                    font_family="Cascadia Code",
+                    font_size=16,
+                    ui_font_family="Segoe UI",
+                    ui_font_size=10,
+                )
                 save_preferences(values)
                 loaded = load_preferences()
                 self.assertEqual(loaded["theme"], "light")
