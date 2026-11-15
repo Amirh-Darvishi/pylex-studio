@@ -376,10 +376,16 @@ class TerminalPanel(ttk.Frame):
         frame.destroy()
         self.status.configure(text="Terminal session closed.")
 
-    def set_theme(self, dark):
-        bg, fg = ("#1e1e1e", "#dddddd") if dark else ("#ffffff", "#202020")
+    def set_theme(self, dark, palette=None):
+        palette = palette or {}
+        bg = palette.get("editor_bg", "#111827" if dark else "#ffffff")
+        fg = palette.get("editor_fg", "#e6edf7" if dark else "#202938")
+        selection = palette.get("selection_bg", "#293b5b" if dark else "#d7e5ff")
         for view in self.views.values():
-            view["output"].configure(bg=bg, fg=fg, insertbackground=fg)
+            view["output"].configure(
+                bg=bg, fg=fg, insertbackground=fg,
+                selectbackground=selection, selectforeground=fg,
+            )
 
     def close_all(self):
         if self._poll_id is not None:
