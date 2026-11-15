@@ -334,7 +334,7 @@ class PyLexApp(tk.Tk):
             ("Integrated Terminal", self.open_terminal), ("Git Source Control", self.open_git_tools),
             ("Python Interpreter...", self.manage_interpreter),
         ])
-        add_menu("View", "layout-sidebar", "muted", [
+        add_menu("View", "columns-gap", "muted", [
             ("Toggle Project Explorer", self.toggle_project_explorer),
             ("Preferences...", self.open_preferences), ("Switch Theme", self.toggle_theme),
         ])
