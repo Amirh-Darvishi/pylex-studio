@@ -2,6 +2,7 @@
 from . import __version__
 import tkinter as tk
 from tkinter import ttk, filedialog, messagebox, simpledialog, font as tkfont
+import ttkbootstrap as ttkb
 import queue
 import threading
 from pathlib import Path
@@ -33,6 +34,8 @@ class PyLexApp(tk.Tk):
 
     def __init__(self):
         super().__init__()
+        self._icon_cache = {}
+        self._toolbar_icon_bindings = []
         self.title("PyLex Studio")
         self.geometry("1180x780")
         self.minsize(850, 560)
@@ -164,6 +167,39 @@ class PyLexApp(tk.Tk):
         self.bind_all("<Control-F5>", lambda event: self.start_debugging())
         self.bind_all("<Control-F10>", lambda event: self.debug_continue())
 
+    def _icon(self, name, color=None, size=16):
+        """Return a cached Bootstrap glyph using the active theme palette."""
+        color = color or self.theme_palette.get("muted", "#91a0b7")
+        key = (name, color, size)
+        if key not in self._icon_cache:
+            self._icon_cache[key] = ttkb.Icon(name, size=size, color=color)
+        return self._icon_cache[key]
+
+    @staticmethod
+    def _file_icon_name(kind):
+        """Map workspace file categories to one consistent icon family."""
+        return {
+            "python": "filetype-py",
+            "web": "filetype-js",
+            "markup": "filetype-html",
+            "style": "filetype-css",
+            "data": "filetype-json",
+            "config": "gear",
+            "shell": "terminal",
+            "compiled": "file-earmark-code",
+            "image": "file-earmark-image",
+            "audio": "file-earmark-music",
+            "video": "file-earmark-play",
+            "pdf": "file-earmark-pdf",
+            "document": "file-earmark-text",
+            "archive": "file-earmark-zip",
+            "database": "database",
+            "font": "file-earmark-font",
+            "text": "file-earmark-text",
+            "binary": "file-earmark",
+            "unknown": "file-earmark",
+        }.get(kind, "file-earmark")
+
     def _toolbar(self):
         """Build a compact, shortcut-aware toolbar with non-duplicated actions."""
         bar = ttk.Frame(self, style="PyLex.Toolbar.TFrame", padding=(14, 8))
@@ -180,40 +216,52 @@ class PyLexApp(tk.Tk):
             ).pack(anchor="w", padx=(2, 3), pady=(0, 3))
             buttons = ttk.Frame(group, style="PyLex.Toolbar.TFrame")
             buttons.pack(anchor="w")
-            for label, action, style_name in actions:
-                ttk.Button(
+            for label, action, style_name, icon_name, color_key in actions:
+                button = ttk.Button(
                     buttons, text=label, command=action,
                     style=style_name,
-                ).pack(side="left", padx=(0, 4))
+                    image=self._icon(icon_name, self.theme_palette.get(color_key)),
+                    compound="left",
+                )
+                button.pack(side="left", padx=(0, 4))
+                self._toolbar_icon_bindings.append((button, icon_name, color_key))
             return group
 
         add_group("File", [
-            ("New  Ctrl+N", self.new_file, "PyLex.Toolbar.TButton"),
-            ("Open  Ctrl+O", self.open_file, "PyLex.Toolbar.TButton"),
-            ("Save  Ctrl+S", self.save_file, "PyLex.Toolbar.TButton"),
+            ("New  Ctrl+N", self.new_file, "PyLex.Toolbar.TButton", "file-earmark-plus", "accent"),
+            ("Open  Ctrl+O", self.open_file, "PyLex.Toolbar.TButton", "folder2-open", "accent"),
+            ("Save  Ctrl+S", self.save_file, "PyLex.Toolbar.TButton", "floppy", "success"),
         ])
         add_group("Run & Debug", [
-            ("▶ Run  F5", self.run_code, "PyLex.Primary.TButton"),
-            ("Stop  ⇧F5", self.stop_execution, "PyLex.Danger.TButton"),
-            ("Debug  Ctrl+F5", self.start_debugging, "PyLex.Toolbar.TButton"),
+            ("Run  F5", self.run_code, "PyLex.Primary.TButton", "play-fill", "accent"),
+            ("Stop  Shift+F5", self.stop_execution, "PyLex.Danger.TButton", "stop-fill", "danger"),
+            ("Debug  Ctrl+F5", self.start_debugging, "PyLex.Toolbar.TButton", "bug-fill", "violet"),
         ])
         add_group("Code", [
-            ("Analyze  F6", self.analyze_all, "PyLex.Toolbar.TButton"),
+            ("Analyze  F6", self.analyze_all, "PyLex.Toolbar.TButton", "activity", "accent"),
         ])
 
         spacer = ttk.Frame(bar, style="PyLex.Toolbar.TFrame")
         spacer.pack(side="left", fill="x", expand=True)
-        ttk.Button(
+        self.help_button = ttk.Button(
             bar, text="Help", command=self.show_help,
             style="PyLex.Toolbar.TButton",
-        ).pack(side="right", padx=(4, 0))
-        ttk.Button(
+            image=self._icon("question-circle", self.theme_palette.get("muted")),
+            compound="left",
+        )
+        self.help_button.pack(side="right", padx=(4, 0))
+        self.settings_button = ttk.Button(
             bar, text="Settings  Ctrl+,", command=self.open_preferences,
             style="PyLex.Toolbar.TButton",
-        ).pack(side="right", padx=(4, 0))
+            image=self._icon("gear-fill", self.theme_palette.get("muted")),
+            compound="left",
+        )
+        self.settings_button.pack(side="right", padx=(4, 0))
         self.theme_button = ttk.Button(
             bar, text="Light theme" if self.dark else "Dark theme",
             command=self.toggle_theme, style="PyLex.Toolbar.TButton",
+            image=self._icon("sun" if self.dark else "moon-stars", self.theme_palette.get("warning")),
+            compound="left",
         )
         self.theme_button.pack(side="right", padx=(4, 0))
 
@@ -1008,7 +1056,8 @@ class PyLexApp(tk.Tk):
         if self.project_root is None:
             return
         root_id = self.project_tree.insert(
-            "", "end", text=f"📂 {self.project_root.name}",
+            "", "end", text=self.project_root.name,
+            image=self._icon("folder-fill", self.theme_palette.get("accent"), 16),
             values=(str(self.project_root), "directory"), tags=("directory",), open=True,
         )
         ignored = {
@@ -1029,14 +1078,19 @@ class PyLexApp(tk.Tk):
                     continue
                 if entry.is_dir():
                     node = self.project_tree.insert(
-                        parent_id, "end", text=f"📁 {entry.name}",
+                        parent_id, "end", text=entry.name,
+                        image=self._icon("folder", self.theme_palette.get("accent"), 16),
                         values=(str(entry), "directory"), tags=("directory",), open=False,
                     )
                     add_children(node, entry)
                 elif entry.is_file():
                     info = file_type_for(entry)
+                    icon_color = self.theme_palette.get(
+                        f"file_{info.kind}", self.theme_palette.get("editor_fg")
+                    )
                     self.project_tree.insert(
-                        parent_id, "end", text=f"{info.icon} {entry.name}",
+                        parent_id, "end", text=entry.name,
+                        image=self._icon(self._file_icon_name(info.kind), icon_color, 16),
                         values=(str(entry), info.kind), tags=(info.kind,),
                     )
 
@@ -2085,6 +2139,7 @@ class PyLexApp(tk.Tk):
             ui_font_size=self.preferences.get("ui_font_size", 9),
         )
         self.theme_palette = palette
+        self._icon_cache.clear()
         self.configure(bg=palette["window_bg"])
         for editor in self.documents:
             editor.set_theme(self.dark, palette)
@@ -2116,8 +2171,20 @@ class PyLexApp(tk.Tk):
                 )
         if hasattr(self, "theme_button"):
             self.theme_button.configure(
-                text="Light theme" if self.dark else "Dark theme"
+                text="Light theme" if self.dark else "Dark theme",
+                image=self._icon(
+                    "sun" if self.dark else "moon-stars",
+                    palette.get("warning"),
+                ),
             )
+        if hasattr(self, "help_button"):
+            self.help_button.configure(image=self._icon("question-circle", palette.get("muted")))
+        if hasattr(self, "settings_button"):
+            self.settings_button.configure(image=self._icon("gear-fill", palette.get("muted")))
+        for button, icon_name, color_key in getattr(self, "_toolbar_icon_bindings", []):
+            button.configure(image=self._icon(icon_name, palette.get(color_key)))
+        if hasattr(self, "project_tree") and self.project_root is not None:
+            self._populate_project_tree()
         for menu in getattr(self, "_menus", []):
             try:
                 menu.configure(
