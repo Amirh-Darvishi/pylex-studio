@@ -1927,19 +1927,47 @@ class PyLexApp(tk.Tk):
         return
 
     def _show_recent_workspace_menu(self):
-        """Open the recent-workspace picker from the File toolbar menu."""
-        self._refresh_recent_workspace_menu()
-        menu = getattr(self, "recent_workspace_menu", None)
-        if menu is None:
-            return
-        try:
-            x, y = self.winfo_pointerxy()
-            menu.tk_popup(x, y)
-        finally:
-            try:
-                menu.grab_release()
-            except tk.TclError:
-                pass
+        """Show a styled, action-rich recent-workspace picker."""
+        menu = self._new_context_menu()
+        recent = [
+            value for value in self.preferences.get("recent_workspaces", [])
+            if isinstance(value, str) and Path(value).is_dir()
+        ]
+        menu.add_command(label="OPEN RECENT WORKSPACE", state="disabled")
+        menu.add_separator()
+        if not recent:
+            menu.add_command(label="No recent workspaces", state="disabled")
+        for value in recent:
+            folder = Path(value)
+            actions = self._new_context_menu()
+            actions.add_command(
+                label="Open Workspace",
+                command=lambda target=value: self._activate_workspace(target),
+            )
+            actions.add_command(
+                label="Open in File Manager",
+                command=lambda target=folder: self._reveal_path(target),
+            )
+            actions.add_command(
+                label="Open Terminal Here",
+                command=lambda target=folder: self._open_terminal_at(target),
+            )
+            actions.add_separator()
+            actions.add_command(
+                label="Copy Workspace Path",
+                command=lambda target=value: self._copy_to_clipboard(target),
+            )
+            actions.add_command(
+                label="Remove from Recent",
+                command=lambda target=value: self._remove_recent_workspace(target),
+            )
+            menu.add_cascade(label=folder.name, menu=actions)
+        menu.add_separator()
+        menu.add_command(label="Open Workspace…", command=self.open_project_folder)
+        menu.add_command(label="Clear Recent Workspaces", command=self.clear_recent_workspaces,
+                         state="normal" if recent else "disabled")
+        x, y = self.winfo_pointerxy()
+        menu.tk_popup(x, y)
 
     def _copy_to_clipboard(self, value):
         self.clipboard_clear()
@@ -2234,33 +2262,72 @@ class PyLexApp(tk.Tk):
         except OSError as exc:
             messagebox.showerror('Show in File Manager', str(exc), parent=self)
 
+    def _copy_relative_workspace_path(self, path):
+        try:
+            relative = Path(path).resolve().relative_to(self.project_root.resolve())
+        except (ValueError, AttributeError, OSError):
+            relative = Path(path)
+        self._copy_to_clipboard(str(relative))
+
+    def _open_terminal_at(self, path):
+        """Start a terminal session rooted at the selected workspace directory."""
+        target = Path(path)
+        target = target if target.is_dir() else target.parent
+        if not target.is_dir():
+            messagebox.showerror("Open Terminal", f"Folder does not exist: {target}", parent=self)
+            return
+        self.tabs.select(self.terminal_panel)
+        process = self.terminal_panel.create_session(cwd_override=str(target))
+        if process is not None:
+            self.status.configure(text=f"Terminal opened at {target}")
+
     def _show_project_tree_context_menu(self, event):
         row = self.project_tree.identify_row(event.y)
         if row:
             self.project_tree.selection_set(row)
             self.project_tree.focus(row)
-        values = self.project_tree.item(row, 'values') if row else ()
+        values = self.project_tree.item(row, "values") if row else ()
         path = Path(values[0]) if values else self.project_root
+        is_root = path is not None and self.project_root is not None and path == self.project_root
         menu = self._new_context_menu()
+
         if path is None:
-            menu.add_command(label='Open Workspace…', command=self.open_project_folder)
+            menu.add_command(label="Open Workspace…", command=self.open_project_folder)
+            menu.add_command(label="Open Recent Workspaces", command=self._show_recent_workspace_menu)
         elif path.is_dir():
-            menu.add_command(label='Open / Expand', command=lambda: self._open_tree_directory(row))
-            menu.add_command(label='New File…', command=lambda: self._create_tree_item(path, 'file'))
-            menu.add_command(label='New Folder…', command=lambda: self._create_tree_item(path, 'folder'))
-            menu.add_command(label='Refresh', command=self.refresh_workspace)
+            menu.add_command(
+                label="Collapse Folder" if row and self.project_tree.item(row, "open") else "Expand Folder",
+                command=lambda target=row: self._open_tree_directory(target),
+            )
+            menu.add_separator()
+            menu.add_command(label="New File…", command=lambda target=path: self._create_tree_item(target, "file"))
+            menu.add_command(label="New Folder…", command=lambda target=path: self._create_tree_item(target, "folder"))
+            menu.add_command(label="Open Terminal Here", command=lambda target=path: self._open_terminal_at(target))
+            menu.add_separator()
+            menu.add_command(label="Refresh Explorer", command=self.refresh_workspace)
+            if is_root:
+                menu.add_command(label="Open Recent Workspaces", command=self._show_recent_workspace_menu)
+                menu.add_command(label="Close Workspace", command=self.close_workspace)
         else:
-            menu.add_command(label='Open', command=lambda: self._open_path(path))
-            menu.add_command(label='Open with System App', command=lambda: self._open_external_file(path))
+            menu.add_command(label="Open", command=lambda target=path: self._open_path(target))
+            menu.add_command(label="Open with System App", command=lambda target=path: self._open_external_file(target))
+            menu.add_command(label="Open Containing Folder", command=lambda target=path: self._reveal_path(target))
+            menu.add_command(label="Open Terminal Here", command=lambda target=path: self._open_terminal_at(target))
+
         if path is not None:
             menu.add_separator()
-            menu.add_command(label='Copy Path', command=lambda: self._copy_to_clipboard(path))
-            menu.add_command(label='Show in File Manager', command=lambda: self._reveal_path(path))
-            if path != self.project_root:
-                menu.add_command(label='Rename…', command=lambda: self._rename_tree_path(path))
-                menu.add_command(label='Delete…', command=lambda: self._delete_tree_path(path))
+            menu.add_command(label="Copy Path", command=lambda target=path: self._copy_to_clipboard(target))
+            menu.add_command(
+                label="Copy Relative Path",
+                command=lambda target=path: self._copy_relative_workspace_path(target),
+            )
+            menu.add_command(label="Show in File Manager", command=lambda target=path: self._reveal_path(target))
+            if not is_root:
+                menu.add_separator()
+                menu.add_command(label="Rename…", command=lambda target=path: self._rename_tree_path(target))
+                menu.add_command(label="Delete…", command=lambda target=path: self._delete_tree_path(target))
         menu.tk_popup(event.x_root, event.y_root)
-        return 'break'
+        return "break"
 
     def _open_tree_directory(self, row):
         if row and self.project_tree.exists(row):
