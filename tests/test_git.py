@@ -80,6 +80,20 @@ class GitServiceTests(unittest.TestCase):
         with self.assertRaisesRegex(GitError, "Untracked"):
             self.git.unstage("new.txt")
 
+    def test_remote_operations_use_configured_upstream(self):
+        bare = self.root.parent / (self.root.name + "-remote.git")
+        subprocess.run(["git", "init", "--bare", "-q", str(bare)], check=True)
+        subprocess.run(["git", "remote", "add", "origin", str(bare)], cwd=self.root, check=True)
+        self.assertEqual(self.git.remotes(), ["origin"])
+        self.git.fetch()
+        self.git.push()
+        self.assertTrue(self.git.status().upstream)
+        self.git.pull()
+
+    def test_remote_operations_report_missing_remote(self):
+        with self.assertRaisesRegex(GitError, "no configured Git remote"):
+            self.git.fetch()
+
     def test_reject_path_outside_workspace(self):
         with self.assertRaises(GitError):
             self.git.stage(self.root.parent / "outside.txt")
