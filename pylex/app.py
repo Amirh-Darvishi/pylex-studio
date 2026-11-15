@@ -1,5 +1,6 @@
 """Main graphical interface for PyLex Studio."""
-from . import __version__\nfrom .commands import Command, CommandRegistry
+from . import __version__
+from .commands import Command, CommandRegistry
 import tkinter as tk
 from tkinter import ttk, filedialog, messagebox, simpledialog, font as tkfont
 import ttkbootstrap as ttkb
@@ -28,7 +29,8 @@ from .terminal import TerminalPanel, python_file_command
 from .quality import QualityPanel
 from .git_panel import GitPanel
 from .ui.theme import ThemeManager
-from .ui.context_menu import ContextMenu\nfrom .ui.command_palette import CommandPalette
+from .ui.context_menu import ContextMenu
+from .ui.command_palette import CommandPalette
 
 
 class PyLexApp(tk.Tk):
