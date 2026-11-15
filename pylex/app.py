@@ -368,7 +368,13 @@ class PyLexApp(tk.Tk):
             self.editor_tabs.select(document["frame"])
             self.editor = editor
             self._sync_active_document()
-            if not self._confirm():
+            answer = messagebox.askyesnocancel(
+                "Unsaved Changes",
+                f"Save changes to {document['path'].name if document['path'] else 'Untitled'} "
+                "before changing the workspace?\\n\\n"
+                "Choose No to keep this tab open with its unsaved changes."
+            )
+            if answer is None or (answer and not self.save_file()):
                 if previous in self.documents:
                     self.editor_tabs.select(self.documents[previous]["frame"])
                     self.editor = previous

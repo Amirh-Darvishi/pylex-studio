@@ -9,7 +9,6 @@ DEFAULTS = {
     "font_size": 12,
     "show_project_explorer": True,
     "last_workspace": "",
-    "recent_workspaces": [],
     "timeout_seconds": 10,
 }
 
@@ -37,12 +36,6 @@ def load_preferences():
     values["show_project_explorer"] = bool(values["show_project_explorer"])
     if not isinstance(values["last_workspace"], str):
         values["last_workspace"] = ""
-    recent = values["recent_workspaces"]
-    if not isinstance(recent, list):
-        recent = []
-    values["recent_workspaces"] = list(dict.fromkeys(
-        item for item in recent if isinstance(item, str) and item.strip()
-    ))[:8]
     timeout = values["timeout_seconds"]
     if timeout is not None:
         try:
