@@ -36,6 +36,7 @@ class PyLexApp(tk.Tk):
         super().__init__()
         self._icon_cache = {}
         self._toolbar_icon_bindings = []
+        self._tool_tab_icon_bindings = []
         self.title("PyLex Studio")
         self.geometry("1180x780")
         self.minsize(850, 560)
@@ -282,6 +283,12 @@ class PyLexApp(tk.Tk):
         )
         self.theme_button.pack(side="right", padx=(4, 0))
 
+    def _add_tool_tab(self, child, title, icon_name, color_key):
+        """Add a lower-panel tab and retain its icon for live theme refreshes."""
+        image = self._icon(icon_name, self.theme_palette.get(color_key))
+        self.tabs.add(child, text=title, image=image, compound="left")
+        self._tool_tab_icon_bindings.append((child, icon_name, color_key))
+
     def _workspace(self):
         workspace = ttk.Panedwindow(self, orient="horizontal")
         self.workspace = workspace
@@ -336,31 +343,19 @@ class PyLexApp(tk.Tk):
             default_shell=self.preferences.get("terminal_shell", ""),
             on_shell_change=self._save_terminal_shell,
         )
-        self.tabs.add(
-            self.terminal_panel, text="Terminal",
-            image=self._icon("terminal", self.theme_palette.get("accent")),
-            compound="left",
-        )
+        self._add_tool_tab(self.terminal_panel, "Terminal", "terminal", "accent")
         self.quality_panel = QualityPanel(
             lower, self._quality_context, self._quality_document,
             self._apply_formatted_source, self._navigate_quality_diagnostic,
             status_callback=lambda message: self.status.configure(text=message),
             project_format_guard=self._can_format_project,
         )
-        self.tabs.add(
-            self.quality_panel, text="Quality",
-            image=self._icon("check2-square", self.theme_palette.get("success")),
-            compound="left",
-        )
+        self._add_tool_tab(self.quality_panel, "Quality", "check2-square", "success")
         self.git_panel = GitPanel(
             lower, lambda: self.project.root if self.project else None,
             status_callback=lambda message: self.status.configure(text=message),
         )
-        self.tabs.add(
-            self.git_panel, text="Git",
-            image=self._icon("git", self.theme_palette.get("violet")),
-            compound="left",
-        )
+        self._add_tool_tab(self.git_panel, "Git", "git", "violet")
 
         self.status = ttk.Label(
             self, text="Ready", style="PyLex.Status.TLabel"
@@ -397,11 +392,7 @@ class PyLexApp(tk.Tk):
             "Syntax Analysis": ("check-circle", "success"),
         }
         icon_name, color_key = panel_icons.get(title, ("file-earmark-text", "muted"))
-        self.tabs.add(
-            frame, text=title,
-            image=self._icon(icon_name, self.theme_palette.get(color_key)),
-            compound="left",
-        )
+        self._add_tool_tab(frame, title, icon_name, color_key)
         return text
 
     def _terminal_context(self):
@@ -543,11 +534,7 @@ class PyLexApp(tk.Tk):
         self.dependency_tree.pack(fill="both", expand=True)
         self.dependency_tree.tag_configure("missing", foreground="#d9534f")
         self.dependency_tree.tag_configure("installed", foreground="#5b9b68")
-        self.tabs.add(
-            frame, text="Dependencies",
-            image=self._icon("boxes", self.theme_palette.get("warning")),
-            compound="left",
-        )
+        self._add_tool_tab(frame, "Dependencies", "boxes", "warning")
 
     def _interpreter_for_project(self, project=None):
         """Resolve project override, local .venv, global setting, or current Python."""
@@ -817,11 +804,7 @@ class PyLexApp(tk.Tk):
         self.error_tree.tag_configure("info", foreground="#4f8cff")
         self.error_tree.bind("<<TreeviewSelect>>", self._navigate_to_selected_error)
         self.error_tree.bind("<Double-1>", self._navigate_to_selected_error)
-        self.tabs.add(
-            frame, text="Problems",
-            image=self._icon("exclamation-triangle", self.theme_palette.get("danger")),
-            compound="left",
-        )
+        self._add_tool_tab(frame, "Problems", "exclamation-triangle", "danger")
 
     def _show(self, panel, content):
         panel.configure(state="normal")
@@ -2372,6 +2355,14 @@ class PyLexApp(tk.Tk):
             self.settings_button.configure(image=self._icon("gear-fill", palette.get("muted")))
         for button, icon_name, color_key in getattr(self, "_toolbar_icon_bindings", []):
             button.configure(image=self._icon(icon_name, palette.get(color_key)))
+        for child, icon_name, color_key in getattr(self, "_tool_tab_icon_bindings", []):
+            try:
+                self.tabs.tab(
+                    child, image=self._icon(icon_name, palette.get(color_key)),
+                    compound="left",
+                )
+            except tk.TclError:
+                pass
         if hasattr(self, "project_tree") and self.project_root is not None:
             self._populate_project_tree()
         for menu in getattr(self, "_menus", []):
