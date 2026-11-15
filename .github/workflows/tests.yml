@@ -21,7 +21,7 @@ jobs:
       - run: python -m pytest -q
       - name: Black formatting check
         if: ${{ matrix.python-version == '3.11' && matrix.os == 'ubuntu-latest' }}
-        run: python -m black --check --diff pylex/commands.py pylex/ui/command_palette.py tests/test_commands.py pylex/quality.py tests/test_quality.py pylex/ui/theme.py tests/test_theme.py pylex/preferences.py tests/test_preferences.py
+        run: python -m black --check --diff pylex tests
       - name: Ruff lint check
         if: ${{ matrix.python-version == '3.11' }}
         run: python -m ruff check pylex tests
