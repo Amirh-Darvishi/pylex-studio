@@ -16,6 +16,9 @@ class DebugSession:
         self.process = process
         self.script_path = Path(script_path)
         self.cleanup_script = cleanup_script
+        self.completion_status = None
+        self._stdin_lock = threading.Lock()
+        self._completion_sent = False
         self._output = queue.Queue()
         self._reader = threading.Thread(target=self._read_output, daemon=True)
         self._reader.start()
@@ -75,12 +78,24 @@ class DebugSession:
         return self.process.poll() is not None
 
     def _read_output(self):
+        """Collect output and close pdb after normal completion or an uncaught exception."""
+        tail = ""
         try:
             while True:
                 chunk = self.process.stdout.read(1)
                 if not chunk:
                     break
                 self._output.put(chunk)
+                tail = (tail + chunk)[-256:]
+                if not self._completion_sent:
+                    if "Uncaught exception" in tail:
+                        self.completion_status = "error"
+                        self._completion_sent = True
+                        self.command("q")
+                    elif "The program finished" in tail or "The program exited" in tail:
+                        self.completion_status = "finished"
+                        self._completion_sent = True
+                        self.command("q")
         finally:
             self._output.put(None)
 
@@ -108,11 +123,18 @@ class DebugSession:
         if any(char in value for char in ("\n", "\r", "\x00")):
             return False
         try:
-            self.process.stdin.write(value + "\n")
-            self.process.stdin.flush()
+            with self._stdin_lock:
+                if self.done:
+                    return False
+                self.process.stdin.write(value + "\n")
+                self.process.stdin.flush()
             return True
         except (BrokenPipeError, OSError, ValueError):
             return False
+
+    def send_input(self, value):
+        """Send one input line to a debugged program waiting in input()."""
+        return self.command(value)
 
     @staticmethod
     def _positive_number(value, label="number"):
