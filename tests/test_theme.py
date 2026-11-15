@@ -17,6 +17,8 @@ class ThemeDefinitionTests(unittest.TestCase):
         required = {
             "window_bg", "editor_bg", "editor_fg", "selection_bg",
             "menu_bg", "menu_fg", "accent", "danger", "surface",
+            "violet", "success", "warning", "panel_bg", "border",
+            "file_python", "file_web", "file_markup", "file_style", "file_data",
         }
         for theme in THEMES.values():
             self.assertTrue(required.issubset(theme))
