@@ -351,14 +351,11 @@ class CodeEditor(tk.Frame):
                 pass
         root = self.winfo_toplevel()
         palette = getattr(root, "theme_palette", {})
-        menu = tk.Menu(
-            self, tearoff=False,
-            background=palette.get("menu_bg", "#252D38"),
-            foreground=palette.get("menu_fg", "#D8DEE8"),
-            activebackground=palette.get("elevated", "#303B49"),
-            activeforeground=palette.get("accent", "#8FB7D8"),
-            disabledforeground=palette.get("muted", "#9AA7B7"),
-            borderwidth=1, relief="solid",
+        preferences = getattr(root, "preferences", {})
+        font_family = root._resolved_ui_font() if hasattr(root, "_resolved_ui_font") else "Segoe UI"
+        menu = ContextMenu(
+            self, palette=palette, font_family=font_family,
+            font_size=preferences.get("ui_font_size", 9),
         )
         try:
             has_selection = bool(self.text.tag_ranges("sel"))
