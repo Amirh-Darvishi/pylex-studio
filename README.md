@@ -46,14 +46,14 @@ PyLex Studio 2.0.0 focuses on a polished, Python-first desktop IDE. The file-typ
 - Multiple terminal tabs, live output streaming, command input with per-session Up/Down history, Ctrl+C interruption, process-tree termination, and per-session working directories
 - Terminal sessions inherit the active workspace environment and selected Python virtual environment
 - Adjustable editor font family and font size
-- Persistent preferences for theme, UI/code fonts, font sizes, project explorer visibility, execution timeout, interpreter selection, and local account display name
+- Persistent preferences for theme, UI/code fonts, font sizes, project explorer visibility, execution timeout, interpreter selection, configurable status-bar indicators, indentation, encoding and line endings, and local account display name
 - Structured error panel with exact exception type and source location
 - Click or double-click a diagnostic to jump to its line and column
 - Current-line emphasis and inline error highlighting
 - Separate Output, Lexical Analysis, Syntax Analysis, and Errors panels
 - Analyze All and Clear Results actions
 - Dark and light application themes, with a dark default
-- VS Code-inspired Activity Bar and an Explorer with Open Editors and Workspace sections
+- VS Code-inspired Activity Bar and an Explorer with Open Editors, Recent Workspaces and Workspace sections
 - Dedicated cascading menu row above the restored logo/action toolbar, with File, Edit, Navigate, Run, Debug, Code, Tools, View and Help groups
 - Consistent Run / Stop actions with matching dimensions and coordinated hover, pressed and disabled states across dark and light themes
 - Expanded Account Center and Settings windows with local profile, workspace overview, keyboard shortcuts, privacy, security and product roadmap sections
@@ -61,6 +61,7 @@ PyLex Studio 2.0.0 focuses on a polished, Python-first desktop IDE. The file-typ
 - Local Account center with a persistent display name; cloud sign-in and synchronization are not yet enabled
 - Original PyLex Studio vector brand mark in the application header and About window
 - Modern grouped toolbar and consistent application styling
+- Context-aware right-click menus across editor, Explorer, tabs, terminal, Git, quality tools and output panels
 
 ## Requirements
 
