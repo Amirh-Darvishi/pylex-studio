@@ -238,12 +238,12 @@ class TerminalPanel(ttk.Frame):
                          undo=False, state="disabled")
         output.tag_configure("system", foreground="#4b83c3")
         output.tag_configure("error", foreground="#d9534f")
-        ybar = ttk.Scrollbar(output_frame, command=output.yview)
-        xbar = ttk.Scrollbar(output_frame, orient="horizontal", command=output.xview)
-        output.configure(yscrollcommand=ybar.set, xscrollcommand=xbar.set)
-        output.grid(row=0, column=0, sticky="nsew")
-        ybar.grid(row=0, column=1, sticky="ns")
-        xbar.grid(row=1, column=0, sticky="ew")
+        output.grid(row=0, column=0, columnspan=2, sticky="nsew")
+        output.bind(
+            "<Shift-MouseWheel>",
+            lambda event: (output.xview_scroll(-int(event.delta / 120) * 3, "units"), "break"),
+            add="+",
+        )
         output_frame.rowconfigure(0, weight=1)
         output_frame.columnconfigure(0, weight=1)
         input_row = ttk.Frame(frame, padding=(4, 4))
