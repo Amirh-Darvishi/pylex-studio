@@ -367,7 +367,7 @@ class PyLexApp(tk.Tk):
             ("New", "file-earmark-plus", self.new_file, "accent"),
             ("Open", "folder2-open", self.open_file, "muted"),
             ("Workspace", "folder2-open", self.open_project_folder, "accent"),
-            ("Python", "python", self.manage_interpreter, "success"),
+            ("Python", "filetype-py", self.manage_interpreter, "success"),
             ("Save", "floppy", self.save_file, "muted"),
             ("Terminal", "terminal", self.open_terminal, "violet"),
             ("Quality", "check2-square", self.open_quality_tools, "success"),
