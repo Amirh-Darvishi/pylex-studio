@@ -232,90 +232,213 @@ class PyLexApp(tk.Tk):
         menu_row.pack(fill="x", side="top")
 
         def add_menu(title, icon_name, color_key, commands):
-            menu = tk.Menu(menu_row, tearoff=False)
-            self._menus.append(menu)
-            menu_tree = [menu]
-
-            def populate(target, items):
-                for item in items:
-                    if item is None:
-                        target.add_separator()
-                    elif item[0] == "submenu":
-                        submenu = tk.Menu(target, tearoff=False)
-                        self._menus.append(submenu)
-                        menu_tree.append(submenu)
-                        populate(submenu, item[2])
-                        target.add_cascade(label=item[1], menu=submenu)
-                    else:
-                        label, action, *shortcut = item
-                        target.add_command(
-                            label=label, command=action,
-                            accelerator=shortcut[0] if shortcut else "",
-                        )
-
-            populate(menu, commands)
             button = ttk.Menubutton(
-                menu_row, text=title, menu=menu, style="PyLex.Menu.TMenubutton",
+                menu_row, text=title, style="PyLex.Menu.TMenubutton",
                 image=self._icon(icon_name, self.theme_palette.get(color_key)),
                 compound="left",
             )
             button.pack(side="left", padx=(0, 3), ipady=2)
             button.configure(takefocus=False)
             self._toolbar_icon_bindings.append((button, icon_name, color_key))
-            pending = {"open_id": None, "close_id": None}
+
+            state = {"windows": [], "open_id": None, "poll_id": None,
+                     "submenu_id": None, "closed": True}
 
             def cancel_timer(key):
-                timer_id = pending[key]
+                timer_id = state.get(key)
                 if timer_id is not None:
                     try:
-                        button.after_cancel(timer_id)
+                        self.after_cancel(timer_id)
                     except tk.TclError:
                         pass
-                    pending[key] = None
+                    state[key] = None
 
-            def cancel_open():
+            def destroy_popups():
+                cancel_timer("poll_id")
                 cancel_timer("open_id")
+                cancel_timer("submenu_id")
+                for popup in reversed(state["windows"]):
+                    try:
+                        if popup.winfo_exists():
+                            popup.destroy()
+                    except tk.TclError:
+                        pass
+                state["windows"].clear()
+                state["closed"] = True
+                if getattr(self, "_toolbar_menu_close", None) is destroy_popups:
+                    self._toolbar_menu_close = None
 
-            def cancel_close(_event=None):
-                cancel_timer("close_id")
-
-            def close_menu():
-                pending["close_id"] = None
+            def pointer_inside(widget, x, y):
                 try:
-                    if menu.winfo_ismapped():
-                        menu.unpost()
+                    if not widget.winfo_exists() or not widget.winfo_ismapped():
+                        return False
+                    left, top = widget.winfo_rootx(), widget.winfo_rooty()
+                    return (left <= x < left + widget.winfo_width()
+                            and top <= y < top + widget.winfo_height())
                 except tk.TclError:
-                    pass
+                    return False
 
-            def schedule_close(_event=None):
-                cancel_open()
-                cancel_close()
-                pending["close_id"] = button.after(140, close_menu)
+            def poll_pointer():
+                state["poll_id"] = None
+                if state["closed"] or not state["windows"]:
+                    return
+                try:
+                    x, y = self.winfo_pointerxy()
+                except tk.TclError:
+                    destroy_popups()
+                    return
+                inside = pointer_inside(button, x, y) or any(
+                    pointer_inside(popup, x, y) for popup in state["windows"]
+                )
+                if not inside:
+                    destroy_popups()
+                    return
+                state["poll_id"] = self.after(70, poll_pointer)
+
+            def schedule_poll():
+                cancel_timer("poll_id")
+                state["poll_id"] = self.after(70, poll_pointer)
+
+            def make_popup(anchor, items, parent_popup=None):
+                popup = tk.Toplevel(self)
+                popup.withdraw()
+                popup.overrideredirect(True)
+                popup.transient(self)
+                popup.configure(
+                    background=self.theme_palette["border"],
+                    highlightthickness=1,
+                    highlightbackground=self.theme_palette["border"],
+                )
+                body = tk.Frame(
+                    popup, background=self.theme_palette["menu_bg"],
+                    padx=3, pady=3,
+                )
+                body.pack(fill="both", expand=True)
+                state["windows"].append(popup)
+
+                def show_submenu(item_button, submenu_items):
+                    cancel_timer("submenu_id")
+                    for old_popup in state["windows"][len(state["windows"])-1:]:
+                        if old_popup is not popup:
+                            try:
+                                old_popup.destroy()
+                            except tk.TclError:
+                                pass
+                    while state["windows"] and state["windows"][-1] is not popup:
+                        state["windows"].pop()
+                    submenu = make_popup(item_button, submenu_items, popup)
+                    submenu.update_idletasks()
+                    x = popup.winfo_rootx() + popup.winfo_width() - 2
+                    y = item_button.winfo_rooty()
+                    screen_w = self.winfo_screenwidth()
+                    if x + submenu.winfo_reqwidth() > screen_w:
+                        x = popup.winfo_rootx() - submenu.winfo_reqwidth() + 2
+                    submenu.geometry(f"+{max(0, x)}+{max(0, y)}")
+                    submenu.deiconify()
+                    submenu.lift()
+                    schedule_poll()
+
+                for item in items:
+                    if item is None:
+                        tk.Frame(
+                            body, height=1,
+                            background=self.theme_palette["border"],
+                        ).pack(fill="x", padx=7, pady=4)
+                        continue
+                    if item[0] == "submenu":
+                        label, submenu_items = item[1], item[2]
+                        command = None
+                        shortcut = ""
+                        display = f"{label}    ›"
+                    else:
+                        label, command, *shortcuts = item
+                        shortcut = shortcuts[0] if shortcuts else ""
+                        display = label
+                        submenu_items = None
+
+                    row = tk.Frame(body, background=self.theme_palette["menu_bg"])
+                    row.pack(fill="x")
+                    item_button = tk.Button(
+                        row, text=display, anchor="w", command=command,
+                        relief="flat", borderwidth=0, highlightthickness=0,
+                        takefocus=False, padx=11, pady=6,
+                        background=self.theme_palette["menu_bg"],
+                        foreground=self.theme_palette["menu_fg"],
+                        activebackground=self.theme_palette["elevated"],
+                        activeforeground=self.theme_palette["accent"],
+                        font=(self._resolved_ui_font(),
+                              self.preferences.get("ui_font_size", 9)),
+                        cursor="hand2",
+                    )
+                    item_button.pack(side="left", fill="x", expand=True)
+                    if shortcut:
+                        tk.Label(
+                            row, text=shortcut,
+                            background=self.theme_palette["menu_bg"],
+                            foreground=self.theme_palette["muted"],
+                            font=(self._resolved_ui_font(),
+                                  max(7, self.preferences.get("ui_font_size", 9)-1)),
+                            padx=8,
+                        ).pack(side="right")
+                    if submenu_items is not None:
+                        item_button.bind(
+                            "<Enter>",
+                            lambda event, b=item_button, entries=submenu_items:
+                                (cancel_timer("submenu_id"),
+                                 state.update(submenu_id=self.after(
+                                     110, lambda: show_submenu(b, entries)))),
+                            add="+",
+                        )
+                    else:
+                        item_button.bind(
+                            "<Enter>",
+                            lambda _event: cancel_timer("submenu_id"),
+                            add="+",
+                        )
+                popup.update_idletasks()
+                req_w = max(210, popup.winfo_reqwidth())
+                req_h = popup.winfo_reqheight()
+                popup.geometry(f"{req_w}x{req_h}")
+                return popup
 
             def post_menu():
-                cancel_open()
-                cancel_close()
-                if button.winfo_exists() and not menu.winfo_ismapped():
-                    menu.post(
-                        button.winfo_rootx(),
-                        button.winfo_rooty() + button.winfo_height(),
-                    )
+                cancel_timer("open_id")
+                if not button.winfo_exists():
+                    return
+                active_close = getattr(self, "_toolbar_menu_close", None)
+                if active_close and active_close is not destroy_popups:
+                    active_close()
+                destroy_popups()
+                state["closed"] = False
+                self._toolbar_menu_close = destroy_popups
+                popup = make_popup(button, commands)
+                popup.update_idletasks()
+                x = button.winfo_rootx()
+                y = button.winfo_rooty() + button.winfo_height()
+                if x + popup.winfo_reqwidth() > self.winfo_screenwidth():
+                    x = self.winfo_screenwidth() - popup.winfo_reqwidth() - 4
+                if y + popup.winfo_reqheight() > self.winfo_screenheight():
+                    y = button.winfo_rooty() - popup.winfo_reqheight()
+                popup.geometry(f"+{max(0, x)}+{max(0, y)}")
+                popup.deiconify()
+                popup.lift()
+                schedule_poll()
 
             def open_on_hover(_event=None):
-                cancel_close()
-                cancel_open()
-                if not menu.winfo_ismapped():
-                    pending["open_id"] = button.after(180, post_menu)
+                cancel_timer("open_id")
+                if state["closed"]:
+                    state["open_id"] = self.after(150, post_menu)
+
+            def click_menu(_event=None):
+                if state["closed"]:
+                    post_menu()
+                else:
+                    destroy_popups()
+                return "break"
 
             button.bind("<Enter>", open_on_hover, add="+")
-            button.bind("<Leave>", schedule_close, add="+")
-            button.bind("<Button-1>", lambda _event: (post_menu(), "break"), add="+")
-            for candidate in menu_tree:
-                # Native Tk menus are separate windows on Windows. Track their
-                # own enter/leave events instead of polling unreliable screen bounds.
-                candidate.bind("<Enter>", cancel_close, add="+")
-                candidate.bind("<Leave>", schedule_close, add="+")
-                candidate.bind("<Unmap>", cancel_close, add="+")
+            button.bind("<Leave>", lambda _event: cancel_timer("open_id"), add="+")
+            button.bind("<Button-1>", click_menu, add="+")
             return button
 
         add_menu("File", "folder2-open", "accent", [
