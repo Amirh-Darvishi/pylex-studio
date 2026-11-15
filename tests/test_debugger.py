@@ -61,7 +61,7 @@ class DebuggerTests(unittest.TestCase):
 
 
     def test_advanced_commands_validate_arguments(self):
-        session = DebugSession.start("value = 1\\n")
+        session = DebugSession.start("value = 1\n")
         try:
             self.assertTrue(session.set_conditional_breakpoint(1, "value == 1"))
             self.assertTrue(session.set_temporary_breakpoint(1))
@@ -78,13 +78,13 @@ class DebuggerTests(unittest.TestCase):
             session.close()
 
     def test_advanced_commands_reject_invalid_input(self):
-        session = DebugSession.start("value = 1\\n")
+        session = DebugSession.start("value = 1\n")
         try:
             for operation in (
                 lambda: session.set_breakpoint(0),
                 lambda: session.set_temporary_breakpoint(-1),
-                lambda: session.set_conditional_breakpoint(1, "value\\nquit"),
-                lambda: session.evaluate("value\\nquit"),
+                lambda: session.set_conditional_breakpoint(1, "value\nquit"),
+                lambda: session.evaluate("value\nquit"),
                 lambda: session.pretty_print("  "),
                 lambda: session.jump("not-a-line"),
                 lambda: session.ignore_breakpoint(1, 0),
