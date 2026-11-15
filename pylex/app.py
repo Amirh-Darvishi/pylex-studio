@@ -1242,8 +1242,6 @@ class PyLexApp(tk.Tk):
         menu.add_command(label="Copy", command=lambda: widget.event_generate("<<Copy>>"),
                          state="normal" if selected else "disabled")
         menu.add_command(label="Select All", command=lambda: widget.tag_add("sel", "1.0", "end-1c"))
-        menu.add_separator()
-        menu.add_command(label="Clear", command=lambda: widget.delete("1.0", "end"))
         menu.tk_popup(event.x_root, event.y_root)
         return "break"
 
@@ -2192,14 +2190,24 @@ class PyLexApp(tk.Tk):
         name = simpledialog.askstring('Rename', 'New name:', initialvalue=path.name, parent=self)
         if not name or Path(name).name != name or name in {'.', '..'}:
             return
+        destination = path.with_name(name)
         try:
-            path.rename(path.with_name(name))
+            path.rename(destination)
         except OSError as exc:
             messagebox.showerror('Rename', str(exc), parent=self)
             return
+        for editor, document in self.documents.items():
+            opened = document.get("path")
+            if opened and (opened == path or path.is_dir() and path in opened.parents):
+                document["path"] = destination / opened.relative_to(path) if opened != path else destination
+                self.editor_tabs.tab(document["frame"], text=self._tab_label(document))
+        self._sync_active_document()
         self.refresh_workspace()
 
     def _delete_tree_path(self, path):
+        if any(document.get("path") and (document["path"] == path or path.is_dir() and path in document["path"].parents) for document in self.documents.values()):
+            messagebox.showwarning("Delete", "Close files inside this item before deleting it.", parent=self)
+            return
         if not messagebox.askyesno('Delete', 'Delete {!r}? This cannot be undone.'.format(path.name), parent=self):
             return
         try:
