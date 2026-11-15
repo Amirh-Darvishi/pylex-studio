@@ -134,7 +134,18 @@ class DebugSession:
 
     def send_input(self, value):
         """Send one input line to a debugged program waiting in input()."""
-        return self.command(value)
+        value = str(value)
+        if "\x00" in value or "\n" in value or "\r" in value or self.done:
+            return False
+        try:
+            with self._stdin_lock:
+                if self.done:
+                    return False
+                self.process.stdin.write(value + "\n")
+                self.process.stdin.flush()
+            return True
+        except (BrokenPipeError, OSError, ValueError):
+            return False
 
     @staticmethod
     def _positive_number(value, label="number"):
