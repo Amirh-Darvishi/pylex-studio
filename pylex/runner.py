@@ -81,9 +81,14 @@ class ExecutionHandle:
     def _read_stream(self, stream, channel):
         parts = self._stdout_parts if channel == "stdout" else self._stderr_parts
         try:
-            for line in iter(stream.readline, ""):
-                parts.append(line)
-                self._events.put((channel, line))
+            # Read incrementally so prompts without a trailing newline (for
+            # example input("Name: ")) become visible before input is sent.
+            while True:
+                chunk = stream.read(1)
+                if not chunk:
+                    break
+                parts.append(chunk)
+                self._events.put((channel, chunk))
         except (OSError, ValueError):
             pass
         finally:
