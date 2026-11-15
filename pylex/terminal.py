@@ -122,20 +122,16 @@ class TerminalProcess:
         return not self.done.is_set() and self.process.poll() is None
 
     def _read_output(self):
-        pending = []
         try:
+            # Shell prompts commonly have no trailing newline. Publish each
+            # character so the UI can display them on the next polling tick.
             while True:
                 char = self.process.stdout.read(1)
                 if char == "":
                     break
-                pending.append(char)
-                if char == "\n" or len(pending) >= 256:
-                    self.events.put("".join(pending))
-                    pending.clear()
+                self.events.put(char)
         except (OSError, ValueError):
             pass
-        if pending:
-            self.events.put("".join(pending))
 
     def _wait_for_exit(self):
         try:
