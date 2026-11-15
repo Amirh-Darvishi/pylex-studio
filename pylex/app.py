@@ -2962,7 +2962,7 @@ class PyLexApp(tk.Tk):
         self.status.configure(text="Input sent to the running program.")
         return "break"
 
-    def _append_output(self, content, channel="stdout")
+    def _append_output(self, content, channel="stdout"):
         self.output.configure(state="normal")
         self.output.insert("end", content, channel if channel in {"stdout", "stderr", "system"} else "stdout")
         self.output.see("end")
