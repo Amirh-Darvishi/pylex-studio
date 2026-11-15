@@ -40,9 +40,7 @@ class WorkspaceController:
 
     def project_for_file(self, path=None):
         """Resolve the project context for a document without changing active state."""
-        if self._project is not None and (
-            path is None or self._project.contains(path)
-        ):
+        if self._project is not None and (path is None or self._project.contains(path)):
             return self._project
         if path is not None:
             return Project.from_file(path)

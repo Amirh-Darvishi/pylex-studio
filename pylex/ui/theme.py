@@ -2,7 +2,6 @@
 
 import ttkbootstrap as ttkb
 
-
 THEMES = {
     "dark": {
         "bootstrap_theme": "darkly",

@@ -5,7 +5,6 @@ import os
 import tempfile
 from pathlib import Path
 
-
 DEFAULTS = {
     "theme": "dark",
     "font_family": "JetBrains Mono",

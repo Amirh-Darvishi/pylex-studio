@@ -1,5 +1,6 @@
 """Debugger lifecycle controller with no dependency on Tkinter."""
 
+
 class DebuggerController:
     """Own the active debugger session and centralize its lifecycle."""
 

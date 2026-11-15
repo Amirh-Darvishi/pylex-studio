@@ -53,7 +53,11 @@ class PyLexApp(tk.Tk):
 
     @property
     def project(self):
-        return self.workspace_controller.project if hasattr(self, "workspace_controller") else self._project
+        return (
+            self.workspace_controller.project
+            if hasattr(self, "workspace_controller")
+            else self._project
+        )
 
     @project.setter
     def project(self, value):
@@ -64,7 +68,11 @@ class PyLexApp(tk.Tk):
 
     @property
     def documents(self):
-        return self.document_controller.documents if hasattr(self, "document_controller") else self._documents
+        return (
+            self.document_controller.documents
+            if hasattr(self, "document_controller")
+            else self._documents
+        )
 
     @documents.setter
     def documents(self, value):
@@ -75,7 +83,11 @@ class PyLexApp(tk.Tk):
 
     @property
     def editor(self):
-        return self.document_controller.active_editor if hasattr(self, "document_controller") else self._editor
+        return (
+            self.document_controller.active_editor
+            if hasattr(self, "document_controller")
+            else self._editor
+        )
 
     @editor.setter
     def editor(self, value):
@@ -86,7 +98,11 @@ class PyLexApp(tk.Tk):
 
     @property
     def execution(self):
-        return self.execution_controller.handle if hasattr(self, "execution_controller") else self._execution
+        return (
+            self.execution_controller.handle
+            if hasattr(self, "execution_controller")
+            else self._execution
+        )
 
     @execution.setter
     def execution(self, value):
@@ -97,7 +113,11 @@ class PyLexApp(tk.Tk):
 
     @property
     def debug_session(self):
-        return self.debugger_controller.session if hasattr(self, "debugger_controller") else self._debug_session
+        return (
+            self.debugger_controller.session
+            if hasattr(self, "debugger_controller")
+            else self._debug_session
+        )
 
     @debug_session.setter
     def debug_session(self, value):

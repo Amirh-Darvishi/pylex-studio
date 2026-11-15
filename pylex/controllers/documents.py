@@ -30,7 +30,10 @@ class DocumentController:
         target = Path(path).expanduser().resolve()
         for editor, document in self.documents.items():
             candidate = document.get("path")
-            if candidate is not None and Path(candidate).expanduser().resolve() == target:
+            if (
+                candidate is not None
+                and Path(candidate).expanduser().resolve() == target
+            ):
                 return editor
         return None
 
