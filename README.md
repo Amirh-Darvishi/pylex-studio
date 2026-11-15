@@ -54,7 +54,10 @@ PyLex Studio 2.0.0 focuses on a polished, Python-first desktop IDE. The file-typ
 - Analyze All and Clear Results actions
 - Dark and light application themes, with a dark default
 - VS Code-inspired Activity Bar and an Explorer with Open Editors and Workspace sections
-- Hover-open toolbar menus with cascading Debug groups and persistent themed Run / Stop controls
+- Dedicated cascading menu row above the restored logo/action toolbar, with File, Edit, Navigate, Run, Debug, Code, Tools, View and Help groups
+- Consistent Run / Stop actions with matching dimensions and coordinated hover, pressed and disabled states across dark and light themes
+- Expanded Account Center and Settings windows with local profile, workspace overview, keyboard shortcuts, privacy, security and product roadmap sections
+- Extensibility roadmap for language packs, Language Server Protocol support, project templates, theme packs and a permission-aware extension marketplace
 - Local Account center with a persistent display name; cloud sign-in and synchronization are not yet enabled
 - Original PyLex Studio vector brand mark in the application header and About window
 - Modern grouped toolbar and consistent application styling
@@ -95,7 +98,7 @@ python main.py
 
 ## User interface preferences
 
-Open View → Preferences to choose the dark or light theme, editor font family, font size, project explorer visibility, and execution timeout (5, 10, 30, or 60 seconds, or Unlimited). Preferences are stored in `.pylex_studio.json` in the user's home directory and are reused on the next launch.
+Open View → Preferences to choose the dark or light theme, interface and code font families and sizes, project explorer visibility, and execution timeout (5, 10, 30, or 60 seconds, or Unlimited). The Settings window also documents shortcuts, planned language and extension support, and current privacy/security boundaries. Preferences are stored in `.pylex_studio.json` in the user's home directory and are reused on the next launch.
 
 ## Debugging
 
