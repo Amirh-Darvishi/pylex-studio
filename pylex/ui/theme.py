@@ -281,7 +281,10 @@ class ThemeManager:
                 ("pressed", palette["elevated"]),
                 ("active", palette["elevated"]),
             ],
-            foreground=[("disabled", palette["muted"]), ("!disabled", palette["accent"])],
+            foreground=[
+                ("disabled", palette["muted"]),
+                ("!disabled", palette["accent"]),
+            ],
         )
         self.style.configure(
             "PyLex.Stop.TButton",
@@ -299,7 +302,10 @@ class ThemeManager:
                 ("pressed", palette["error_line"]),
                 ("active", palette["error_line"]),
             ],
-            foreground=[("disabled", palette["muted"]), ("!disabled", palette["danger"])],
+            foreground=[
+                ("disabled", palette["muted"]),
+                ("!disabled", palette["danger"]),
+            ],
         )
         self.style.configure(
             "PyLex.Danger.TButton",
@@ -334,8 +340,14 @@ class ThemeManager:
         )
         self.style.map(
             "PyLex.Toolbar.TButton",
-            background=[("pressed", palette["surface"]), ("active", palette["elevated"])],
-            foreground=[("pressed", palette["editor_fg"]), ("active", palette["accent"])],
+            background=[
+                ("pressed", palette["surface"]),
+                ("active", palette["elevated"]),
+            ],
+            foreground=[
+                ("pressed", palette["editor_fg"]),
+                ("active", palette["accent"]),
+            ],
         )
         self.style.configure(
             "PyLex.Muted.TLabel",
