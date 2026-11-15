@@ -98,10 +98,10 @@ class DebugSession:
                         pending_completion = "finished"
                     elif "Uncaught exception. Entering post mortem debugging" in line:
                         pending_completion = "error"
-                        if "(Pdb) " in line:
-                            self.completion_status = "error"
-                            self._completion_sent = True
-                            self.command("q")
+                    elif "Post mortem debugger finished." in line:
+                        # Python 3.10/3.11 restart pdb after leaving post-mortem.
+                        # A second quit is required at the fresh initial prompt.
+                        pending_completion = "error_restart_prompt"
                     elif pending_completion == "finished" and line.startswith("> "):
                         # A successful run returns to the original script frame.
                         self.completion_status = "finished"
@@ -115,7 +115,16 @@ class DebugSession:
                     and not self._completion_sent
                     and "(Pdb) " in line_buffer
                 ):
+                    # First quit leaves post-mortem. Older pdb versions then
+                    # restart the script and present a second, initial prompt.
                     self.completion_status = "error"
+                    pending_completion = "error_restart"
+                    self.command("q")
+                elif (
+                    pending_completion == "error_restart_prompt"
+                    and not self._completion_sent
+                    and "(Pdb) " in line_buffer
+                ):
                     self._completion_sent = True
                     self.command("q")
             tail = decoder.decode(b"", final=True)
