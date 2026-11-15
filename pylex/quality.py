@@ -225,8 +225,10 @@ class QualityPanel(ttk.Frame):
             else "Segoe UI"
         )
         return ContextMenu(
-            self, palette=getattr(root, "theme_palette", {}),
-            font_family=font_family, font_size=preferences.get("ui_font_size", 9),
+            self,
+            palette=getattr(root, "theme_palette", {}),
+            font_family=font_family,
+            font_size=preferences.get("ui_font_size", 9),
         )
 
     def _show_tree_context_menu(self, tree, event, tests=False):
@@ -269,8 +271,10 @@ class QualityPanel(ttk.Frame):
             menu.add_command(label="Discover Tests", command=self.discover_tests)
             menu.add_command(label="Run All Tests", command=self.run_all_tests)
         else:
-            menu.add_command(label="Select All Diagnostics",
-                             command=lambda: tree.selection_set(tree.get_children("")))
+            menu.add_command(
+                label="Select All Diagnostics",
+                command=lambda: tree.selection_set(tree.get_children("")),
+            )
         try:
             menu.tk_popup(event.x_root, event.y_root)
         finally:
@@ -287,11 +291,15 @@ class QualityPanel(ttk.Frame):
             selected = bool(self.output.tag_ranges("sel"))
         except tk.TclError:
             selected = False
-        menu.add_command(label="Copy Selection",
-                         command=lambda: self.output.event_generate("<<Copy>>"),
-                         state="normal" if selected else "disabled")
-        menu.add_command(label="Select All",
-                         command=lambda: self.output.tag_add("sel", "1.0", "end-1c"))
+        menu.add_command(
+            label="Copy Selection",
+            command=lambda: self.output.event_generate("<<Copy>>"),
+            state="normal" if selected else "disabled",
+        )
+        menu.add_command(
+            label="Select All",
+            command=lambda: self.output.tag_add("sel", "1.0", "end-1c"),
+        )
         menu.add_separator()
         menu.add_command(label="Clear Tool Output", command=self._clear_output)
         try:
