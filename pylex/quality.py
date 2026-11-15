@@ -2,7 +2,6 @@
 from __future__ import annotations
 
 import json
-import os
 import queue
 import re
 import subprocess
@@ -11,7 +10,6 @@ import tkinter as tk
 from pathlib import Path
 from tkinter import messagebox, ttk
 
-from .core.project import Project
 
 
 def tool_argv(interpreter, module, arguments=()):
@@ -229,6 +227,12 @@ class QualityPanel(ttk.Frame):
         else:
             self._set_status("No quality tool is running.")
 
+    def close(self):
+        """Terminate an active quality subprocess when the application closes."""
+        process = self._process
+        if process is not None and process.poll() is None:
+            process.terminate()
+
     def _tool_missing(self, module):
         messagebox.showerror(
             "Quality Tools",
@@ -297,7 +301,7 @@ class QualityPanel(ttk.Frame):
     def lint_buffer(self):
         try:
             root, interpreter, env = self._context()
-            path, source = self._document()
+            _editor, path, source = self._document()
         except Exception as exc:
             messagebox.showerror("Lint Buffer", str(exc), parent=self.winfo_toplevel())
             return
