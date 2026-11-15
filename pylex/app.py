@@ -3254,11 +3254,11 @@ class PyLexApp(tk.Tk):
         if output:
             self._append_output(output)
         if session.done:
+            completion = session.completion_status
+            session.close()
             final_output = session.read_available()
             if final_output:
                 self._append_output(final_output)
-            completion = session.completion_status
-            session.close()
             self.debug_session = None
             self._debug_poll = None
             if completion == "error":
