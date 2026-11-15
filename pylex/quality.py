@@ -1,4 +1,5 @@
 """Formatting, linting, and test-explorer services for PyLex Studio."""
+
 from __future__ import annotations
 
 import json
@@ -11,7 +12,6 @@ import threading
 import tkinter as tk
 from pathlib import Path
 from tkinter import messagebox, ttk
-
 
 
 def tool_argv(interpreter, module, arguments=()):
@@ -64,16 +64,18 @@ def parse_ruff_diagnostics(output):
             continue
         location = item.get("location") or {}
         end = item.get("end_location") or {}
-        diagnostics.append({
-            "path": str(item.get("filename") or ""),
-            "line": int(location.get("row") or 1),
-            "column": int(location.get("column") or 1),
-            "end_line": int(end.get("row") or location.get("row") or 1),
-            "end_column": int(end.get("column") or location.get("column") or 1),
-            "code": str(item.get("code") or "RUFF"),
-            "message": str(item.get("message") or "Lint diagnostic"),
-            "fixable": bool(item.get("fix")),
-        })
+        diagnostics.append(
+            {
+                "path": str(item.get("filename") or ""),
+                "line": int(location.get("row") or 1),
+                "column": int(location.get("column") or 1),
+                "end_line": int(end.get("row") or location.get("row") or 1),
+                "end_column": int(end.get("column") or location.get("column") or 1),
+                "code": str(item.get("code") or "RUFF"),
+                "message": str(item.get("message") or "Lint diagnostic"),
+                "fixable": bool(item.get("fix")),
+            }
+        )
     return diagnostics
 
 
@@ -95,9 +97,16 @@ def parse_pytest_nodeids(output):
 class QualityPanel(ttk.Frame):
     """Non-blocking Black/Ruff/pytest workbench bound to the active workspace."""
 
-    def __init__(self, master, context_provider, document_provider,
-                 apply_source, navigate_diagnostic, status_callback=None,
-                 project_format_guard=None):
+    def __init__(
+        self,
+        master,
+        context_provider,
+        document_provider,
+        apply_source,
+        navigate_diagnostic,
+        status_callback=None,
+        project_format_guard=None,
+    ):
         super().__init__(master, padding=5)
         self.context_provider = context_provider
         self.document_provider = document_provider
@@ -134,11 +143,20 @@ class QualityPanel(ttk.Frame):
         tests_frame = ttk.Frame(self.notebook, padding=4)
         test_actions = ttk.Frame(tests_frame)
         test_actions.pack(fill="x", pady=(0, 4))
-        ttk.Button(test_actions, text="Discover Tests", command=self.discover_tests).pack(side="left", padx=2)
-        ttk.Button(test_actions, text="Run All", command=self.run_all_tests).pack(side="left", padx=2)
-        ttk.Button(test_actions, text="Run Selected", command=self.run_selected_test).pack(side="left", padx=2)
+        ttk.Button(
+            test_actions, text="Discover Tests", command=self.discover_tests
+        ).pack(side="left", padx=2)
+        ttk.Button(test_actions, text="Run All", command=self.run_all_tests).pack(
+            side="left", padx=2
+        )
+        ttk.Button(
+            test_actions, text="Run Selected", command=self.run_selected_test
+        ).pack(side="left", padx=2)
         self.test_tree = ttk.Treeview(
-            tests_frame, columns=("nodeid", "result"), show="headings", selectmode="browse"
+            tests_frame,
+            columns=("nodeid", "result"),
+            show="headings",
+            selectmode="browse",
         )
         self.test_tree.heading("nodeid", text="Test")
         self.test_tree.heading("result", text="Result")
@@ -154,8 +172,11 @@ class QualityPanel(ttk.Frame):
             show="headings",
         )
         for key, label, width in (
-            ("code", "Rule", 75), ("file", "File", 190), ("line", "Line", 55),
-            ("column", "Column", 65), ("message", "Message", 430),
+            ("code", "Rule", 75),
+            ("file", "File", 190),
+            ("line", "Line", 55),
+            ("column", "Column", 65),
+            ("message", "Message", 430),
         ):
             self.diagnostic_tree.heading(key, text=label)
             self.diagnostic_tree.column(key, width=width)
@@ -209,13 +230,22 @@ class QualityPanel(ttk.Frame):
         def worker():
             try:
                 process = subprocess.Popen(
-                    argv, cwd=str(cwd), env=env, stdin=subprocess.PIPE if stdin is not None else subprocess.DEVNULL,
-                    stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True,
-                    encoding="utf-8", errors="replace", **_process_options(),
+                    argv,
+                    cwd=str(cwd),
+                    env=env,
+                    stdin=subprocess.PIPE if stdin is not None else subprocess.DEVNULL,
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.PIPE,
+                    text=True,
+                    encoding="utf-8",
+                    errors="replace",
+                    **_process_options(),
                 )
                 self._process = process
                 stdout, stderr = process.communicate(input=stdin)
-                self._events.put(("complete", (process.returncode, stdout, stderr, callback)))
+                self._events.put(
+                    ("complete", (process.returncode, stdout, stderr, callback))
+                )
             except Exception as exc:
                 self._events.put(("error", (exc, callback)))
 
@@ -241,7 +271,11 @@ class QualityPanel(ttk.Frame):
                     self._append_output(stdout)
                 if stderr:
                     self._append_output(stderr)
-                self._set_status("Completed successfully." if code == 0 else f"Finished with exit code {code}.")
+                self._set_status(
+                    "Completed successfully."
+                    if code == 0
+                    else f"Finished with exit code {code}."
+                )
                 if callback:
                     callback(code, stdout, stderr)
         except queue.Empty:
@@ -274,7 +308,9 @@ class QualityPanel(ttk.Frame):
         try:
             root, interpreter, env = self._context()
         except Exception as exc:
-            messagebox.showerror("Install Tools", str(exc), parent=self.winfo_toplevel())
+            messagebox.showerror(
+                "Install Tools", str(exc), parent=self.winfo_toplevel()
+            )
             return
         if not messagebox.askyesno(
             "Install Quality Tools",
@@ -283,8 +319,12 @@ class QualityPanel(ttk.Frame):
         ):
             return
         self._start(
-            tool_argv(interpreter, "pip", ("install", "--upgrade", "black", "ruff", "pytest")),
-            root, env, label="Installing Black, Ruff, and pytest",
+            tool_argv(
+                interpreter, "pip", ("install", "--upgrade", "black", "ruff", "pytest")
+            ),
+            root,
+            env,
+            label="Installing Black, Ruff, and pytest",
         )
 
     def format_buffer(self):
@@ -292,7 +332,9 @@ class QualityPanel(ttk.Frame):
             root, interpreter, env = self._context()
             editor, path, source = self._document()
         except Exception as exc:
-            messagebox.showerror("Format Buffer", str(exc), parent=self.winfo_toplevel())
+            messagebox.showerror(
+                "Format Buffer", str(exc), parent=self.winfo_toplevel()
+            )
             return
 
         def completed(code, stdout, stderr):
@@ -303,15 +345,23 @@ class QualityPanel(ttk.Frame):
                 self._tool_missing("Black")
 
         self._start(
-            tool_argv(interpreter, "black", ("--quiet", "--stdin-filename", str(path), "-")),
-            root, env, stdin=source, callback=completed, label="Formatting current buffer",
+            tool_argv(
+                interpreter, "black", ("--quiet", "--stdin-filename", str(path), "-")
+            ),
+            root,
+            env,
+            stdin=source,
+            callback=completed,
+            label="Formatting current buffer",
         )
 
     def format_project(self):
         try:
             root, interpreter, env = self._context()
         except Exception as exc:
-            messagebox.showerror("Format Project", str(exc), parent=self.winfo_toplevel())
+            messagebox.showerror(
+                "Format Project", str(exc), parent=self.winfo_toplevel()
+            )
             return
         if not self.project_format_guard():
             return
@@ -324,7 +374,9 @@ class QualityPanel(ttk.Frame):
             return
         self._start(
             tool_argv(interpreter, "black", (str(root),)),
-            root, env, label="Formatting project with Black",
+            root,
+            env,
+            label="Formatting project with Black",
         )
 
     def lint_buffer(self):
@@ -343,8 +395,16 @@ class QualityPanel(ttk.Frame):
                 self._tool_missing("Ruff")
 
         self._start(
-            tool_argv(interpreter, "ruff", ("check", "--output-format=json", "--stdin-filename", str(path), "-")),
-            root, env, stdin=source, callback=completed, label="Linting current buffer",
+            tool_argv(
+                interpreter,
+                "ruff",
+                ("check", "--output-format=json", "--stdin-filename", str(path), "-"),
+            ),
+            root,
+            env,
+            stdin=source,
+            callback=completed,
+            label="Linting current buffer",
         )
 
     def lint_project(self):
@@ -362,8 +422,13 @@ class QualityPanel(ttk.Frame):
                 self._tool_missing("Ruff")
 
         self._start(
-            tool_argv(interpreter, "ruff", ("check", "--output-format=json", str(root))),
-            root, env, callback=completed, label="Linting project",
+            tool_argv(
+                interpreter, "ruff", ("check", "--output-format=json", str(root))
+            ),
+            root,
+            env,
+            callback=completed,
+            label="Linting project",
         )
 
     def _display_diagnostics(self, diagnostics):
@@ -371,8 +436,16 @@ class QualityPanel(ttk.Frame):
         self.diagnostic_tree.delete(*self.diagnostic_tree.get_children())
         for index, item in enumerate(diagnostics):
             self.diagnostic_tree.insert(
-                "", "end", iid=f"diag-{index}",
-                values=(item["code"], item["path"], item["line"], item["column"], item["message"]),
+                "",
+                "end",
+                iid=f"diag-{index}",
+                values=(
+                    item["code"],
+                    item["path"],
+                    item["line"],
+                    item["column"],
+                    item["message"],
+                ),
             )
         self._set_status(f"Ruff found {len(diagnostics)} diagnostic(s).")
 
@@ -387,7 +460,9 @@ class QualityPanel(ttk.Frame):
         try:
             root, interpreter, env = self._context()
         except Exception as exc:
-            messagebox.showerror("Test Explorer", str(exc), parent=self.winfo_toplevel())
+            messagebox.showerror(
+                "Test Explorer", str(exc), parent=self.winfo_toplevel()
+            )
             return
 
         def completed(code, stdout, stderr):
@@ -395,7 +470,9 @@ class QualityPanel(ttk.Frame):
                 self._tests = parse_pytest_nodeids(stdout)
                 self.test_tree.delete(*self.test_tree.get_children())
                 for index, nodeid in enumerate(self._tests):
-                    self.test_tree.insert("", "end", iid=f"test-{index}", values=(nodeid, "Discovered"))
+                    self.test_tree.insert(
+                        "", "end", iid=f"test-{index}", values=(nodeid, "Discovered")
+                    )
                 self.notebook.select(0)
                 self._set_status(f"Discovered {len(self._tests)} test(s).")
             elif "No module named pytest" in stderr:
@@ -405,7 +482,10 @@ class QualityPanel(ttk.Frame):
 
         self._start(
             tool_argv(interpreter, "pytest", ("--collect-only", "-q", str(root))),
-            root, env, callback=completed, label="Discovering tests",
+            root,
+            env,
+            callback=completed,
+            label="Discovering tests",
         )
 
     def run_all_tests(self):
@@ -430,7 +510,9 @@ class QualityPanel(ttk.Frame):
         def completed(code, stdout, stderr):
             combined = stdout + "\n" + stderr
             for index, test_id in enumerate(self._tests):
-                match = re.search(re.escape(test_id) + r"\s+(PASSED|FAILED|SKIPPED|ERROR)", combined)
+                match = re.search(
+                    re.escape(test_id) + r"\s+(PASSED|FAILED|SKIPPED|ERROR)", combined
+                )
                 if match:
                     self.test_tree.set(f"test-{index}", "result", match.group(1))
             self.notebook.select(0)
@@ -442,6 +524,9 @@ class QualityPanel(ttk.Frame):
                 self._set_status(f"Tests finished with exit code {code}.")
 
         self._start(
-            tool_argv(interpreter, "pytest", args), root, env,
-            callback=completed, label="Running tests",
+            tool_argv(interpreter, "pytest", args),
+            root,
+            env,
+            callback=completed,
+            label="Running tests",
         )
