@@ -2283,6 +2283,9 @@ class PyLexApp(tk.Tk):
 
     def _show_project_tree_context_menu(self, event):
         row = self.project_tree.identify_row(event.y)
+        if not row and self.project_root is not None:
+            roots = self.project_tree.get_children("")
+            row = roots[0] if roots else ""
         if row:
             self.project_tree.selection_set(row)
             self.project_tree.focus(row)
