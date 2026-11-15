@@ -49,6 +49,9 @@ class CodeEditor(tk.Frame):
         self.text.bind("<Shift-MouseWheel>", self._horizontal_wheel, add="+")
         self.text.bind("<Button-4>", lambda _event: self._wheel_units(-3), add="+")
         self.text.bind("<Button-5>", lambda _event: self._wheel_units(3), add="+")
+        self.gutter.bind("<MouseWheel>", self._wheel_from_event, add="+")
+        self.gutter.bind("<Button-4>", lambda _event: self._wheel_units(-3), add="+")
+        self.gutter.bind("<Button-5>", lambda _event: self._wheel_units(3), add="+")
 
         self.text.bind("<<Modified>>", self._changed)
         self.text.bind("<KeyRelease>", self._cursor_changed)
@@ -144,6 +147,10 @@ class CodeEditor(tk.Frame):
             self.update_current_line()
             if self.on_change:
                 self.on_change()
+
+    def _wheel_from_event(self, event):
+        units = -int(event.delta / 120) * 3 if event.delta else 0
+        return self._wheel_units(units)
 
     def _wheel_units(self, units):
         self.text.yview_scroll(units, "units")
