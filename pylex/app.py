@@ -1878,6 +1878,113 @@ class PyLexApp(tk.Tk):
 
         add_children(root_id, self.project_root)
 
+    def _show_recent_workspace_context_menu(self, event):
+        index = self.recent_workspaces_list.nearest(event.y)
+        self.recent_workspaces_list.selection_clear(0, 'end')
+        self.recent_workspaces_list.selection_set(index)
+        menu = tk.Menu(self, tearoff=False)
+        paths = getattr(self, '_recent_workspace_paths', [])
+        if index < len(paths):
+            path = paths[index]
+            menu.add_command(label='Open Workspace', command=lambda: self._activate_workspace(path))
+            menu.add_command(label='Copy Path', command=lambda: self._copy_to_clipboard(path))
+            menu.add_command(label='Remove from Recent', command=lambda: self._remove_recent_workspace(path))
+        menu.add_command(label='Clear Recent Workspaces', command=self.clear_recent_workspaces)
+        menu.tk_popup(event.x_root, event.y_root)
+        return 'break'
+
+    def _remove_recent_workspace(self, path):
+        target = os.path.normcase(os.path.abspath(path))
+        self.preferences['recent_workspaces'] = [p for p in self.preferences.get('recent_workspaces', []) if os.path.normcase(os.path.abspath(p)) != target]
+        self._persist_preferences()
+        self._refresh_recent_workspace_menu()
+        self._refresh_recent_workspace_list()
+
+    def _show_open_editors_context_menu(self, event):
+        index = self.open_editors_list.nearest(event.y)
+        editors = list(self.documents)
+        menu = tk.Menu(self, tearoff=False)
+        if index < len(editors):
+            editor = editors[index]
+            doc = self.documents[editor]
+            menu.add_command(label='Activate', command=lambda: self.editor_tabs.select(doc['frame']))
+            menu.add_command(label='Close', command=lambda: self._close_document(editor))
+            if doc.get('path'):
+                menu.add_command(label='Copy Path', command=lambda: self._copy_to_clipboard(doc['path']))
+        menu.tk_popup(event.x_root, event.y_root)
+        return 'break'
+
+    def _close_document(self, editor):
+        if editor not in self.documents:
+            return
+        self.editor_tabs.select(self.documents[editor]['frame'])
+        self.editor = editor
+        self._sync_active_document()
+        self.close_tab()
+
+    def _show_tab_context_menu(self, event):
+        try:
+            index = self.editor_tabs.index('@{},{}'.format(event.x, event.y))
+        except (tk.TclError, ValueError):
+            return 'break'
+        frame = self.editor_tabs.tabs()[index]
+        editor = next((item for item, doc in self.documents.items() if str(doc['frame']) == frame), None)
+        if editor is None:
+            return 'break'
+        self.editor_tabs.select(frame)
+        self.editor = editor
+        menu = tk.Menu(self, tearoff=False)
+        menu.add_command(label='Close', command=self.close_tab)
+        menu.add_command(label='Close Others', command=lambda: self._close_other_documents(editor))
+        menu.add_command(label='Close All', command=self._close_all_documents)
+        path = self.documents[editor].get('path')
+        if path:
+            menu.add_separator()
+            menu.add_command(label='Copy Path', command=lambda: self._copy_to_clipboard(path))
+            menu.add_command(label='Show in File Manager', command=lambda: self._reveal_path(path))
+        menu.tk_popup(event.x_root, event.y_root)
+        return 'break'
+
+    def _close_other_documents(self, keep):
+        for editor in list(self.documents):
+            if editor is keep:
+                continue
+            self.editor_tabs.select(self.documents[editor]['frame'])
+            self.editor = editor
+            self._sync_active_document()
+            if not self._confirm():
+                return
+            self.editor_tabs.forget(self.documents[editor]['frame'])
+            del self.documents[editor]
+        self._refresh_open_editors()
+        self.editor_tabs.select(self.documents[keep]['frame'])
+        self.editor = keep
+        self._sync_active_document()
+
+    def _close_all_documents(self):
+        for editor in list(self.documents):
+            self.editor_tabs.select(self.documents[editor]['frame'])
+            self.editor = editor
+            self._sync_active_document()
+            if not self._confirm():
+                return
+            self.editor_tabs.forget(self.documents[editor]['frame'])
+            del self.documents[editor]
+        self._refresh_open_editors()
+        self._create_document()
+
+    def _reveal_path(self, path):
+        target = path if Path(path).is_dir() else Path(path).parent
+        try:
+            if sys.platform.startswith('win'):
+                os.startfile(str(target))
+            elif sys.platform == 'darwin':
+                subprocess.Popen(['open', str(target)])
+            else:
+                subprocess.Popen(['xdg-open', str(target)])
+        except OSError as exc:
+            messagebox.showerror('Show in File Manager', str(exc), parent=self)
+
     def _on_project_tree_open(self, event=None):
         selection = self.project_tree.selection()
         if not selection:
