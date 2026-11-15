@@ -163,6 +163,7 @@ class PyLexApp(tk.Tk):
         self._menus.append(view_menu)
         view_menu.add_command(label="Preferences...", command=self.open_preferences)
         view_menu.add_command(label="Toggle Project Explorer", command=self.toggle_project_explorer)
+        view_menu.add_command(label="Configure Status Bar…", command=self._configure_status_bar)
         menu.add_cascade(label="View", menu=view_menu)
 
         help_menu = tk.Menu(menu, tearoff=False)
@@ -511,6 +512,7 @@ class PyLexApp(tk.Tk):
         ])
         add_menu("View", "columns-gap", "muted", [
             ("Toggle Project Explorer", self.toggle_project_explorer),
+            ("Configure Status Bar…", self._configure_status_bar),
             ("Preferences...", self.open_preferences), ("Switch Theme", self.toggle_theme),
         ])
         add_menu("Help", "question-circle", "muted", [
