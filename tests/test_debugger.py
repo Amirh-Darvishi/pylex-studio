@@ -28,8 +28,8 @@ class DebuggerTests(unittest.TestCase):
 
     def test_program_output_cannot_fake_the_pdb_completion_marker(self):
         session = DebugSession.start(
-            "print('The program finished and will be restarted')\\n"
-            "print('still-running')\\n"
+            "print('The program finished and will be restarted')\n"
+            "print('still-running')\n"
         )
         output = ""
         try:
@@ -49,7 +49,7 @@ class DebuggerTests(unittest.TestCase):
 
     def test_debugger_forwards_program_input_and_streams_prompt(self):
         session = DebugSession.start(
-            "name = input('Name: ')\\nprint('Hello', name)\\n"
+            "name = input('Name: ')\nprint('Hello', name)\n"
         )
         output = ""
         try:
