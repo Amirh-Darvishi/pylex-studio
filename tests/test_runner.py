@@ -51,6 +51,23 @@ class RunnerTests(unittest.TestCase):
         self.assertEqual(result.status, "finished")
         self.assertIn("Hello Ada", result.stdout)
 
+    def test_empty_input_line_is_supported(self):
+        handle = start_source(
+            "value = input('Blank: ')\\nprint('value=', repr(value))\\n", timeout=5,
+        )
+        output = ""
+        deadline = time.monotonic() + 3
+        while time.monotonic() < deadline and "Blank: " not in output:
+            output += "".join(
+                value for channel, value in handle.read_available()
+                if channel == "stdout"
+            )
+            time.sleep(0.01)
+        self.assertIn("Blank: ", output)
+        self.assertTrue(handle.send_input(""))
+        result = handle.wait(5)
+        self.assertIn("value= ''", result.stdout)
+
     def test_missing_library_is_captured_as_runtime_error(self):
         result = start_source("import pylex_test_missing_package_abc123").wait(5)
         self.assertNotEqual(result.exit_code, 0)
