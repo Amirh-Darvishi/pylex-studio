@@ -2,9 +2,13 @@
 
 **Latest stable release: 2.0.2 — Execution, terminal, and debugger reliability**
 
-[View the 2.0.1 release notes](https://github.com/Amirh-Darvishi/pylex-studio/releases/tag/v2.0.2)
+[View the 2.0.2 release notes](https://github.com/Amirh-Darvishi/pylex-studio/releases/tag/v2.0.2)
 
 A lightweight Python desktop editor with independent lexical and syntax analysis.
+
+## 2.1.0 development focus
+
+The 2.1.0 development branch separates command discovery from Tkinter presentation. Application actions are registered with stable command IDs, searched through a UI-independent registry, and displayed by a dedicated Command Palette component. This keeps command behavior testable without starting a graphical session. The stable release remains 2.0.2 until the 2.1.0 pull request is reviewed, merged, and released.
 
 ## Language roadmap
 
