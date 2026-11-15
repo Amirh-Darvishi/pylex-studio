@@ -2,8 +2,10 @@
 from __future__ import annotations
 
 import json
+import os
 import queue
 import re
+import signal
 import subprocess
 import threading
 import tkinter as tk
@@ -19,6 +21,33 @@ def tool_argv(interpreter, module, arguments=()):
         raise ValueError(f"Unsupported quality tool: {module}")
     args = [str(item) for item in arguments]
     return [str(interpreter), "-m", module, *args]
+
+
+def _process_options():
+    """Isolate quality tools so Stop can terminate their complete process tree."""
+    if os.name == "nt":
+        return {"creationflags": getattr(subprocess, "CREATE_NEW_PROCESS_GROUP", 0)}
+    return {"start_new_session": True}
+
+
+def _terminate_process_tree(process):
+    """Stop a tool and descendants without leaving pipe-owning children behind."""
+    if process.poll() is not None:
+        return
+    try:
+        if os.name == "nt":
+            subprocess.run(
+                ["taskkill", "/PID", str(process.pid), "/T", "/F"],
+                stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+                check=False, timeout=5,
+            )
+        else:
+            os.killpg(process.pid, signal.SIGKILL)
+    except (OSError, subprocess.SubprocessError):
+        try:
+            process.kill()
+        except OSError:
+            pass
 
 
 def parse_ruff_diagnostics(output):
@@ -182,7 +211,7 @@ class QualityPanel(ttk.Frame):
                 process = subprocess.Popen(
                     argv, cwd=str(cwd), env=env, stdin=subprocess.PIPE if stdin is not None else subprocess.DEVNULL,
                     stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True,
-                    encoding="utf-8", errors="replace",
+                    encoding="utf-8", errors="replace", **_process_options(),
                 )
                 self._process = process
                 stdout, stderr = process.communicate(input=stdin)
@@ -222,7 +251,7 @@ class QualityPanel(ttk.Frame):
     def stop(self):
         process = self._process
         if process is not None and process.poll() is None:
-            process.terminate()
+            _terminate_process_tree(process)
             self._set_status("Stopping quality tool...")
         else:
             self._set_status("No quality tool is running.")
@@ -231,7 +260,7 @@ class QualityPanel(ttk.Frame):
         """Terminate an active quality subprocess when the application closes."""
         process = self._process
         if process is not None and process.poll() is None:
-            process.terminate()
+            _terminate_process_tree(process)
 
     def _tool_missing(self, module):
         messagebox.showerror(
