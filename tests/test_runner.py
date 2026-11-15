@@ -35,7 +35,7 @@ class RunnerTests(unittest.TestCase):
 
     def test_interactive_stdin_is_forwarded_to_running_program(self):
         handle = start_source(
-            "name = input('Name: ')\\nprint('hello', name)",
+            "name = input('Name: ')\nprint('hello', name)",
             timeout=5,
         )
         deadline = time.monotonic() + 2
