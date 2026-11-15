@@ -323,7 +323,10 @@ class QualityPanel(ttk.Frame):
             return
         if not messagebox.askyesno(
             "Install Quality Tools",
-            "Install or upgrade Black, Ruff, and pytest in the currently selected project interpreter?",
+            (
+                "Install or upgrade Black, Ruff, and pytest in the currently selected "
+                "project interpreter?"
+            ),
             parent=self.winfo_toplevel(),
         ):
             return
@@ -494,20 +497,30 @@ class QualityPanel(ttk.Frame):
                     )
                 self.notebook.select(0)
                 self._set_status(f"Discovered {len(self._tests)} test(s).")
-            elif "No module named pytest" in stderr or "No module named pytest" in stdout:
+            elif (
+                "No module named pytest" in stderr
+                or "No module named pytest" in stdout
+            ):
                 self._tool_missing("pytest")
                 self._set_status(
-                    "pytest is missing from the selected interpreter. Use Install Tools."
+                    (
+                        "pytest is missing from the selected interpreter. "
+                        "Use Install Tools."
+                    )
                 )
             else:
                 # Keep the collection error visible and make the failure actionable.
                 detail = (stderr or stdout).strip()
                 self._set_status(
-                    "Test discovery failed; inspect Tool Output for collection/import errors."
+                    (
+                        "Test discovery failed; inspect Tool Output for "
+                        "collection/import errors."
+                    )
                 )
                 if not detail:
                     self._append_output(
-                        f"pytest collection exited with code {code} and produced no diagnostic.\\n"
+                        f"pytest collection exited with code {code} and "
+                        "produced no diagnostic.\n"
                     )
 
         self._start(
