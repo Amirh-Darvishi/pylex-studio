@@ -112,7 +112,7 @@ class ExecutionHandle:
             if self.done or self.process.poll() is not None:
                 return False
             try:
-                self.process.stdin.write(value + "\\n")
+                self.process.stdin.write(value + "\n")
                 self.process.stdin.flush()
                 return True
             except (BrokenPipeError, OSError, ValueError):
