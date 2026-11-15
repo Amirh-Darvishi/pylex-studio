@@ -1436,6 +1436,16 @@ class PyLexApp(tk.Tk):
         text.grid(row=row, column=0, columnspan=2, sticky="nsew")
         frame.rowconfigure(row, weight=1)
         frame.columnconfigure(0, weight=1)
+        if title == "Output":
+            input_row = ttk.Frame(frame, padding=(4, 4))
+            input_row.grid(row=row + 1, column=0, columnspan=2, sticky="ew")
+            ttk.Label(input_row, text="Program Input").pack(side="left", padx=(2, 7))
+            self.output_input = ttk.Entry(input_row)
+            self.output_input.pack(side="left", fill="x", expand=True)
+            self.output_input.bind("<Return>", self._send_output_input)
+            ttk.Button(input_row, text="Send", command=self._send_output_input).pack(
+                side="left", padx=(6, 2)
+            )
         panel_icons = {
             "Output": ("terminal", "accent"),
             "Lexical Analysis": ("braces", "violet"),
@@ -1457,6 +1467,12 @@ class PyLexApp(tk.Tk):
             Path(path).expanduser().resolve().parent if path else Path.cwd()
         )
         env = project.execution_environment() if project else dict(os.environ)
+        if path:
+            env["PYLEX_ACTIVE_FILE"] = str(Path(path).expanduser().resolve())
+        else:
+            env.pop("PYLEX_ACTIVE_FILE", None)
+        if project:
+            env["PYLEX_WORKSPACE_ROOT"] = str(project.root)
         try:
             interpreter = self._interpreter_for_project(project).executable
         except (OSError, ValueError, TimeoutError):
@@ -1554,14 +1570,18 @@ class PyLexApp(tk.Tk):
         self._persist_preferences()
 
     def open_terminal(self):
-        """Open the Terminal panel and create a shell session when needed."""
+        """Open a shell in the active document's workspace context."""
         self.tabs.select(self.terminal_panel)
-        if self.terminal_panel.session_count == 0:
-            self.terminal_panel.create_session()
-        else:
-            frame = self.terminal_panel._current_frame()
-            if frame in self.terminal_panel.views:
-                self.terminal_panel.views[frame]["entry"].focus_set()
+        cwd, _env, _interpreter = self._terminal_context()
+        desired_cwd = Path(cwd).expanduser().resolve()
+        frame = self.terminal_panel._current_frame()
+        session = self.terminal_panel.sessions.get(frame)
+        if session is None or not session.running or session.cwd != desired_cwd:
+            self.terminal_panel.create_session(cwd_override=desired_cwd)
+            return
+        view = self.terminal_panel.views.get(frame)
+        if view:
+            view["entry"].focus_set()
 
     def _dependencies_panel(self):
         frame = ttk.Frame(self.tabs, padding=4)
@@ -2881,7 +2901,28 @@ class PyLexApp(tk.Tk):
         self.execution = None
         self._execution_poll = None
 
-    def _append_output(self, content, channel="stdout"):
+    def _send_output_input(self, _event=None):
+        """Forward one line from Output to the active run or debug process."""
+        if not hasattr(self, "output_input"):
+            return "break"
+        value = self.output_input.get()
+        if not value:
+            return "break"
+        accepted = False
+        if self.execution is not None and not self.execution.done:
+            accepted = self.execution.send_input(value)
+        elif self.debug_session is not None and not self.debug_session.done:
+            accepted = self.debug_session.send_input(value)
+        if not accepted:
+            self.status.configure(text="No running program is waiting for input.")
+            return "break"
+        self._append_output(value + "\n", "system")
+        self.output_input.delete(0, "end")
+        self.output_input.focus_set()
+        self.status.configure(text="Input sent to the running program.")
+        return "break"
+
+    def _append_output(self, content, channel="stdout")
         self.output.configure(state="normal")
         self.output.insert("end", content, channel if channel in {"stdout", "stderr", "system"} else "stdout")
         self.output.see("end")
@@ -3172,13 +3213,22 @@ class PyLexApp(tk.Tk):
         output = session.read_available()
         if output:
             self._append_output(output)
-            if "The program finished" in output or "The program exited" in output:
-                self.status.configure(text="Program finished — choose Stop Debugging to close the debugger.")
         if session.done:
+            final_output = session.read_available()
+            if final_output:
+                self._append_output(final_output)
+            completion = session.completion_status
             session.close()
             self.debug_session = None
             self._debug_poll = None
-            self.status.configure(text="Debugging session finished.")
+            if completion == "error":
+                self._append_output("\nDEBUG RESULT: Unhandled exception detected.\n", "stderr")
+                self.status.configure(text="Debugging finished with an unhandled exception.")
+            elif completion == "finished":
+                self._append_output("\nDEBUG RESULT: Program completed successfully.\n", "system")
+                self.status.configure(text="Debugging finished successfully.")
+            else:
+                self.status.configure(text="Debugging session stopped.")
             return
         self._debug_poll = self.after(80, self._poll_debugger)
 
