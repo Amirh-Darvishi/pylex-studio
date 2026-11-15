@@ -1,6 +1,6 @@
 # Changelog
 
-## [2.2.0] - Unreleased
+## [2.2.0] - 2026-11-15
 
 ### Architecture
 - Introduced UI-independent Workspace, Document, Execution, and Debugger controllers.
