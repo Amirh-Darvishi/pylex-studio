@@ -1585,11 +1585,11 @@ class PyLexApp(tk.Tk):
             or session.cwd != desired_cwd
             or getattr(session, "active_file", None) != desired_file
         ):
-            self.terminal_panel.create_session(cwd_override=desired_cwd)
-            return
+            return self.terminal_panel.create_session(cwd_override=desired_cwd)
         view = self.terminal_panel.views.get(frame)
         if view:
             view["entry"].focus_set()
+        return session
 
     def _dependencies_panel(self):
         frame = ttk.Frame(self.tabs, padding=4)
@@ -2931,7 +2931,10 @@ class PyLexApp(tk.Tk):
                 "Run Active File", "No Python interpreter is available for this workspace."
             )
             return
-        self.open_terminal()
+        session = self.open_terminal()
+        if session is None or not session.running:
+            messagebox.showerror("Run Active File", "Could not create a terminal for this file.")
+            return
         frame = self.terminal_panel._current_frame()
         view = self.terminal_panel.views.get(frame, {})
         shell = view.get("shell", self.terminal_panel.shell_var.get())
