@@ -172,6 +172,7 @@ class QualityPanel(ttk.Frame):
         # Double-clicking a discovered test (or pressing Enter) runs that test.
         self.test_tree.bind("<Double-1>", self._run_test_from_event)
         self.test_tree.bind("<Return>", self._run_test_from_event)
+        self.test_tree.bind("<Button-3>", lambda event: self._show_tree_context_menu(self.test_tree, event, tests=True), add="+")
         self.notebook.add(tests_frame, text="Test Explorer")
 
         diagnostics_frame = ttk.Frame(self.notebook, padding=4)
@@ -191,13 +192,43 @@ class QualityPanel(ttk.Frame):
             self.diagnostic_tree.column(key, width=width)
         self.diagnostic_tree.pack(fill="both", expand=True)
         self.diagnostic_tree.bind("<Double-1>", self._open_diagnostic)
+        self.diagnostic_tree.bind("<Button-3>", lambda event: self._show_tree_context_menu(self.diagnostic_tree, event), add="+")
         self.notebook.add(diagnostics_frame, text="Lint Diagnostics")
 
         output_frame = ttk.Frame(self.notebook, padding=4)
         self.output = tk.Text(output_frame, wrap="none", height=8, state="disabled")
         self.output.pack(fill="both", expand=True)
         self.output.bind("<Shift-MouseWheel>", self._scroll_output_horizontally, add="+")
+        self.output.bind("<Button-3>", self._show_output_context_menu, add="+")
         self.notebook.add(output_frame, text="Tool Output")
+
+    def _show_tree_context_menu(self, tree, event, tests=False):
+        row = tree.identify_row(event.y)
+        if row:
+            tree.selection_set(row)
+        menu = tk.Menu(self, tearoff=False)
+        if row:
+            values = tree.item(row, 'values')
+            menu.add_command(label='Copy Row', command=lambda: self._copy_context_text(' | '.join(map(str, values))))
+            if tests:
+                menu.add_command(label='Run Selected Test', command=self.run_selected_test)
+            else:
+                menu.add_command(label='Open Diagnostic', command=self._open_diagnostic)
+        if tests:
+            menu.add_command(label='Run All Tests', command=self.run_all_tests)
+        menu.tk_popup(event.x_root, event.y_root)
+        return 'break'
+
+    def _copy_context_text(self, value):
+        self.clipboard_clear()
+        self.clipboard_append(str(value))
+
+    def _show_output_context_menu(self, event):
+        menu = tk.Menu(self, tearoff=False)
+        menu.add_command(label='Copy', command=lambda: self.output.event_generate('<<Copy>>'))
+        menu.add_command(label='Select All', command=lambda: self.output.tag_add('sel', '1.0', 'end-1c'))
+        menu.tk_popup(event.x_root, event.y_root)
+        return 'break'
 
     def _scroll_output_horizontally(self, event):
         """Scroll tool output horizontally while Shift and the wheel are used."""
