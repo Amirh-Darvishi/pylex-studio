@@ -226,18 +226,23 @@ class PyLexApp(tk.Tk):
 
     def _toolbar(self):
         """Build a two-tier command surface: categorized menus above the brand/action row."""
-        menu_row = ttk.Frame(self, style="PyLex.Toolbar.TFrame", padding=(12, 3))
-        # Let Tk calculate the row height from the actual themed controls. A fixed
-        # height clips glyphs on Windows when font/DPI scaling changes.
+        menu_row = ttk.Frame(self, style="PyLex.Toolbar.TFrame", padding=(10, 2))
         menu_row.pack(fill="x", side="top")
 
+        brand = ttk.Frame(menu_row, style="PyLex.Toolbar.TFrame")
+        brand.pack(side="left", padx=(0, 12))
+        self._build_logo(brand, 28)
+        ttk.Label(
+            brand, text="PyLex Studio", style="PyLex.Brand.TLabel"
+        ).pack(side="left", padx=(7, 0))
+
         def add_menu(title, icon_name, color_key, commands):
-            button = ttk.Menubutton(
-                menu_row, text=title, style="PyLex.Menu.TMenubutton",
+            button = ttk.Button(
+                menu_row, text=title, style="PyLex.Menu.TButton",
                 image=self._icon(icon_name, self.theme_palette.get(color_key)),
                 compound="left",
             )
-            button.pack(side="left", padx=(0, 3), ipady=2)
+            button.pack(side="left", padx=(0, 2), ipady=0)
             button.configure(takefocus=False)
             self._toolbar_icon_bindings.append((button, icon_name, color_key))
 
@@ -516,14 +521,8 @@ class PyLexApp(tk.Tk):
         # The custom categorized menu row replaces the duplicate native menu bar.
         self.config(menu="")
 
-        action_row = ttk.Frame(self, style="PyLex.Toolbar.TFrame", padding=(14, 10))
+        action_row = ttk.Frame(self, style="PyLex.Toolbar.TFrame", padding=(10, 3))
         action_row.pack(fill="x", side="top")
-        brand = ttk.Frame(action_row, style="PyLex.Toolbar.TFrame")
-        brand.pack(side="left", padx=(0, 18))
-        self._build_logo(brand, 36)
-        ttk.Label(
-            brand, text="PyLex Studio", style="PyLex.Brand.TLabel"
-        ).pack(side="left", padx=(9, 0))
 
         # Keep the command row focused: frequent workspace tools only.
         action_groups = (
@@ -736,8 +735,9 @@ class PyLexApp(tk.Tk):
 
     def _activity_action(self, view):
         """Route Activity Bar actions to existing workspace tools."""
-        for name, (button, _icon_name, _color_key) in self.activity_buttons.items():
-            button.state(["selected"] if name == view else ["!selected"])
+        # Keep activity feedback transient: do not persist a selected state.
+        for button, _icon_name, _color_key in self.activity_buttons.values():
+            button.state(["!selected"])
         if view == "explorer":
             if not self.preferences["show_project_explorer"]:
                 self.toggle_project_explorer()
@@ -914,10 +914,56 @@ class PyLexApp(tk.Tk):
         )
         self._add_tool_tab(self.git_panel, "Git", "git", "violet")
 
+        status_row = ttk.Frame(self, style="PyLex.Toolbar.TFrame", padding=(8, 2))
+        status_row.pack(fill="x", side="bottom")
         self.status = ttk.Label(
-            self, text="Ready", style="PyLex.Status.TLabel"
+            status_row, text="Ready", style="PyLex.Status.TLabel"
         )
-        self.status.pack(fill="x")
+        self.status.pack(side="left", fill="x", expand=True)
+        self.editor_status = ttk.Frame(status_row, style="PyLex.Toolbar.TFrame")
+        self.editor_status.pack(side="right")
+        self._editor_status_items = {}
+        for key in ("position", "indent", "encoding", "eol", "language", "mode"):
+            label = ttk.Label(
+                self.editor_status, text="", style="PyLex.Status.TLabel",
+                padding=(8, 1),
+            )
+            label.pack(side="left")
+            self._editor_status_items[key] = label
+        self._update_editor_status()
+
+    def _update_editor_status(self, editor=None):
+        """Refresh compact, editor-specific indicators in the bottom status strip."""
+        if not hasattr(self, "_editor_status_items"):
+            return
+        editor = editor or self.editor
+        if editor is None or editor not in self.documents:
+            values = {
+                "position": "Ln 1, Col 1", "indent": "Spaces: 4",
+                "encoding": "UTF-8", "eol": "LF",
+                "language": "Plain Text", "mode": "INS",
+            }
+        else:
+            line, column = editor.text.index("insert").split(".")
+            document = self.documents.get(editor, {})
+            path = document.get("path")
+            language = file_type_for(path).description if path else "Python"
+            content = editor.get_content()
+            eol = "CRLF" if "\r\n" in content else "LF"
+            leading = next(
+                (line for line in content.splitlines() if line.strip()), ""
+            )
+            indent = "Tabs" if leading.startswith("\t") else "Spaces: 4"
+            values = {
+                "position": f"Ln {line}, Col {int(column) + 1}",
+                "indent": indent,
+                "encoding": "UTF-8",
+                "eol": eol,
+                "language": language,
+                "mode": "INS",
+            }
+        for key, value in values.items():
+            self._editor_status_items[key].configure(text=value)
 
     def _text_panel(self, title):
         frame = ttk.Frame(self.tabs)
@@ -1760,7 +1806,11 @@ class PyLexApp(tk.Tk):
     def _create_document(self, path=None, content=""):
         """Create a new editor tab and register its independent document state."""
         frame = ttk.Frame(self.editor_tabs)
-        editor = CodeEditor(frame, on_change=lambda: self.mark_dirty(editor))
+        editor = CodeEditor(
+            frame,
+            on_change=lambda: self.mark_dirty(editor),
+            on_cursor_change=lambda: self._update_editor_status(editor),
+        )
         editor.pack(fill="both", expand=True)
         editor.set_content(content)
         self.documents[editor] = {
@@ -1787,6 +1837,7 @@ class PyLexApp(tk.Tk):
         editor.set_font_size(self.preferences["font_size"])
         editor.set_theme(self.dark, self.theme_palette)
         self._sync_active_document()
+        self._update_editor_status(editor)
         self.editor.set_breakpoints(self.breakpoints.get(editor, set()))
         return editor
 
@@ -1813,6 +1864,7 @@ class PyLexApp(tk.Tk):
                 self._sync_active_document()
                 self.editor.set_breakpoints(self.breakpoints.get(self.editor, set()))
                 self._set_diagnostics([])
+                self._update_editor_status(editor)
                 break
 
     def _title(self):
