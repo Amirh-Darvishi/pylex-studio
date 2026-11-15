@@ -158,7 +158,7 @@ class DebugSession:
             with self._stdin_lock:
                 if self.done:
                     return False
-                self.process.stdin.write(value + "\n")
+                self.process.stdin.write((value + "\n").encode("utf-8"))
                 self.process.stdin.flush()
             return True
         except (BrokenPipeError, OSError, ValueError):
