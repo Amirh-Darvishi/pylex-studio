@@ -178,7 +178,7 @@ class ContextMenu:
                 if hover_data["id"] is not None:
                     try:
                         self.window.after_cancel(hover_data["id"])
-                    except tk.TclError:
+                    except (tk.TclError, AttributeError):
                         pass
                     hover_data["id"] = None
                 set_row_hover(target, target_label, active, self._color("elevated", "#303B49"), normal_fg)
@@ -193,13 +193,13 @@ class ContextMenu:
                         x, y = self.window.winfo_pointerxy()
                         inside = (target.winfo_rootx() <= x < target.winfo_rootx() + target.winfo_width()
                                   and target.winfo_rooty() <= y < target.winfo_rooty() + target.winfo_height())
-                    except tk.TclError:
+                    except (tk.TclError, AttributeError):
                         inside = False
                     if not inside:
                         set_row_hover(target, target_label, active, surface, normal_fg)
                 hover_data["id"] = self.window.after(45, settle)
 
-            for widget in (row, text_label, *row.winfo_children()):
+            for widget in (row, *row.winfo_children()):
                 widget.bind("<Enter>", hover, add="+")
                 widget.bind("<Leave>", unhover, add="+")
 
