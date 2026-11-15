@@ -201,7 +201,7 @@ class GitService:
         output = self._run("branch", "--format=%(HEAD)%09%(refname:short)%09%(upstream:short)").stdout
         result = []
         for line in output.splitlines():
-            parts = line.split("\x00")
+            parts = line.split("\t")
             if len(parts) >= 2:
                 result.append({"current": parts[0] == "*", "name": parts[1],
                                "upstream": parts[2] if len(parts) > 2 else ""})
