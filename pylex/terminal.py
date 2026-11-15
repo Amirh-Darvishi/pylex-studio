@@ -272,13 +272,41 @@ class TerminalPanel(ttk.Frame):
         self.status.configure(text=f"Running — {cwd}")
         return process
 
+    def _context_menu(self):
+        palette = getattr(self.winfo_toplevel(), "theme_palette", {})
+        return tk.Menu(
+            self, tearoff=False,
+            background=palette.get("menu_bg", "#252D38"),
+            foreground=palette.get("menu_fg", "#D8DEE8"),
+            activebackground=palette.get("elevated", "#303B49"),
+            activeforeground=palette.get("accent", "#8FB7D8"),
+            disabledforeground=palette.get("muted", "#9AA7B7"),
+            borderwidth=1, relief="solid",
+        )
+
     def _show_output_context_menu(self, widget, event):
-        menu = tk.Menu(self, tearoff=False)
-        menu.add_command(label='Copy', command=lambda: widget.event_generate('<<Copy>>'))
-        menu.add_command(label='Select All', command=lambda: widget.tag_add('sel', '1.0', 'end-1c'))
-        menu.add_command(label='Clear Output', command=lambda: self._clear_output(widget))
-        menu.tk_popup(event.x_root, event.y_root)
-        return 'break'
+        menu = self._context_menu()
+        try:
+            selected = bool(widget.tag_ranges("sel"))
+        except tk.TclError:
+            selected = False
+        menu.add_command(
+            label="Copy Selection",
+            command=lambda: widget.event_generate("<<Copy>>"),
+            state="normal" if selected else "disabled",
+        )
+        menu.add_command(
+            label="Select All",
+            command=lambda: widget.tag_add("sel", "1.0", "end-1c"),
+        )
+        menu.add_separator()
+        menu.add_command(label="Clear Terminal Output", command=lambda: self._clear_output(widget))
+        menu.add_command(label="Interrupt Current Command", command=self.interrupt_current)
+        try:
+            menu.tk_popup(event.x_root, event.y_root)
+        finally:
+            menu.grab_release()
+        return "break"
 
     def _clear_output(self, widget):
         widget.configure(state='normal')
@@ -286,13 +314,23 @@ class TerminalPanel(ttk.Frame):
         widget.configure(state='disabled')
 
     def _show_entry_context_menu(self, widget, event):
-        menu = tk.Menu(self, tearoff=False)
-        menu.add_command(label='Cut', command=lambda: widget.event_generate('<<Cut>>'))
-        menu.add_command(label='Copy', command=lambda: widget.event_generate('<<Copy>>'))
-        menu.add_command(label='Paste', command=lambda: widget.event_generate('<<Paste>>'))
-        menu.add_command(label='Select All', command=lambda: widget.select_range(0, 'end'))
-        menu.tk_popup(event.x_root, event.y_root)
-        return 'break'
+        menu = self._context_menu()
+        try:
+            selected = bool(widget.selection_present())
+        except tk.TclError:
+            selected = False
+        menu.add_command(label="Cut", command=lambda: widget.event_generate("<<Cut>>"),
+                         state="normal" if selected else "disabled")
+        menu.add_command(label="Copy", command=lambda: widget.event_generate("<<Copy>>"),
+                         state="normal" if selected else "disabled")
+        menu.add_command(label="Paste", command=lambda: widget.event_generate("<<Paste>>"))
+        menu.add_command(label="Select All", command=lambda: widget.select_range(0, "end"))
+        menu.add_command(label="Clear Input", command=lambda: widget.delete(0, "end"))
+        try:
+            menu.tk_popup(event.x_root, event.y_root)
+        finally:
+            menu.grab_release()
+        return "break"
 
     def _current_frame(self):
         selected = self.notebook.select()
