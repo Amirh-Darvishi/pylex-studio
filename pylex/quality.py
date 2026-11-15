@@ -38,8 +38,10 @@ def _terminate_process_tree(process):
         if os.name == "nt":
             subprocess.run(
                 ["taskkill", "/PID", str(process.pid), "/T", "/F"],
-                stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
-                check=False, timeout=5,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+                check=False,
+                timeout=5,
             )
         else:
             os.killpg(process.pid, signal.SIGKILL)
