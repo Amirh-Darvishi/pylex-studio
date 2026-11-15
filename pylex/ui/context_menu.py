@@ -249,10 +249,17 @@ class ContextMenu:
             if not enabled:
                 continue
             if kind == "cascade":
+                # Cascade rows are navigation targets, not commands:
+                # hovering reveals the submenu, while clicking the parent row
+                # must not open it or execute anything. Actual actions live in
+                # the child menu and require an explicit click there.
                 child_menu = item["menu"]
                 for widget in (row, *row.winfo_children()):
-                    widget.bind("<Enter>", lambda event, r=row, child=child_menu: self._open_submenu(r, child), add="+")
-                    widget.bind("<Button-1>", lambda event, r=row, child=child_menu: self._open_submenu(r, child), add="+")
+                    widget.bind(
+                        "<Enter>",
+                        lambda event, r=row, child=child_menu: self._open_submenu(r, child),
+                        add="+",
+                    )
             elif kind == "check":
                 def toggle(entry=item):
                     entry["variable"].set(not bool(entry["variable"].get()))
