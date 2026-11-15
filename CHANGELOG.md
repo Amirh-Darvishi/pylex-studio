@@ -7,7 +7,7 @@ All notable changes to PyLex Studio are documented here.
 ### Added
 - Added an integrated terminal panel with independent persistent shell sessions.
 - Added PowerShell and Command Prompt support on Windows, optional Git Bash discovery, and available Bash/Zsh/POSIX shells on Unix-like systems.
-- Added asynchronous output streaming, command input, Ctrl+C interruption, process-tree termination, session clearing, and multiple terminal tabs.
+- Added asynchronous output streaming, command input with per-session Up/Down history, Ctrl+C interruption, process-tree termination, session clearing, and multiple terminal tabs.
 - New terminal sessions inherit the active workspace working directory and selected Python interpreter environment.
 - Added terminal helper tests for shell commands, virtual-environment PATH setup, and environment isolation.
 
