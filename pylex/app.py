@@ -91,7 +91,16 @@ class PyLexApp(tk.Tk):
             file_menu.add_command(
                 label=label, command=command, accelerator=shortcut
             )
-        self.recent_workspace_menu = tk.Menu(file_menu, tearoff=False)
+        self.recent_workspace_menu = tk.Menu(
+            file_menu, tearoff=False,
+            background=self.theme_palette["menu_bg"],
+            foreground=self.theme_palette["menu_fg"],
+            activebackground=self.theme_palette["elevated"],
+            activeforeground=self.theme_palette["accent"],
+            disabledforeground=self.theme_palette["muted"],
+            borderwidth=1, relief="solid",
+            font=(self._resolved_ui_font(), self.preferences.get("ui_font_size", 9)),
+        )
         self._menus.append(self.recent_workspace_menu)
         file_menu.add_cascade(label="Open Recent Workspace", menu=self.recent_workspace_menu)
         file_menu.add_separator()
@@ -838,7 +847,6 @@ class PyLexApp(tk.Tk):
             menu.add_command(label='Open Explorer', command=lambda: self._activity_action('explorer'))
             menu.add_command(label='Open Workspace…', command=self.open_project_folder)
             menu.add_command(label='Refresh Workspace', command=self.refresh_workspace)
-            menu.add_command(label='Clear Recent Workspaces', command=self.clear_recent_workspaces)
         elif view == 'search':
             menu.add_command(label='Quick Open File…', command=self.open_quick_file)
             menu.add_command(label='Command Palette…', command=self.open_command_palette)
@@ -864,7 +872,7 @@ class PyLexApp(tk.Tk):
             if not self.preferences["show_project_explorer"]:
                 self.toggle_project_explorer()
             self.project_tree.focus_set()
-            self.status.configure(text="Explorer ready — choose a recent workspace or open a folder.")
+            self.status.configure(text="Explorer ready — open a folder to browse its files.")
         elif view == "search":
             self.open_quick_file()
         elif view == "source":
@@ -1217,6 +1225,7 @@ class PyLexApp(tk.Tk):
         ):
             submenu = self._new_context_menu()
             variable = tk.StringVar(self, value=self.preferences.get(key, values[0]))
+            menu._status_vars.append(variable)
             for value in values:
                 submenu.add_radiobutton(
                     label=value, variable=variable, value=value,
@@ -1244,7 +1253,7 @@ class PyLexApp(tk.Tk):
         if row:
             tree.selection_set(row)
             tree.focus(row)
-        menu = tk.Menu(self, tearoff=False)
+        menu = self._new_context_menu()
         if row:
             values = tree.item(row, 'values')
             menu.add_command(label='Copy Row', command=lambda: self._copy_to_clipboard('  |  '.join(map(str, values))))
