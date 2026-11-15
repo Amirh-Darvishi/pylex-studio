@@ -22,7 +22,9 @@ class CommandRegistryTests(unittest.TestCase):
                     "F5",
                     lambda: self.calls.append("run"),
                 ),
-                Command("view.theme", "Toggle Theme", "", lambda: self.calls.append("theme")),
+                Command(
+                    "view.theme", "Toggle Theme", "", lambda: self.calls.append("theme")
+                ),
             ]
         )
 
