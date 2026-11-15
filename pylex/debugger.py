@@ -38,7 +38,7 @@ class DebugSession:
                 if os.name == "nt" else {"start_new_session": True}
             )
             process = subprocess.Popen(
-                [str(python_executable or sys.executable), "-m", "pdb", str(script_path)],
+                [str(python_executable or sys.executable), "-u", "-m", "pdb", str(script_path)],
                 cwd=str(cwd) if cwd is not None else None, env=env,
                 stdin=subprocess.PIPE,
                 stdout=subprocess.PIPE,
@@ -66,7 +66,7 @@ class DebugSession:
             if os.name == "nt" else {"start_new_session": True}
         )
         process = subprocess.Popen(
-            [str(python_executable or sys.executable), "-m", "pdb", str(script_path)],
+            [str(python_executable or sys.executable), "-u", "-m", "pdb", str(script_path)],
             cwd=str(cwd) if cwd is not None else None, env=env,
             stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
             text=True, encoding="utf-8", errors="replace", bufsize=1, **options,
