@@ -18,7 +18,6 @@ class ContextMenu:
         self._submenu = None
         self._parent_menu = None
         self._closed = False
-        self._global_bind_id = None
 
     def add_command(self, *, label, command=None, state="normal", accelerator="", **_kwargs):
         self.items.append({
@@ -58,12 +57,10 @@ class ContextMenu:
         if self._closed:
             return
         self._closed = True
-        if self._parent_menu is None and self._global_bind_id is not None:
-            try:
-                self.master.winfo_toplevel().unbind_all("<Button-1>")
-            except tk.TclError:
-                pass
-            self._global_bind_id = None
+        if self._parent_menu is None:
+            root = self.master.winfo_toplevel()
+            if getattr(root, "_pylex_active_context_menu", None) is self:
+                root._pylex_active_context_menu = None
         if self._parent_menu is not None:
             self._parent_menu._dismiss()
         if self._submenu is not None:
@@ -257,12 +254,24 @@ class ContextMenu:
         self.window.deiconify()
         self.window.lift()
         if self._parent_menu is None:
-            try:
-                self._global_bind_id = self.master.winfo_toplevel().bind_all(
-                    "<Button-1>", self._outside_click, add="+"
+            root = self.master.winfo_toplevel()
+            active = getattr(root, "_pylex_active_context_menu", None)
+            if active is not None and active is not self:
+                active._dismiss()
+            root._pylex_active_context_menu = self
+            if not getattr(root, "_pylex_context_menu_listener", False):
+                root.bind_all(
+                    "<Button-1>",
+                    lambda event, owner=root: ContextMenu._dispatch_global_click(owner, event),
+                    add="+",
                 )
-            except tk.TclError:
-                self._global_bind_id = None
+                root._pylex_context_menu_listener = True
+
+    @staticmethod
+    def _dispatch_global_click(root, event):
+        active = getattr(root, "_pylex_active_context_menu", None)
+        if active is not None:
+            active._outside_click(event)
 
     def _outside_click(self, event):
         x, y = event.x_root, event.y_root
