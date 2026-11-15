@@ -374,7 +374,7 @@ class PyLexApp(tk.Tk):
                 messagebox.showerror("Create .venv", str(exc), parent=dialog)
                 return
             target = project.root / ".venv"
-            if target.exists() and any(target.iterdir()):
+            if target.exists() and (not target.is_dir() or any(target.iterdir())):
                 messagebox.showerror("Create .venv", "The .venv folder already exists and is not empty.", parent=dialog)
                 return
             create_button.configure(state="disabled")

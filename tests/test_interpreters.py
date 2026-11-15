@@ -59,6 +59,18 @@ class InterpreterTests(unittest.TestCase):
                 create_virtual_environment(sys.executable, target)
             self.assertEqual((target / "keep.txt").read_text(encoding="utf-8"), "keep")
 
+    @unittest.skipIf(os.name == "nt", "Symlink creation may require elevated Windows permissions.")
+    def test_create_environment_refuses_symlink_target(self):
+        with tempfile.TemporaryDirectory() as folder:
+            root = Path(folder)
+            external = root / "external"
+            external.mkdir()
+            target = root / ".venv"
+            target.symlink_to(external, target_is_directory=True)
+            with self.assertRaises(ValueError):
+                create_virtual_environment(sys.executable, target)
+            self.assertEqual(list(external.iterdir()), [])
+
     def test_find_project_environment_ignores_invalid_environment(self):
         with tempfile.TemporaryDirectory() as folder:
             root = Path(folder)

@@ -173,7 +173,10 @@ def create_virtual_environment(
 ) -> InterpreterInfo:
     """Create a new venv without deleting or overwriting existing user data."""
     base = probe_interpreter(base_interpreter)
-    target = Path(environment_path).expanduser().resolve()
+    requested_target = Path(environment_path).expanduser()
+    if requested_target.is_symlink():
+        raise ValueError(f"Environment target must not be a symlink: {requested_target}")
+    target = requested_target.resolve()
     if target.exists():
         if not target.is_dir():
             raise NotADirectoryError(f"Environment target is not a directory: {target}")
