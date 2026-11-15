@@ -185,9 +185,9 @@ python -m pytest -v
 Open **Tools → Git Source Control** or select the **Git** panel while a workspace is open. PyLex uses the Git executable installed on the system and operates on the workspace's repository; it does not require a Python Git package or a GitHub account for local version-control operations.
 
 - Review the current branch, upstream, incoming/outgoing counts, and changed files.
-- Inspect unstaged and staged diffs; stage or unstage selected files.
-- Commit staged changes with a message, create branches, and switch branches.
-- Fetch remote updates, pull with fast-forward-only behavior, and push the current branch.
+- Inspect unstaged and staged diffs separately; stage or unstage selected files or the entire workspace.
+- Commit staged changes with a message, create branches, and switch branches. Branch selection remains read-only outside the switch workflow.
+- Fetch remote updates, pull with fast-forward-only behavior, and push the current branch using its configured upstream where available; otherwise PyLex discovers the default remote.
 - Inspect recent commit history and stash the current working tree, including untracked files.
 - Remote Git commands run in a background thread so the editor remains responsive.
 
