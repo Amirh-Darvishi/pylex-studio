@@ -1,6 +1,7 @@
 """Tests for persisted UI preferences."""
 import json
 import tempfile
+import sys
 import unittest
 from pathlib import Path
 from unittest.mock import patch
@@ -42,6 +43,19 @@ class PreferencesTests(unittest.TestCase):
                 path = Path(folder) / ".pylex_studio.json"
                 path.write_text(json.dumps({"timeout_seconds": 999}), encoding="utf-8")
                 self.assertEqual(load_preferences()["timeout_seconds"], 10)
+
+    def test_interpreter_preferences_round_trip(self):
+        with tempfile.TemporaryDirectory() as folder:
+            with patch("pylex.preferences.Path.home", return_value=Path(folder)):
+                values = dict(DEFAULTS)
+                values["interpreter_path"] = sys.executable
+                values["project_interpreters"] = {"/workspace": "/python"}
+                values["recent_workspaces"] = ["/one", "/two"]
+                save_preferences(values)
+                loaded = load_preferences()
+                self.assertEqual(loaded["interpreter_path"], sys.executable)
+                self.assertEqual(loaded["project_interpreters"], values["project_interpreters"])
+                self.assertEqual(loaded["recent_workspaces"], values["recent_workspaces"])
 
     def test_invalid_values_are_normalized(self):
         with tempfile.TemporaryDirectory() as folder:

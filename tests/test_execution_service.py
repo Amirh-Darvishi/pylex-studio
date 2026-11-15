@@ -1,6 +1,7 @@
 """Tests for project-aware process orchestration."""
 import tempfile
 import unittest
+from unittest.mock import patch
 from pathlib import Path
 from pylex.core.project import Project
 from pylex.services.execution import ExecutionService
@@ -32,6 +33,26 @@ class ExecutionServiceTests(unittest.TestCase):
             result = handle.wait(5)
             self.assertEqual(result.status, "finished")
             self.assertEqual(result.stdout.strip(), "42")
+
+    def test_selected_interpreter_is_forwarded_for_unsaved_source(self):
+        with tempfile.TemporaryDirectory() as folder:
+            project = Project.open(folder)
+            with patch("pylex.services.execution.start_source") as starter:
+                ExecutionService().start_document(
+                    "print('ok')", None, project, dirty=True,
+                    python_executable=sys.executable,
+                )
+            self.assertEqual(starter.call_args.kwargs["python_executable"], sys.executable)
+
+    def test_selected_interpreter_is_forwarded_for_debugger(self):
+        with tempfile.TemporaryDirectory() as folder:
+            project = Project.open(folder)
+            with patch("pylex.services.execution.DebugSession.start") as starter:
+                ExecutionService().start_debugger_document(
+                    "print('ok')", None, project, dirty=True,
+                    python_executable=sys.executable,
+                )
+            self.assertEqual(starter.call_args.kwargs["python_executable"], sys.executable)
 
     def test_dirty_saved_buffer_runs_buffer_not_disk_content(self):
         with tempfile.TemporaryDirectory() as folder:
