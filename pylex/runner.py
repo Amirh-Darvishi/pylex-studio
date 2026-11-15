@@ -117,7 +117,7 @@ class ExecutionHandle:
     def send_input(self, value):
         """Send one line to a running program's standard input."""
         value = str(value)
-        if "\\x00" in value:
+        if "\x00" in value:
             raise ValueError("Program input cannot contain a NUL character.")
         if self.done or self.process.poll() is not None or self.process.stdin is None:
             return False
@@ -125,7 +125,7 @@ class ExecutionHandle:
             if self.done or self.process.poll() is not None:
                 return False
             try:
-                self.process.stdin.write(value + "\\n")
+                self.process.stdin.write(value + "\n")
                 self.process.stdin.flush()
                 return True
             except (BrokenPipeError, OSError, ValueError):
@@ -239,7 +239,7 @@ def start_file(path, timeout=10, cwd=None, env=None, python_executable=None):
     process = subprocess.Popen(
         [str(python_executable or sys.executable), "-u", str(script_path)],
         cwd=str(cwd) if cwd is not None else None, env=env,
-        stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+        stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
         text=True, encoding="utf-8", errors="replace", bufsize=1,
         **_process_options(),
     )
