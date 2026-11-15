@@ -335,7 +335,7 @@ class CodeEditor(tk.Frame):
         menu.add_command(label="Go to Line…", command=self._go_to_line)
         menu.add_separator()
         menu.add_command(label="Show Completions", command=self.show_completions)
-        menu.add_command(label="Format / Analyze", command=lambda: self.event_generate("<<PyLexAnalyze>>"))
+        menu.add_command(label="Format / Analyze", command=lambda: self.text.event_generate("<<PyLexAnalyze>>"))
         try:
             menu.tk_popup(event.x_root, event.y_root)
         finally:
