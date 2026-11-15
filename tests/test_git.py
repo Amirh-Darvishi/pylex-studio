@@ -76,7 +76,7 @@ class GitServiceTests(unittest.TestCase):
         self.assertFalse(any(item.staged for item in self.git.status().changes))
 
     def test_unstage_rejects_untracked_file(self):
-        (self.root / "new.txt").write_text("new\\n", encoding="utf-8")
+        (self.root / "new.txt").write_text("new\n", encoding="utf-8")
         with self.assertRaisesRegex(GitError, "Untracked"):
             self.git.unstage("new.txt")
 
