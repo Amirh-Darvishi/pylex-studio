@@ -1,8 +1,12 @@
 # PyLex Studio
 
-**Development version: 1.10.0 — Final Quality & Documentation**
+**Development version: 2.0.0 — Modern User Interface**
 
 A lightweight Python desktop editor with independent lexical and syntax analysis.
+
+## Language roadmap
+
+PyLex Studio 2.0.0 focuses on a polished, Python-first desktop IDE. The file-type and editor presentation layers are being kept extensible so JavaScript, CSS, and HTML editing can be added in a later release without rebuilding the workspace UI.
 
 ## Features
 
@@ -42,18 +46,28 @@ A lightweight Python desktop editor with independent lexical and syntax analysis
 - Multiple terminal tabs, live output streaming, command input with per-session Up/Down history, Ctrl+C interruption, process-tree termination, and per-session working directories
 - Terminal sessions inherit the active workspace environment and selected Python virtual environment
 - Adjustable editor font family and font size
-- Persistent preferences for theme, font, font size, project explorer visibility, execution timeout, and interpreter selection
+- Persistent preferences for theme, UI/code fonts, font sizes, project explorer visibility, execution timeout, interpreter selection, configurable status-bar indicators, indentation, encoding and line endings, and local account display name
 - Structured error panel with exact exception type and source location
 - Click or double-click a diagnostic to jump to its line and column
 - Current-line emphasis and inline error highlighting
 - Separate Output, Lexical Analysis, Syntax Analysis, and Errors panels
 - Analyze All and Clear Results actions
-- Dark and light editor themes
+- Dark and light application themes, with a dark default
+- VS Code-inspired Activity Bar and an Explorer with Open Editors and Workspace sections; recent workspaces are available from the File toolbar menu with open, reveal, terminal, copy-path and remove actions
+- Dedicated cascading menu row above the restored logo/action toolbar, with File, Edit, Navigate, Run, Debug, Code, Tools, View and Help groups
+- Consistent Run / Stop actions with matching dimensions and coordinated hover, pressed and disabled states across dark and light themes
+- Expanded Account Center and Settings windows with local profile, workspace overview, keyboard shortcuts, privacy, security and product roadmap sections
+- Extensibility roadmap for language packs, Language Server Protocol support, project templates, theme packs and a permission-aware extension marketplace
+- Local Account center with a persistent display name; cloud sign-in and synchronization are not yet enabled
+- Original PyLex Studio vector brand mark in the application header and About window
+- Modern grouped toolbar and consistent application styling
+- Consistent custom right-click menus with live hover states, cascading submenus, editor line operations, advanced Workspace file/folder actions, terminal-at-folder, Git staging/diff actions, test/diagnostic actions and clipboard controls
 
 ## Requirements
 
 - Python 3.10+
 - Tkinter (usually included with standard Python installations)
+- ttkbootstrap 2.x (modern themed interface and bundled Bootstrap Icons)
 - Pygments
 
 ## Installation
@@ -85,7 +99,7 @@ python main.py
 
 ## User interface preferences
 
-Open View → Preferences to choose the dark or light theme, editor font family, font size, project explorer visibility, and execution timeout (5, 10, 30, or 60 seconds, or Unlimited). Preferences are stored in `.pylex_studio.json` in the user's home directory and are reused on the next launch.
+Open View → Preferences to choose the dark or light theme, interface and code font families and sizes, project explorer visibility, and execution timeout (5, 10, 30, or 60 seconds, or Unlimited). The Settings window also documents shortcuts, planned language and extension support, and current privacy/security boundaries. Preferences are stored in `.pylex_studio.json` in the user's home directory and are reused on the next launch.
 
 ## Debugging
 

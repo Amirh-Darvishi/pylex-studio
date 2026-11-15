@@ -1,4 +1,5 @@
 """Tests for persisted UI preferences."""
+
 import json
 import tempfile
 import sys
@@ -19,12 +20,35 @@ class PreferencesTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as folder:
             with patch("pylex.preferences.Path.home", return_value=Path(folder)):
                 values = dict(DEFAULTS)
-                values.update(theme="light", font_family="Cascadia Code", font_size=16)
+                values.update(
+                    theme="light",
+                    font_family="Cascadia Code",
+                    font_size=16,
+                    ui_font_family="Segoe UI",
+                    ui_font_size=10,
+                )
                 save_preferences(values)
                 loaded = load_preferences()
                 self.assertEqual(loaded["theme"], "light")
                 self.assertEqual(loaded["font_family"], "Cascadia Code")
                 self.assertEqual(loaded["font_size"], 16)
+                self.assertEqual(loaded["ui_font_family"], "Segoe UI")
+                self.assertEqual(loaded["ui_font_size"], 10)
+
+    def test_account_display_name_is_normalized_and_persisted(self):
+        with tempfile.TemporaryDirectory() as folder:
+            with patch("pylex.preferences.Path.home", return_value=Path(folder)):
+                values = dict(DEFAULTS)
+                values["account_display_name"] = "  PyLex Developer  "
+                save_preferences(values)
+                self.assertEqual(
+                    load_preferences()["account_display_name"], "PyLex Developer"
+                )
+                values["account_display_name"] = " " * 4
+                save_preferences(values)
+                self.assertEqual(
+                    load_preferences()["account_display_name"], "Developer"
+                )
 
     def test_timeout_preference_round_trip_and_unlimited(self):
         with tempfile.TemporaryDirectory() as folder:
@@ -54,8 +78,52 @@ class PreferencesTests(unittest.TestCase):
                 save_preferences(values)
                 loaded = load_preferences()
                 self.assertEqual(loaded["interpreter_path"], sys.executable)
-                self.assertEqual(loaded["project_interpreters"], values["project_interpreters"])
-                self.assertEqual(loaded["recent_workspaces"], values["recent_workspaces"])
+                self.assertEqual(
+                    loaded["project_interpreters"], values["project_interpreters"]
+                )
+                self.assertEqual(
+                    loaded["recent_workspaces"], values["recent_workspaces"]
+                )
+
+    def test_status_bar_preferences_round_trip(self):
+        with tempfile.TemporaryDirectory() as folder:
+            with patch("pylex.preferences.Path.home", return_value=Path(folder)):
+                values = dict(DEFAULTS)
+                values["status_bar_items"] = ["position", "encoding"]
+                values["status_bar_indent"] = "Tabs"
+                values["status_bar_encoding"] = "UTF-8 with BOM"
+                values["status_bar_eol"] = "CRLF"
+                save_preferences(values)
+                loaded = load_preferences()
+                self.assertEqual(loaded["status_bar_items"], ["position", "encoding"])
+                self.assertEqual(loaded["status_bar_indent"], "Tabs")
+                self.assertEqual(loaded["status_bar_encoding"], "UTF-8 with BOM")
+                self.assertEqual(loaded["status_bar_eol"], "CRLF")
+
+    def test_invalid_status_bar_preferences_are_normalized(self):
+        with tempfile.TemporaryDirectory() as folder:
+            with patch("pylex.preferences.Path.home", return_value=Path(folder)):
+                path = Path(folder) / ".pylex_studio.json"
+                path.write_text(
+                    json.dumps(
+                        {
+                            "status_bar_items": ["position", "unknown", "position"],
+                            "status_bar_indent": "Huge",
+                            "status_bar_encoding": "UTF-16",
+                            "status_bar_eol": "CR",
+                        }
+                    ),
+                    encoding="utf-8",
+                )
+                loaded = load_preferences()
+                self.assertEqual(loaded["status_bar_items"], ["position"])
+                self.assertEqual(
+                    loaded["status_bar_indent"], DEFAULTS["status_bar_indent"]
+                )
+                self.assertEqual(
+                    loaded["status_bar_encoding"], DEFAULTS["status_bar_encoding"]
+                )
+                self.assertEqual(loaded["status_bar_eol"], DEFAULTS["status_bar_eol"])
 
     def test_failed_atomic_replace_preserves_existing_preferences(self):
         with tempfile.TemporaryDirectory() as folder:
@@ -63,23 +131,36 @@ class PreferencesTests(unittest.TestCase):
                 path = Path(folder) / ".pylex_studio.json"
                 original = json.dumps({"theme": "light"})
                 path.write_text(original, encoding="utf-8")
-                with patch("pylex.preferences.os.replace", side_effect=OSError("locked")):
+                with patch(
+                    "pylex.preferences.os.replace",
+                    side_effect=OSError("locked"),
+                ):
                     with self.assertRaisesRegex(OSError, "locked"):
                         save_preferences({"theme": "dark"})
                 self.assertEqual(path.read_text(encoding="utf-8"), original)
-                self.assertEqual(list(Path(folder).glob(".pylex_studio.json.*.tmp")), [])
+                self.assertEqual(
+                    list(Path(folder).glob(".pylex_studio.json.*.tmp")), []
+                )
 
     def test_invalid_values_are_normalized(self):
         with tempfile.TemporaryDirectory() as folder:
             with patch("pylex.preferences.Path.home", return_value=Path(folder)):
                 path = Path(folder) / ".pylex_studio.json"
-                path.write_text(json.dumps({
-                    "theme": "neon", "font_family": "Missing Font", "font_size": 1000,
-                }), encoding="utf-8")
+                path.write_text(
+                    json.dumps(
+                        {
+                            "theme": "neon",
+                            "font_family": "Missing Font",
+                            "font_size": 1000,
+                        }
+                    ),
+                    encoding="utf-8",
+                )
                 loaded = load_preferences()
                 self.assertEqual(loaded["theme"], DEFAULTS["theme"])
                 self.assertEqual(loaded["font_family"], DEFAULTS["font_family"])
                 self.assertEqual(loaded["font_size"], 40)
+                self.assertEqual(loaded["ui_font_size"], DEFAULTS["ui_font_size"])
 
 
 if __name__ == "__main__":

@@ -13,6 +13,8 @@ import tkinter as tk
 from pathlib import Path
 from tkinter import messagebox, ttk
 
+from .ui.context_menu import ContextMenu
+
 
 def tool_argv(interpreter, module, arguments=()):
     """Build a shell-free command for a tool in the selected Python environment."""
@@ -172,6 +174,13 @@ class QualityPanel(ttk.Frame):
         # Double-clicking a discovered test (or pressing Enter) runs that test.
         self.test_tree.bind("<Double-1>", self._run_test_from_event)
         self.test_tree.bind("<Return>", self._run_test_from_event)
+        self.test_tree.bind(
+            "<Button-3>",
+            lambda event: self._show_tree_context_menu(
+                self.test_tree, event, tests=True
+            ),
+            add="+",
+        )
         self.notebook.add(tests_frame, text="Test Explorer")
 
         diagnostics_frame = ttk.Frame(self.notebook, padding=4)
@@ -191,15 +200,118 @@ class QualityPanel(ttk.Frame):
             self.diagnostic_tree.column(key, width=width)
         self.diagnostic_tree.pack(fill="both", expand=True)
         self.diagnostic_tree.bind("<Double-1>", self._open_diagnostic)
+        self.diagnostic_tree.bind(
+            "<Button-3>",
+            lambda event: self._show_tree_context_menu(self.diagnostic_tree, event),
+            add="+",
+        )
         self.notebook.add(diagnostics_frame, text="Lint Diagnostics")
 
         output_frame = ttk.Frame(self.notebook, padding=4)
         self.output = tk.Text(output_frame, wrap="none", height=8, state="disabled")
-        ybar = ttk.Scrollbar(output_frame, command=self.output.yview)
-        self.output.configure(yscrollcommand=ybar.set)
-        self.output.pack(side="left", fill="both", expand=True)
-        ybar.pack(side="right", fill="y")
+        self.output.pack(fill="both", expand=True)
+        self.output.bind(
+            "<Shift-MouseWheel>", self._scroll_output_horizontally, add="+"
+        )
+        self.output.bind("<Button-3>", self._show_output_context_menu, add="+")
         self.notebook.add(output_frame, text="Tool Output")
+
+    def _context_menu(self):
+        root = self.winfo_toplevel()
+        preferences = getattr(root, "preferences", {})
+        font_family = (
+            root._resolved_ui_font()
+            if hasattr(root, "_resolved_ui_font")
+            else "Segoe UI"
+        )
+        return ContextMenu(
+            self,
+            palette=getattr(root, "theme_palette", {}),
+            font_family=font_family,
+            font_size=preferences.get("ui_font_size", 9),
+        )
+
+    def _show_tree_context_menu(self, tree, event, tests=False):
+        row = tree.identify_row(event.y)
+        column = tree.identify_column(event.x)
+        if row:
+            if row not in tree.selection():
+                tree.selection_set(row)
+            tree.focus(row)
+        menu = self._context_menu()
+        if row:
+            values = tree.item(row, "values")
+            menu.add_command(
+                label="Copy Row",
+                command=lambda: self._copy_context_text(" | ".join(map(str, values))),
+            )
+            if column and column != "#0":
+                index = int(column[1:]) - 1
+                if 0 <= index < len(values):
+                    menu.add_command(
+                        label="Copy Cell",
+                        command=lambda value=values[index]: self._copy_context_text(
+                            value
+                        ),
+                    )
+            menu.add_separator()
+            if tests:
+                menu.add_command(
+                    label="Run Selected Test", command=self.run_selected_test
+                )
+            else:
+                menu.add_command(label="Open Diagnostic", command=self._open_diagnostic)
+                menu.add_command(
+                    label="Copy Diagnostic Message",
+                    command=lambda: self._copy_context_text(
+                        values[-1] if values else ""
+                    ),
+                )
+        if tests:
+            menu.add_command(label="Discover Tests", command=self.discover_tests)
+            menu.add_command(label="Run All Tests", command=self.run_all_tests)
+        else:
+            menu.add_command(
+                label="Select All Diagnostics",
+                command=lambda: tree.selection_set(tree.get_children("")),
+            )
+        try:
+            menu.tk_popup(event.x_root, event.y_root)
+        finally:
+            menu.grab_release()
+        return "break"
+
+    def _copy_context_text(self, value):
+        self.clipboard_clear()
+        self.clipboard_append(str(value))
+
+    def _show_output_context_menu(self, event):
+        menu = self._context_menu()
+        try:
+            selected = bool(self.output.tag_ranges("sel"))
+        except tk.TclError:
+            selected = False
+        menu.add_command(
+            label="Copy Selection",
+            command=lambda: self.output.event_generate("<<Copy>>"),
+            state="normal" if selected else "disabled",
+        )
+        menu.add_command(
+            label="Select All",
+            command=lambda: self.output.tag_add("sel", "1.0", "end-1c"),
+        )
+        menu.add_separator()
+        menu.add_command(label="Clear Tool Output", command=self._clear_output)
+        try:
+            menu.tk_popup(event.x_root, event.y_root)
+        finally:
+            menu.grab_release()
+        return "break"
+
+    def _scroll_output_horizontally(self, event):
+        """Scroll tool output horizontally while Shift and the wheel are used."""
+        self.output.xview_scroll(-int(event.delta / 120) * 3, "units")
+        return "break"
 
     def _context(self):
         root, interpreter, env = self.context_provider()

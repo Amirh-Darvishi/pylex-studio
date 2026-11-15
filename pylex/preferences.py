@@ -1,4 +1,5 @@
 """Load and validate persistent PyLex Studio preferences."""
+
 import json
 import os
 import tempfile
@@ -7,8 +8,10 @@ from pathlib import Path
 
 DEFAULTS = {
     "theme": "dark",
-    "font_family": "Consolas",
+    "font_family": "JetBrains Mono",
     "font_size": 12,
+    "ui_font_family": "Segoe UI",
+    "ui_font_size": 9,
     "show_project_explorer": True,
     "last_workspace": "",
     "recent_workspaces": [],
@@ -16,6 +19,11 @@ DEFAULTS = {
     "interpreter_path": "",
     "project_interpreters": {},
     "terminal_shell": "",
+    "account_display_name": "Developer",
+    "status_bar_items": ["position", "indent", "encoding", "eol", "language", "mode"],
+    "status_bar_indent": "Spaces: 4",
+    "status_bar_encoding": "UTF-8",
+    "status_bar_eol": "Auto",
 }
 
 
@@ -29,13 +37,57 @@ def _normalise(values):
         result.update({key: values[key] for key in DEFAULTS if key in values})
     if result["theme"] not in {"dark", "light"}:
         result["theme"] = DEFAULTS["theme"]
-    if result["font_family"] not in {"Consolas", "Cascadia Code", "Courier New", "Lucida Console"}:
+    if result["font_family"] not in {
+        "JetBrains Mono",
+        "Cascadia Code",
+        "Fira Code",
+        "Consolas",
+        "Cascadia Mono",
+        "Courier New",
+        "Lucida Console",
+        "DejaVu Sans Mono",
+        "Liberation Mono",
+        "TkFixedFont",
+    }:
         result["font_family"] = DEFAULTS["font_family"]
+    if result["ui_font_family"] not in {
+        "Segoe UI",
+        "Inter",
+        "Arial",
+        "Tahoma",
+        "Noto Sans",
+        "Ubuntu",
+        "DejaVu Sans",
+        "TkDefaultFont",
+    }:
+        result["ui_font_family"] = DEFAULTS["ui_font_family"]
+    try:
+        result["ui_font_size"] = max(8, min(14, int(result["ui_font_size"])))
+    except (TypeError, ValueError):
+        result["ui_font_size"] = DEFAULTS["ui_font_size"]
     try:
         result["font_size"] = max(7, min(40, int(result["font_size"])))
     except (TypeError, ValueError):
         result["font_size"] = DEFAULTS["font_size"]
     result["show_project_explorer"] = bool(result["show_project_explorer"])
+    status_items = result["status_bar_items"]
+    allowed_status_items = {"position", "indent", "encoding", "eol", "language", "mode"}
+    if not isinstance(status_items, list):
+        status_items = list(DEFAULTS["status_bar_items"])
+    result["status_bar_items"] = list(
+        dict.fromkeys(
+            item
+            for item in status_items
+            if isinstance(item, str) and item in allowed_status_items
+        )
+    )
+    for key, allowed in (
+        ("status_bar_indent", {"Spaces: 2", "Spaces: 4", "Spaces: 8", "Tabs"}),
+        ("status_bar_encoding", {"UTF-8", "UTF-8 with BOM", "ASCII"}),
+        ("status_bar_eol", {"Auto", "LF", "CRLF"}),
+    ):
+        if not isinstance(result[key], str) or result[key] not in allowed:
+            result[key] = DEFAULTS[key]
     if not isinstance(result["last_workspace"], str):
         result["last_workspace"] = ""
     timeout = result["timeout_seconds"]
@@ -69,14 +121,21 @@ def _normalise(values):
         result["interpreter_path"] = ""
     if not isinstance(result["terminal_shell"], str):
         result["terminal_shell"] = ""
+    if not isinstance(result["account_display_name"], str):
+        result["account_display_name"] = "Developer"
+    result["account_display_name"] = (
+        result["account_display_name"].strip()[:48] or "Developer"
+    )
     mappings = result["project_interpreters"]
     if not isinstance(mappings, dict):
         mappings = {}
     result["project_interpreters"] = {
         str(root): str(executable)
         for root, executable in mappings.items()
-        if isinstance(root, str) and root.strip()
-        and isinstance(executable, str) and executable.strip()
+        if isinstance(root, str)
+        and root.strip()
+        and isinstance(executable, str)
+        and executable.strip()
     }
     return result
 

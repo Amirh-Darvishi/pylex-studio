@@ -10,6 +10,8 @@ from pygments.token import (
     Comment, Error, Keyword, Name, Number, Operator, Punctuation, String,
 )
 
+from .ui.context_menu import ContextMenu
+
 from .editor_features import (
     find_matching_bracket, indentation_for_newline,
     smart_backspace_prefix, toggle_comment_block,
@@ -19,10 +21,12 @@ from .editor_features import (
 class CodeEditor(tk.Frame):
     """Text editor with line numbers, current-line emphasis, and error markers."""
 
-    def __init__(self, master, on_change=None):
+    def __init__(self, master, on_change=None, on_cursor_change=None):
         super().__init__(master)
         self.on_change = on_change
+        self.on_cursor_change = on_cursor_change
         self.font_size = 12
+        self.indent_string = "    "
         self.editor_font = tkfont.Font(family="Consolas", size=self.font_size)
         self._highlight_job = None
         self._diagnostic_location = None
@@ -33,20 +37,28 @@ class CodeEditor(tk.Frame):
         self.gutter = tk.Text(
             self, width=5, padx=5, takefocus=0, state="disabled",
             font=self.editor_font, wrap="none", borderwidth=0,
-            cursor="arrow", highlightthickness=0,
+            cursor="arrow", highlightthickness=0, pady=8,
         )
         self.text = tk.Text(
             self, undo=True, wrap="none", font=self.editor_font,
             padx=8, pady=8, borderwidth=0, tabs=("4c"),
             highlightthickness=0,
         )
+        # The gutter and source must share identical vertical text metrics.
+        for widget in (self.gutter, self.text):
+            widget.configure(spacing1=0, spacing2=0, spacing3=0)
         self.sy = tk.Scrollbar(self, orient="vertical", command=self._scroll)
         self.sx = tk.Scrollbar(self, orient="horizontal", command=self.text.xview)
         self.text.configure(yscrollcommand=self._yscroll, xscrollcommand=self.sx.set)
         self.gutter.pack(side="left", fill="y")
         self.text.pack(side="left", fill="both", expand=True)
-        self.sy.pack(side="right", fill="y")
-        self.sx.pack(side="bottom", fill="x")
+        # Keep native scrolling, but hide the visual bars for a cleaner editor.
+        self.text.bind("<Shift-MouseWheel>", self._horizontal_wheel, add="+")
+        self.text.bind("<Button-4>", lambda _event: self._wheel_units(-3), add="+")
+        self.text.bind("<Button-5>", lambda _event: self._wheel_units(3), add="+")
+        self.gutter.bind("<MouseWheel>", self._wheel_from_event, add="+")
+        self.gutter.bind("<Button-4>", lambda _event: self._wheel_units(-3), add="+")
+        self.gutter.bind("<Button-5>", lambda _event: self._wheel_units(3), add="+")
 
         self.text.bind("<<Modified>>", self._changed)
         self.text.bind("<KeyRelease>", self._cursor_changed)
@@ -64,6 +76,8 @@ class CodeEditor(tk.Frame):
         self.text.bind("<KeyPress>", self._auto_pair, add="+")
         self.text.bind("<Control-space>", self.show_completions)
         self.text.bind("<Control-a>", self._select_all)
+        self.text.bind("<Button-3>", self._show_context_menu, add="+")
+        self.text.bind("<Shift-F10>", self._show_context_menu, add="+")
         self._configure_tags()
         self.text.edit_modified(False)
         self.refresh_lines()
@@ -86,19 +100,53 @@ class CodeEditor(tk.Frame):
         self.gutter.tag_configure("gutter_current", foreground="#ffffff")
         self.gutter.tag_configure("gutter_error", foreground="#ff7777")
 
-    def set_theme(self, dark=True):
+    def set_theme(self, dark=True, palette=None):
+        """Apply the shared application palette to the editor and syntax tokens."""
+        palette = palette or {}
         if dark:
-            bg, fg, gutter_bg, gutter_fg = "#1e1e1e", "#dddddd", "#252526", "#858585"
-            current_bg, error_bg = "#2a2d2e", "#4b2528"
+            bg = palette.get("editor_bg", "#111827")
+            fg = palette.get("editor_fg", "#e6edf7")
+            gutter_bg = palette.get("panel_bg", "#161f2d")
+            gutter_fg = palette.get("muted", "#91a0b7")
+            current_bg = "#182438"
+            error_bg = "#48252e"
+            bracket_bg = "#344b70"
+            syntax = {
+                "py_keyword": "#c792ea", "py_builtin": "#82aaff",
+                "py_string": "#c3e88d", "py_comment": "#7f8c9f",
+                "py_number": "#f78c6c", "py_function": "#82aaff",
+                "py_class": "#ffcb6b", "py_error": "#ff6b78",
+            }
         else:
-            bg, fg, gutter_bg, gutter_fg = "#ffffff", "#202020", "#eeeeee", "#666666"
-            current_bg, error_bg = "#eef4ff", "#ffe8e8"
-        self.text.configure(bg=bg, fg=fg, insertbackground=fg)
+            bg = palette.get("editor_bg", "#ffffff")
+            fg = palette.get("editor_fg", "#202938")
+            gutter_bg = palette.get("panel_bg", "#edf2f9")
+            gutter_fg = palette.get("muted", "#68778d")
+            current_bg = "#f1f5fc"
+            error_bg = "#ffe8e8"
+            bracket_bg = "#d7e5ff"
+            syntax = {
+                "py_keyword": "#8e44ad", "py_builtin": "#087f8c",
+                "py_string": "#21834a", "py_comment": "#788392",
+                "py_number": "#b45309", "py_function": "#245fbe",
+                "py_class": "#946200", "py_error": "#c62828",
+            }
+        self.text.configure(
+            bg=bg, fg=fg, insertbackground=fg,
+            selectbackground=palette.get("selection_bg", bracket_bg),
+            selectforeground=fg,
+        )
         self.gutter.configure(bg=gutter_bg, fg=gutter_fg)
+        for tag, color in syntax.items():
+            self.text.tag_configure(tag, foreground=color)
+        self.text.tag_configure("py_comment", font=self.editor_font)
+        self.text.tag_configure("py_error", underline=True)
         self.text.tag_configure("py_operator", foreground=fg)
         self.text.tag_configure("current_line", background=current_bg)
         self.text.tag_configure("error_line", background=error_bg)
-        self.text.tag_configure("matching_bracket", background="#565b63" if dark else "#d8e8ff")
+        self.text.tag_configure("matching_bracket", background=bracket_bg)
+        self.gutter.tag_configure("gutter_current", foreground=palette.get("accent", fg))
+        self.gutter.tag_configure("gutter_error", foreground=palette.get("danger", "#c62828"))
 
     def _changed(self, event=None):
         if self.text.edit_modified():
@@ -106,8 +154,24 @@ class CodeEditor(tk.Frame):
             self.refresh_lines()
             self._schedule_highlight()
             self.update_current_line()
+            if self.on_cursor_change:
+                self.on_cursor_change()
             if self.on_change:
                 self.on_change()
+
+    def _wheel_from_event(self, event):
+        units = -int(event.delta / 120) * 3 if event.delta else 0
+        return self._wheel_units(units)
+
+    def _wheel_units(self, units):
+        self.text.yview_scroll(units, "units")
+        self.gutter.yview_scroll(units, "units")
+        return "break"
+
+    def _horizontal_wheel(self, event):
+        units = -int(event.delta / 120) if event.delta else 0
+        self.text.xview_scroll(units * 3, "units")
+        return "break"
 
     def _scroll(self, *args):
         self.text.yview(*args)
@@ -118,14 +182,22 @@ class CodeEditor(tk.Frame):
         self.gutter.yview_moveto(first)
 
     def _tab(self, event=None):
-        self.text.insert("insert", "    ")
+        self.text.insert("insert", self.indent_string)
         return "break"
 
     def _smart_newline(self, event=None):
         """Continue indentation and add one level after a Python suite header."""
         prefix = self.text.get("insert linestart", "insert")
         indentation = indentation_for_newline(prefix)
+        if prefix.rstrip().endswith(":") and indentation.endswith("    "):
+            indentation = indentation[:-4] + self.indent_string
         self.text.insert("insert", "\n" + indentation)
+        # Keep the insertion point visible and move the gutter in lockstep.
+        self.text.see("insert")
+        self.text.update_idletasks()
+        first, last = self.text.yview()
+        self.gutter.yview_moveto(first)
+        self._cursor_changed()
         return "break"
 
     def _smart_backspace(self, event=None):
@@ -239,6 +311,81 @@ class CodeEditor(tk.Frame):
             self.text.tag_raise("matching_bracket")
             self.text.tag_raise("sel")
 
+    def _safe_edit_history(self, action):
+        try:
+            self.text.edit_undo() if action == "undo" else self.text.edit_redo()
+        except tk.TclError:
+            pass
+
+    def _copy_current_line(self):
+        line = self.text.index("insert").split(".")[0]
+        value = self.text.get(f"{line}.0", f"{line}.end")
+        self.clipboard_clear()
+        self.clipboard_append(value)
+
+    def _select_current_line(self):
+        line = self.text.index("insert").split(".")[0]
+        self.text.tag_remove("sel", "1.0", "end")
+        self.text.tag_add("sel", f"{line}.0", f"{line}.end")
+        self.text.mark_set("insert", f"{line}.end")
+        self.text.see("insert")
+
+    def _delete_current_line(self):
+        line = int(self.text.index("insert").split(".")[0])
+        self.text.delete(f"{line}.0", f"{line + 1}.0")
+        self.text.mark_set("insert", f"{max(1, line)}.0")
+        self.refresh_lines()
+        self._cursor_changed()
+
+    def _show_context_menu(self, event=None):
+        """Show context-aware editing, navigation and code actions at the pointer."""
+        if event is not None:
+            try:
+                clicked = self.text.index(f"@{event.x},{event.y}")
+                if not (self.text.tag_ranges("sel") and
+                        self.text.compare(clicked, ">=", "sel.first") and
+                        self.text.compare(clicked, "<=", "sel.last")):
+                    self.text.tag_remove("sel", "1.0", "end")
+                    self.text.mark_set("insert", clicked)
+            except tk.TclError:
+                pass
+        root = self.winfo_toplevel()
+        palette = getattr(root, "theme_palette", {})
+        preferences = getattr(root, "preferences", {})
+        font_family = root._resolved_ui_font() if hasattr(root, "_resolved_ui_font") else "Segoe UI"
+        menu = ContextMenu(
+            self, palette=palette, font_family=font_family,
+            font_size=preferences.get("ui_font_size", 9),
+        )
+        try:
+            has_selection = bool(self.text.tag_ranges("sel"))
+        except tk.TclError:
+            has_selection = False
+        menu.add_command(label="Undo", command=lambda: self._safe_edit_history("undo"))
+        menu.add_command(label="Redo", command=lambda: self._safe_edit_history("redo"))
+        menu.add_separator()
+        menu.add_command(label="Cut", command=lambda: self.text.event_generate("<<Cut>>"), state="normal" if has_selection else "disabled")
+        menu.add_command(label="Copy Selection", command=lambda: self.text.event_generate("<<Copy>>"), state="normal" if has_selection else "disabled")
+        menu.add_command(label="Copy Line", command=self._copy_current_line)
+        menu.add_command(label="Paste", command=lambda: self.text.event_generate("<<Paste>>"))
+        menu.add_command(label="Select All", command=self._select_all)
+        menu.add_separator()
+        menu.add_command(label="Duplicate Line / Selection", command=self._duplicate_line)
+        menu.add_command(label="Delete Line", command=self._delete_current_line)
+        menu.add_command(label="Move Line Up    Alt+Up", command=lambda: self._move_line(-1))
+        menu.add_command(label="Move Line Down    Alt+Down", command=lambda: self._move_line(1))
+        menu.add_command(label="Select Current Line", command=self._select_current_line)
+        menu.add_command(label="Toggle Line Comment    Ctrl+/", command=self._toggle_comment)
+        menu.add_separator()
+        menu.add_command(label="Go to Line…    Ctrl+G", command=self._go_to_line)
+        menu.add_command(label="Show Completions    Ctrl+Space", command=self.show_completions)
+        menu.add_command(label="Format / Analyze", command=lambda: self.text.event_generate("<<PyLexAnalyze>>"))
+        try:
+            menu.tk_popup(event.x_root, event.y_root)
+        finally:
+            menu.grab_release()
+        return "break"
+
     def _select_all(self, event=None):
         self.text.tag_add("sel", "1.0", "end-1c")
         return "break"
@@ -351,11 +498,19 @@ class CodeEditor(tk.Frame):
         self._completion_list = None
 
     def refresh_lines(self):
+        """Rebuild line numbers without resetting the editor's current scroll offset."""
+        first, _last = self.text.yview()
         count = max(1, int(self.text.index("end-1c").split(".")[0]))
         current = int(self.text.index("insert").split(".")[0])
         self.gutter.configure(state="normal")
         self.gutter.delete("1.0", "end")
-        self.gutter.insert("1.0", "\n".join(("● " if i in self._breakpoints else "  ") + str(i) for i in range(1, count + 1)))
+        self.gutter.insert(
+            "1.0",
+            "\n".join(
+                ("● " if i in self._breakpoints else "  ") + str(i)
+                for i in range(1, count + 1)
+            ),
+        )
         self.gutter.tag_remove("gutter_current", "1.0", "end")
         self.gutter.tag_remove("gutter_error", "1.0", "end")
         self.gutter.tag_add("gutter_current", f"{current}.0", f"{current}.end")
@@ -364,6 +519,7 @@ class CodeEditor(tk.Frame):
             if 1 <= line <= count:
                 self.gutter.tag_add("gutter_error", f"{line}.0", f"{line}.end")
         self.gutter.configure(state="disabled")
+        self.gutter.yview_moveto(first)
 
     def set_breakpoints(self, lines):
         """Display breakpoint markers beside the corresponding line numbers."""
@@ -395,6 +551,8 @@ class CodeEditor(tk.Frame):
     def _cursor_changed(self, event=None):
         self.update_current_line()
         self._update_matching_bracket()
+        if self.on_cursor_change:
+            self.on_cursor_change()
 
     def get_content(self):
         return self.text.get("1.0", "end-1c")
@@ -487,5 +645,16 @@ class CodeEditor(tk.Frame):
 
     def set_font_family(self, family):
         family = str(family).strip()
-        if family:
-            self.editor_font.configure(family=family)
+        if not family:
+            return
+        try:
+            installed = set(tkfont.families(self))
+        except tk.TclError:
+            installed = set()
+        if installed and family not in installed:
+            family = next(
+                (candidate for candidate in ("Cascadia Code", "Consolas", "Courier New")
+                 if candidate in installed),
+                "TkFixedFont",
+            )
+        self.editor_font.configure(family=family)

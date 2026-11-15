@@ -11,6 +11,8 @@ import tkinter as tk
 from tkinter import ttk
 import time
 
+from .ui.context_menu import ContextMenu
+
 def available_shells():
     """Return supported shells available on the current operating system."""
     if os.name == "nt":
@@ -221,10 +223,11 @@ class TerminalPanel(ttk.Frame):
         if self.on_shell_change:
             self.on_shell_change(self.shell_var.get())
 
-    def create_session(self, shell=None):
+    def create_session(self, shell=None, cwd_override=None):
         shell = shell or self.shell_var.get()
         try:
             cwd, env, python_executable = self.context_provider()
+            cwd = Path(cwd_override).expanduser().resolve() if cwd_override else cwd
             env = terminal_environment(env, python_executable)
             process = TerminalProcess.start(shell, cwd=cwd, env=env)
         except (OSError, ValueError, RuntimeError) as exc:
@@ -238,12 +241,13 @@ class TerminalPanel(ttk.Frame):
                          undo=False, state="disabled")
         output.tag_configure("system", foreground="#4b83c3")
         output.tag_configure("error", foreground="#d9534f")
-        ybar = ttk.Scrollbar(output_frame, command=output.yview)
-        xbar = ttk.Scrollbar(output_frame, orient="horizontal", command=output.xview)
-        output.configure(yscrollcommand=ybar.set, xscrollcommand=xbar.set)
-        output.grid(row=0, column=0, sticky="nsew")
-        ybar.grid(row=0, column=1, sticky="ns")
-        xbar.grid(row=1, column=0, sticky="ew")
+        output.bind("<Button-3>", lambda event, widget=output: self._show_output_context_menu(widget, event), add="+")
+        output.grid(row=0, column=0, columnspan=2, sticky="nsew")
+        output.bind(
+            "<Shift-MouseWheel>",
+            lambda event: (output.xview_scroll(-int(event.delta / 120) * 3, "units"), "break"),
+            add="+",
+        )
         output_frame.rowconfigure(0, weight=1)
         output_frame.columnconfigure(0, weight=1)
         input_row = ttk.Frame(frame, padding=(4, 4))
@@ -252,6 +256,7 @@ class TerminalPanel(ttk.Frame):
         entry = ttk.Entry(input_row)
         entry.pack(side="left", fill="x", expand=True)
         entry.bind("<Return>", lambda _event, item=frame: self._send(item))
+        entry.bind("<Button-3>", lambda event, widget=entry: self._show_entry_context_menu(widget, event), add="+")
         entry.bind("<Up>", lambda _event, item=frame: self._history_move(item, -1))
         entry.bind("<Down>", lambda _event, item=frame: self._history_move(item, 1))
         entry.bind("<Control-c>", lambda _event: self.interrupt_current())
@@ -269,6 +274,63 @@ class TerminalPanel(ttk.Frame):
         entry.focus_set()
         self.status.configure(text=f"Running — {cwd}")
         return process
+
+    def _context_menu(self):
+        root = self.winfo_toplevel()
+        preferences = getattr(root, "preferences", {})
+        font_family = root._resolved_ui_font() if hasattr(root, "_resolved_ui_font") else "Segoe UI"
+        return ContextMenu(
+            self, palette=getattr(root, "theme_palette", {}),
+            font_family=font_family, font_size=preferences.get("ui_font_size", 9),
+        )
+
+    def _show_output_context_menu(self, widget, event):
+        menu = self._context_menu()
+        try:
+            selected = bool(widget.tag_ranges("sel"))
+        except tk.TclError:
+            selected = False
+        menu.add_command(
+            label="Copy Selection",
+            command=lambda: widget.event_generate("<<Copy>>"),
+            state="normal" if selected else "disabled",
+        )
+        menu.add_command(
+            label="Select All",
+            command=lambda: widget.tag_add("sel", "1.0", "end-1c"),
+        )
+        menu.add_separator()
+        menu.add_command(label="Clear Terminal Output", command=lambda: self._clear_output(widget))
+        menu.add_command(label="Interrupt Current Command", command=self.interrupt_current)
+        try:
+            menu.tk_popup(event.x_root, event.y_root)
+        finally:
+            menu.grab_release()
+        return "break"
+
+    def _clear_output(self, widget):
+        widget.configure(state='normal')
+        widget.delete('1.0', 'end')
+        widget.configure(state='disabled')
+
+    def _show_entry_context_menu(self, widget, event):
+        menu = self._context_menu()
+        try:
+            selected = bool(widget.selection_present())
+        except tk.TclError:
+            selected = False
+        menu.add_command(label="Cut", command=lambda: widget.event_generate("<<Cut>>"),
+                         state="normal" if selected else "disabled")
+        menu.add_command(label="Copy", command=lambda: widget.event_generate("<<Copy>>"),
+                         state="normal" if selected else "disabled")
+        menu.add_command(label="Paste", command=lambda: widget.event_generate("<<Paste>>"))
+        menu.add_command(label="Select All", command=lambda: widget.select_range(0, "end"))
+        menu.add_command(label="Clear Input", command=lambda: widget.delete(0, "end"))
+        try:
+            menu.tk_popup(event.x_root, event.y_root)
+        finally:
+            menu.grab_release()
+        return "break"
 
     def _current_frame(self):
         selected = self.notebook.select()
@@ -376,10 +438,16 @@ class TerminalPanel(ttk.Frame):
         frame.destroy()
         self.status.configure(text="Terminal session closed.")
 
-    def set_theme(self, dark):
-        bg, fg = ("#1e1e1e", "#dddddd") if dark else ("#ffffff", "#202020")
+    def set_theme(self, dark, palette=None):
+        palette = palette or {}
+        bg = palette.get("editor_bg", "#111827" if dark else "#ffffff")
+        fg = palette.get("editor_fg", "#e6edf7" if dark else "#202938")
+        selection = palette.get("selection_bg", "#293b5b" if dark else "#d7e5ff")
         for view in self.views.values():
-            view["output"].configure(bg=bg, fg=fg, insertbackground=fg)
+            view["output"].configure(
+                bg=bg, fg=fg, insertbackground=fg,
+                selectbackground=selection, selectforeground=fg,
+            )
 
     def close_all(self):
         if self._poll_id is not None:

@@ -1,5 +1,35 @@
 # Changelog
 
+## [2.0.0] - Unreleased
+
+### Added
+- Began the modern interface refresh with a unified dark/light theme foundation.
+- Added a compact, grouped toolbar for common file, run, tool, and analysis workflows.
+- Added ttkbootstrap 2 as the themed widget layer and a consistent, recolorable Bootstrap icon system for toolbar, workspace files, and tool panels.
+- Expanded Settings with a reset-to-defaults action and a language roadmap for Python, JavaScript, HTML, and CSS.
+- Added workspace Quick Open (`Ctrl+P`) with ranked file-name and path filtering.
+- Applied the selected interface font consistently to notebook tabs and other themed controls while retaining the existing Tkinter editor and application services.
+- Added a VS Code-inspired Activity Bar, an Explorer with Open Editors and Workspace sections, and quick actions for creating files/folders.
+- Added a dedicated categorized menu row above the brand/action toolbar, with cascading File, Edit, Navigate, Run, Debug, Code, Tools, View and Help menus.
+- Restored a compact brand/action row beside the logo with workspace, interpreter, save, terminal, quality, Git, analysis, Debug, Run and Stop shortcuts.
+- Unified Run and Stop button dimensions, typography, spacing, hover, pressed and disabled states across both themes.
+- Expanded Account Center and Settings into larger resizable workspaces with Profile, Connected Services, Workspace, Productivity, Extensions and Privacy & Security sections.
+- Applied the selected interface font to native Tk controls and expanded the future language, language-server, plugin, theme and project-template roadmap.
+- Added a bottom-left Account center with a locally stored display name and clearly marked future cloud/GitHub account integrations.
+- Added an original PyLex Studio vector logo at `assets/pylex-logo.svg` and reused its visual mark in the app header and About window.
+- Moved Recent Workspaces out of Explorer into the File toolbar menu, with open, copy-path, remove and clear actions.
+- Added configurable, persistent status-bar indicators with an inline right-click menu for visibility, indentation, encoding and line-ending settings; no separate configuration dialog is required.
+- Replaced native-looking context menus with a shared, theme-aware popup system featuring clear spacing, high-contrast hover states, disabled-item styling, cascading submenus, and consistent behavior across the editor, Explorer, tabs, Activity Bar, Status Bar, terminal, Git, diagnostics and tests.
+- Expanded Workspace right-click actions with folder-aware create/open/rename/delete operations, relative-path copying, file-manager reveal, terminal launch at the selected directory, workspace refresh and close actions.
+- Added an action-rich Recent Workspaces submenu with open, reveal, terminal, copy-path and remove actions.
+- Added immediate row-level hover highlighting to every command inside categorized Toolbar dropdowns, including shortcut labels and submenu entries.
+
+### Design goals
+- Keep file-type presentation extensible for future JavaScript, CSS, and HTML editing support.
+- Keep the dark theme as the default and provide a coordinated light theme.
+- Preserve existing editor, execution, debugger, terminal, Git, and quality workflows during the visual refresh.
+
+
 All notable changes to PyLex Studio are documented here.
 
 ## [1.10.0] - Unreleased
