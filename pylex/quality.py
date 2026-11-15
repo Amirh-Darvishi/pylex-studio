@@ -1,0 +1,409 @@
+"""Formatting, linting, and test-explorer services for PyLex Studio."""
+from __future__ import annotations
+
+import json
+import os
+import queue
+import re
+import subprocess
+import threading
+import tkinter as tk
+from pathlib import Path
+from tkinter import messagebox, ttk
+
+from .core.project import Project
+
+
+def tool_argv(interpreter, module, arguments=()):
+    """Build a shell-free command for a tool in the selected Python environment."""
+    allowed = {"black", "ruff", "pytest", "pip"}
+    if module not in allowed:
+        raise ValueError(f"Unsupported quality tool: {module}")
+    args = [str(item) for item in arguments]
+    return [str(interpreter), "-m", module, *args]
+
+
+def parse_ruff_diagnostics(output):
+    """Convert Ruff's JSON output into stable, editor-friendly diagnostics."""
+    try:
+        payload = json.loads(output or "[]")
+    except json.JSONDecodeError:
+        return []
+    diagnostics = []
+    if not isinstance(payload, list):
+        return diagnostics
+    for item in payload:
+        if not isinstance(item, dict):
+            continue
+        location = item.get("location") or {}
+        end = item.get("end_location") or {}
+        diagnostics.append({
+            "path": str(item.get("filename") or ""),
+            "line": int(location.get("row") or 1),
+            "column": int(location.get("column") or 1),
+            "end_line": int(end.get("row") or location.get("row") or 1),
+            "end_column": int(end.get("column") or location.get("column") or 1),
+            "code": str(item.get("code") or "RUFF"),
+            "message": str(item.get("message") or "Lint diagnostic"),
+            "fixable": bool(item.get("fix")),
+        })
+    return diagnostics
+
+
+def parse_pytest_nodeids(output):
+    """Extract collected pytest node IDs while ignoring its summary lines."""
+    found = []
+    seen = set()
+    for raw in (output or "").splitlines():
+        line = raw.strip()
+        if "::" not in line or line.startswith(("=", "<")):
+            continue
+        candidate = line.split(" ", 1)[0]
+        if "::" in candidate and candidate not in seen:
+            seen.add(candidate)
+            found.append(candidate)
+    return found
+
+
+class QualityPanel(ttk.Frame):
+    """Non-blocking Black/Ruff/pytest workbench bound to the active workspace."""
+
+    def __init__(self, master, context_provider, document_provider,
+                 apply_source, navigate_diagnostic, status_callback=None):
+        super().__init__(master, padding=5)
+        self.context_provider = context_provider
+        self.document_provider = document_provider
+        self.apply_source = apply_source
+        self.navigate_diagnostic = navigate_diagnostic
+        self.status_callback = status_callback or (lambda _message: None)
+        self._events = queue.Queue()
+        self._worker = None
+        self._process = None
+        self._busy = False
+        self._tests = []
+        self._diagnostics = []
+        self._build()
+        self.after(100, self._poll)
+
+    def _build(self):
+        actions = ttk.Frame(self)
+        actions.pack(fill="x", pady=(0, 5))
+        for label, action in (
+            ("Format Buffer", self.format_buffer),
+            ("Format Project", self.format_project),
+            ("Lint Buffer", self.lint_buffer),
+            ("Lint Project", self.lint_project),
+            ("Install Tools", self.install_tools),
+            ("Stop", self.stop),
+        ):
+            ttk.Button(actions, text=label, command=action).pack(side="left", padx=2)
+        self.status = ttk.Label(self, text="Ready")
+        self.status.pack(fill="x", pady=(0, 4))
+
+        self.notebook = ttk.Notebook(self)
+        self.notebook.pack(fill="both", expand=True)
+        tests_frame = ttk.Frame(self.notebook, padding=4)
+        test_actions = ttk.Frame(tests_frame)
+        test_actions.pack(fill="x", pady=(0, 4))
+        ttk.Button(test_actions, text="Discover Tests", command=self.discover_tests).pack(side="left", padx=2)
+        ttk.Button(test_actions, text="Run All", command=self.run_all_tests).pack(side="left", padx=2)
+        ttk.Button(test_actions, text="Run Selected", command=self.run_selected_test).pack(side="left", padx=2)
+        self.test_tree = ttk.Treeview(
+            tests_frame, columns=("nodeid", "result"), show="headings", selectmode="browse"
+        )
+        self.test_tree.heading("nodeid", text="Test")
+        self.test_tree.heading("result", text="Result")
+        self.test_tree.column("nodeid", width=650)
+        self.test_tree.column("result", width=110, anchor="center")
+        self.test_tree.pack(fill="both", expand=True)
+        self.notebook.add(tests_frame, text="Test Explorer")
+
+        diagnostics_frame = ttk.Frame(self.notebook, padding=4)
+        self.diagnostic_tree = ttk.Treeview(
+            diagnostics_frame,
+            columns=("code", "file", "line", "column", "message"),
+            show="headings",
+        )
+        for key, label, width in (
+            ("code", "Rule", 75), ("file", "File", 190), ("line", "Line", 55),
+            ("column", "Column", 65), ("message", "Message", 430),
+        ):
+            self.diagnostic_tree.heading(key, text=label)
+            self.diagnostic_tree.column(key, width=width)
+        self.diagnostic_tree.pack(fill="both", expand=True)
+        self.diagnostic_tree.bind("<Double-1>", self._open_diagnostic)
+        self.notebook.add(diagnostics_frame, text="Lint Diagnostics")
+
+        output_frame = ttk.Frame(self.notebook, padding=4)
+        self.output = tk.Text(output_frame, wrap="none", height=8, state="disabled")
+        ybar = ttk.Scrollbar(output_frame, command=self.output.yview)
+        self.output.configure(yscrollcommand=ybar.set)
+        self.output.pack(side="left", fill="both", expand=True)
+        ybar.pack(side="right", fill="y")
+        self.notebook.add(output_frame, text="Tool Output")
+
+    def _context(self):
+        root, interpreter, env = self.context_provider()
+        root = Path(root).expanduser().resolve()
+        return root, str(interpreter), dict(env)
+
+    def _document(self):
+        path, source = self.document_provider()
+        if path is None:
+            raise ValueError("Save the current Python file before using this action.")
+        return Path(path).expanduser().resolve(), str(source)
+
+    def _set_status(self, message):
+        self.status.configure(text=message)
+        self.status_callback(message)
+
+    def _append_output(self, content):
+        self.output.configure(state="normal")
+        self.output.insert("end", content)
+        self.output.see("end")
+        self.output.configure(state="disabled")
+
+    def _clear_output(self):
+        self.output.configure(state="normal")
+        self.output.delete("1.0", "end")
+        self.output.configure(state="disabled")
+
+    def _start(self, argv, cwd, env, *, stdin=None, callback=None, label="Running"):
+        if self._busy:
+            self._set_status("A quality tool is already running.")
+            return False
+        self._busy = True
+        self._set_status(label + "...")
+        self._clear_output()
+
+        def worker():
+            try:
+                process = subprocess.Popen(
+                    argv, cwd=str(cwd), env=env, stdin=subprocess.PIPE if stdin is not None else subprocess.DEVNULL,
+                    stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True,
+                    encoding="utf-8", errors="replace",
+                )
+                self._process = process
+                stdout, stderr = process.communicate(input=stdin)
+                self._events.put(("complete", (process.returncode, stdout, stderr, callback)))
+            except Exception as exc:
+                self._events.put(("error", (exc, callback)))
+
+        self._worker = threading.Thread(target=worker, daemon=True)
+        self._worker.start()
+        return True
+
+    def _poll(self):
+        try:
+            while True:
+                kind, payload = self._events.get_nowait()
+                self._busy = False
+                self._process = None
+                if kind == "error":
+                    exc, callback = payload
+                    self._append_output(f"{type(exc).__name__}: {exc}\n")
+                    self._set_status("Tool failed to start.")
+                    if callback:
+                        callback(None, "", str(exc))
+                    continue
+                code, stdout, stderr, callback = payload
+                if stdout:
+                    self._append_output(stdout)
+                if stderr:
+                    self._append_output(stderr)
+                self._set_status("Completed successfully." if code == 0 else f"Finished with exit code {code}.")
+                if callback:
+                    callback(code, stdout, stderr)
+        except queue.Empty:
+            pass
+        self.after(100, self._poll)
+
+    def stop(self):
+        process = self._process
+        if process is not None and process.poll() is None:
+            process.terminate()
+            self._set_status("Stopping quality tool...")
+        else:
+            self._set_status("No quality tool is running.")
+
+    def _tool_missing(self, module):
+        messagebox.showerror(
+            "Quality Tools",
+            f"{module} is not installed in the selected Python interpreter. "
+            "Use Install Tools to install Black, Ruff, and pytest in that environment.",
+            parent=self.winfo_toplevel(),
+        )
+
+    def install_tools(self):
+        try:
+            root, interpreter, env = self._context()
+        except Exception as exc:
+            messagebox.showerror("Install Tools", str(exc), parent=self.winfo_toplevel())
+            return
+        if not messagebox.askyesno(
+            "Install Quality Tools",
+            "Install or upgrade Black, Ruff, and pytest in the currently selected project interpreter?",
+            parent=self.winfo_toplevel(),
+        ):
+            return
+        self._start(
+            tool_argv(interpreter, "pip", ("install", "--upgrade", "black", "ruff", "pytest")),
+            root, env, label="Installing Black, Ruff, and pytest",
+        )
+
+    def format_buffer(self):
+        try:
+            root, interpreter, env = self._context()
+            path, source = self._document()
+        except Exception as exc:
+            messagebox.showerror("Format Buffer", str(exc), parent=self.winfo_toplevel())
+            return
+
+        def completed(code, stdout, stderr):
+            if code == 0:
+                self.apply_source(stdout)
+                self._set_status("Current editor buffer formatted with Black.")
+            elif "No module named black" in stderr:
+                self._tool_missing("Black")
+
+        self._start(
+            tool_argv(interpreter, "black", ("--quiet", "--stdin-filename", str(path), "-")),
+            root, env, stdin=source, callback=completed, label="Formatting current buffer",
+        )
+
+    def format_project(self):
+        try:
+            root, interpreter, env = self._context()
+        except Exception as exc:
+            messagebox.showerror("Format Project", str(exc), parent=self.winfo_toplevel())
+            return
+        if not messagebox.askyesno(
+            "Format Project",
+            f"Black will reformat Python files under:\n{root}\n\n"
+            "Save open editor changes first. Continue?",
+            parent=self.winfo_toplevel(),
+        ):
+            return
+        self._start(
+            tool_argv(interpreter, "black", ("--", str(root))),
+            root, env, label="Formatting project with Black",
+        )
+
+    def lint_buffer(self):
+        try:
+            root, interpreter, env = self._context()
+            path, source = self._document()
+        except Exception as exc:
+            messagebox.showerror("Lint Buffer", str(exc), parent=self.winfo_toplevel())
+            return
+
+        def completed(code, stdout, stderr):
+            if code in (0, 1):
+                self._display_diagnostics(parse_ruff_diagnostics(stdout))
+                self.notebook.select(1)
+            elif "No module named ruff" in stderr:
+                self._tool_missing("Ruff")
+
+        self._start(
+            tool_argv(interpreter, "ruff", ("check", "--output-format=json", "--stdin-filename", str(path), "-")),
+            root, env, stdin=source, callback=completed, label="Linting current buffer",
+        )
+
+    def lint_project(self):
+        try:
+            root, interpreter, env = self._context()
+        except Exception as exc:
+            messagebox.showerror("Lint Project", str(exc), parent=self.winfo_toplevel())
+            return
+
+        def completed(code, stdout, stderr):
+            if code in (0, 1):
+                self._display_diagnostics(parse_ruff_diagnostics(stdout))
+                self.notebook.select(1)
+            elif "No module named ruff" in stderr:
+                self._tool_missing("Ruff")
+
+        self._start(
+            tool_argv(interpreter, "ruff", ("check", "--output-format=json", str(root))),
+            root, env, callback=completed, label="Linting project",
+        )
+
+    def _display_diagnostics(self, diagnostics):
+        self._diagnostics = diagnostics
+        self.diagnostic_tree.delete(*self.diagnostic_tree.get_children())
+        for index, item in enumerate(diagnostics):
+            self.diagnostic_tree.insert(
+                "", "end", iid=f"diag-{index}",
+                values=(item["code"], item["path"], item["line"], item["column"], item["message"]),
+            )
+        self._set_status(f"Ruff found {len(diagnostics)} diagnostic(s).")
+
+    def _open_diagnostic(self, _event=None):
+        selected = self.diagnostic_tree.selection()
+        if not selected:
+            return
+        index = int(selected[0].split("-", 1)[1])
+        self.navigate_diagnostic(self._diagnostics[index])
+
+    def discover_tests(self):
+        try:
+            root, interpreter, env = self._context()
+        except Exception as exc:
+            messagebox.showerror("Test Explorer", str(exc), parent=self.winfo_toplevel())
+            return
+
+        def completed(code, stdout, stderr):
+            if code == 0:
+                self._tests = parse_pytest_nodeids(stdout)
+                self.test_tree.delete(*self.test_tree.get_children())
+                for index, nodeid in enumerate(self._tests):
+                    self.test_tree.insert("", "end", iid=f"test-{index}", values=(nodeid, "Discovered"))
+                self.notebook.select(0)
+                self._set_status(f"Discovered {len(self._tests)} test(s).")
+            elif "No module named pytest" in stderr:
+                self._tool_missing("pytest")
+            else:
+                self._set_status("Test discovery failed; see Tool Output.")
+
+        self._start(
+            tool_argv(interpreter, "pytest", ("--collect-only", "-q", str(root))),
+            root, env, callback=completed, label="Discovering tests",
+        )
+
+    def run_all_tests(self):
+        self._run_tests(None)
+
+    def run_selected_test(self):
+        selection = self.test_tree.selection()
+        if not selection:
+            self._set_status("Select a test in Test Explorer first.")
+            return
+        index = int(selection[0].split("-", 1)[1])
+        self._run_tests(self._tests[index])
+
+    def _run_tests(self, nodeid):
+        try:
+            root, interpreter, env = self._context()
+        except Exception as exc:
+            messagebox.showerror("Run Tests", str(exc), parent=self.winfo_toplevel())
+            return
+        args = ["-v", str(nodeid)] if nodeid else ["-v", str(root)]
+
+        def completed(code, stdout, stderr):
+            combined = stdout + "\n" + stderr
+            for index, test_id in enumerate(self._tests):
+                match = re.search(re.escape(test_id) + r"\s+(PASSED|FAILED|SKIPPED|ERROR)", combined)
+                if match:
+                    self.test_tree.set(f"test-{index}", "result", match.group(1))
+            self.notebook.select(0)
+            if "No module named pytest" in stderr:
+                self._tool_missing("pytest")
+            elif code == 0:
+                self._set_status("Tests passed.")
+            else:
+                self._set_status(f"Tests finished with exit code {code}.")
+
+        self._start(
+            tool_argv(interpreter, "pytest", args), root, env,
+            callback=completed, label="Running tests",
+        )
