@@ -1,5 +1,5 @@
 """Main graphical interface for PyLex Studio."""
-from . import __version__
+from . import __version__\nfrom .commands import Command, CommandRegistry
 import tkinter as tk
 from tkinter import ttk, filedialog, messagebox, simpledialog, font as tkfont
 import ttkbootstrap as ttkb
@@ -28,7 +28,7 @@ from .terminal import TerminalPanel, python_file_command
 from .quality import QualityPanel
 from .git_panel import GitPanel
 from .ui.theme import ThemeManager
-from .ui.context_menu import ContextMenu
+from .ui.context_menu import ContextMenu\nfrom .ui.command_palette import CommandPalette
 
 
 class PyLexApp(tk.Tk):
@@ -3831,64 +3831,69 @@ class PyLexApp(tk.Tk):
         entry.focus_set()
 
     def open_command_palette(self):
-        """Show searchable commands and their keyboard shortcuts."""
-        commands = [
-            ("New File", "Ctrl+N", self.new_file),
-            ("Open File", "Ctrl+O", self.open_file),
-            ("Save File", "Ctrl+S", self.save_file),
-            ("Open Workspace", "", self.open_project_folder),
-            ("Quick Open File", "Ctrl+P", self.open_quick_file),
-            ("Run Current File", "F5", self.run_code),
-            ("Stop Execution", "Shift+F5", self.stop_execution),
-            ("Analyze All", "F6", self.analyze_all),
-            ("Start Debugging", "Ctrl+F5", self.start_debugging),
-            ("Open Terminal", "", self.open_terminal),
-            ("Open Quality Tools", "", self.open_quality_tools),
-            ("Open Git", "", self.open_git_tools),
-            ("Toggle Theme", "", self.toggle_theme),
-            ("Settings", "Ctrl+,", self.open_preferences),
-            ("Quick Start & Help", "", self.show_help),
-            ("About PyLex Studio", "", self.show_about),
-        ]
-        dialog = tk.Toplevel(self)
-        dialog.title("Command Palette")
-        dialog.transient(self)
-        dialog.geometry("560x420")
-        dialog.minsize(420, 280)
-        query = tk.StringVar()
-        entry = ttk.Entry(dialog, textvariable=query, font=("Segoe UI", 11))
-        entry.pack(fill="x", padx=12, pady=12)
-        listing = tk.Listbox(dialog, activestyle="none", height=14, borderwidth=0)
-        listing.pack(fill="both", expand=True, padx=12, pady=(0, 12))
-        matches = []
-
-        def refresh(*_args):
-            listing.delete(0, "end")
-            matches.clear()
-            term = query.get().casefold().strip()
-            for label, shortcut, action in commands:
-                if term in label.casefold():
-                    matches.append((label, action))
-                    listing.insert("end", f"{label}    {shortcut}".rstrip())
-            if matches:
-                listing.selection_set(0)
-
-        def execute(_event=None):
-            selection = listing.curselection()
-            if not selection:
-                return "break"
-            action = matches[selection[0]][1]
-            dialog.destroy()
-            action()
-            return "break"
-
-        query.trace_add("write", refresh)
-        listing.bind("<Double-1>", execute)
-        listing.bind("<Return>", execute)
-        entry.bind("<Down>", lambda _event: (listing.focus_set(), listing.selection_set(0), "break"))
-        entry.bind("<Return>", execute)
-        refresh()
-        entry.focus_set()
+        """Open the searchable palette backed by the shared command registry."""
+        registry = CommandRegistry(
+            [
+                Command("file.new", "New File", "Ctrl+N", self.new_file),
+                Command("file.open", "Open File", "Ctrl+O", self.open_file),
+                Command("file.save", "Save File", "Ctrl+S", self.save_file),
+                Command(
+                    "workspace.open",
+                    "Open Workspace",
+                    "",
+                    self.open_project_folder,
+                ),
+                Command(
+                    "file.quick-open",
+                    "Quick Open File",
+                    "Ctrl+P",
+                    self.open_quick_file,
+                ),
+                Command(
+                    "run.active", "Run Current File", "F5", self.run_code
+                ),
+                Command(
+                    "run.stop", "Stop Execution", "Shift+F5", self.stop_execution
+                ),
+                Command("analysis.all", "Analyze All", "F6", self.analyze_all),
+                Command(
+                    "debug.start",
+                    "Start Debugging",
+                    "Ctrl+F5",
+                    self.start_debugging,
+                ),
+                Command("terminal.open", "Open Terminal", "", self.open_terminal),
+                Command(
+                    "quality.open",
+                    "Open Quality Tools",
+                    "",
+                    self.open_quality_tools,
+                ),
+                Command("git.open", "Open Git", "", self.open_git_tools),
+                Command("view.theme", "Toggle Theme", "", self.toggle_theme),
+                Command(
+                    "settings.open",
+                    "Settings",
+                    "Ctrl+,",
+                    self.open_preferences,
+                ),
+                Command(
+                    "help.open", "Quick Start & Help", "", self.show_help
+                ),
+                Command(
+                    "about.open",
+                    "About PyLex Studio",
+                    "",
+                    self.show_about,
+                ),
+            ]
+        )
+        CommandPalette(
+            self,
+            registry,
+            palette=self.theme_palette,
+            font_family=self._resolved_ui_font(),
+        ).show()
 
     def toggle_theme(self):
         self.dark = not self.dark
