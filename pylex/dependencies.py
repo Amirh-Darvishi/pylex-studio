@@ -120,6 +120,8 @@ def inspect_dependencies(source, search_root=None, python_executable=None):
             inspected = _inspect_with_interpreter(external_names, python_executable)
             for item in inspected:
                 distribution = item["distribution"] or PIP_NAMES.get(item["name"], item["name"])
+                if distribution == item["name"]:
+                    distribution = PIP_NAMES.get(item["name"], distribution)
                 results.append(Dependency(
                     item["name"], distribution, item["status"],
                     item["version"], item["location"],

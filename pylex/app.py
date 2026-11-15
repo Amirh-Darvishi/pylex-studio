@@ -121,6 +121,7 @@ class PyLexApp(tk.Tk):
             ("New", self.new_file), ("Open", self.open_file),
             ("Open Workspace", self.open_project_folder),
             ("Close Workspace", self.close_workspace),
+            ("Python", self.manage_interpreter),
             ("Save", self.save_file), ("▶ Run", self.run_code), ("■ Force Stop", self.stop_execution),
             ("Debug", self.start_debugging), ("Continue", self.debug_continue),
             ("Step", self.debug_step), ("Next", self.debug_next),
@@ -208,6 +209,7 @@ class PyLexApp(tk.Tk):
         actions = ttk.Frame(frame)
         actions.pack(fill="x", pady=(0, 4))
         ttk.Button(actions, text="Scan Current File", command=self.scan_dependencies).pack(side="left")
+        ttk.Button(actions, text="Python Interpreter...", command=self.manage_interpreter).pack(side="left", padx=4)
         ttk.Button(actions, text="Python Interpreter...", command=self.manage_interpreter).pack(side="left", padx=4)
         ttk.Button(actions, text="Copy Python Install Command", command=self.copy_install_command).pack(side="left", padx=4)
         self.dependency_environment = ttk.Label(frame, text="Python environment: not scanned")
@@ -377,7 +379,11 @@ class PyLexApp(tk.Tk):
     def scan_dependencies(self):
         document = self._active_document()
         root = self._project_for_document(document).root
-        interpreter = self._interpreter_for_project(self._project_for_document(document))
+        try:
+            interpreter = self._interpreter_for_project(self._project_for_document(document))
+        except (OSError, ValueError, TimeoutError) as exc:
+            self.status.configure(text=f"Python interpreter error: {exc}")
+            return
         dependencies, error = inspect_dependencies(self.editor.get_content(), search_root=root, python_executable=interpreter.executable)
         self._update_dependency_view(dependencies, error, interpreter.executable)
         self.tabs.select(self.dependency_tree.master)
@@ -962,7 +968,11 @@ class PyLexApp(tk.Tk):
         source = self.editor.get_content()
         document = self._active_document()
         project = self._project_for_document(document)
-        interpreter = self._interpreter_for_project(project)
+        try:
+            interpreter = self._interpreter_for_project(project)
+        except (OSError, ValueError, TimeoutError) as exc:
+            messagebox.showerror("Python Interpreter", str(exc))
+            return
         dependencies, scan_error = inspect_dependencies(source, search_root=project.root, python_executable=interpreter.executable)
         self._update_dependency_view(dependencies, scan_error, interpreter.executable)
         self._show(self.output, "")
@@ -1109,7 +1119,7 @@ class PyLexApp(tk.Tk):
                 module = missing.group(1)
                 from .dependencies import PIP_NAMES
                 package = PIP_NAMES.get(module.split(".", 1)[0], module.split(".", 1)[0])
-                interpreter = python_environment()["executable"]
+                interpreter = self._interpreter_for_project(self._project_for_document(self._active_document())).executable
                 message = (
                     f"Missing library '{module}'. Install it into the active interpreter with: "
                     f'"{interpreter}" -m pip install "{package}"'
@@ -1157,7 +1167,7 @@ class PyLexApp(tk.Tk):
                 project, dirty=bool(document and document.get("dirty")),
                 python_executable=self._interpreter_for_project(project).executable,
             )
-        except OSError as exc:
+        except (OSError, ValueError, TimeoutError) as exc:
             messagebox.showerror("Debugger Error", str(exc))
             return
         self._show(self.output, "Debugger started. Set breakpoints, then choose Continue.\n")
