@@ -35,6 +35,10 @@ A lightweight Python desktop editor with independent lexical and syntax analysis
 - Find and replace with Ctrl+H
 - pdb-backed debugging with conditional and temporary breakpoints, Continue, Step Into, Step Over, Run Until, Return, Jump, expression evaluation, function arguments, variables, and stack inspection
 - Integrated persistent terminal sessions with PowerShell, Command Prompt, Git Bash (when installed), and POSIX shells
+- Black formatting for the active editor buffer and whole projects, with safe unsaved-buffer protection
+- Ruff linting for the current buffer or entire workspace, with navigable file/line diagnostics
+- Integrated pytest Test Explorer with test discovery, individual test execution, and full-suite runs
+- Background quality-tool execution with output capture and explicit installation into the selected interpreter
 - Multiple terminal tabs, live output streaming, command input with per-session Up/Down history, Ctrl+C interruption, process-tree termination, and per-session working directories
 - Terminal sessions inherit the active workspace environment and selected Python virtual environment
 - Adjustable editor font family and font size
@@ -146,10 +150,31 @@ Interpreter probing and dependency inspection are not a security sandbox. Progra
 
 The editor continues indentation when pressing Enter, adds one indentation level after Python suite headers, and removes indentation in four-column steps with Backspace. Shift+Tab dedents the selected lines or current line. Use Ctrl+/ to toggle comments, Ctrl+D to duplicate a line or selection, Alt+Up / Alt+Down to move the current line, and Ctrl+G to navigate to a line. Matching Python delimiters are highlighted while the caret is adjacent to a bracket. These are editor conveniences, not a replacement for a language server or full semantic IntelliSense.
 
-## Integrated terminal (1.7.0 development)
+## Integrated terminal (1.7.0)
 
 Open Tools → Integrated Terminal or use the Terminal toolbar button. The terminal is separate from Output, Run, and Debug: each terminal tab owns a persistent shell process, so commands such as cd, environment-variable changes, and activated environments remain in that session.
 
 On Windows, PowerShell and Command Prompt are supported; Git Bash is offered when detected. On Linux and macOS, available Bash, Zsh, or POSIX shell sessions are offered. Create multiple sessions, send commands through the input line, navigate that session's command history with Up/Down (including restoration of an unfinished input draft), interrupt the foreground command with Interrupt / Ctrl+C, clear a session's display, or close/kill a session. Output is collected asynchronously so shell activity does not block the Tk event loop.
 
 New sessions start in the active workspace (or the active file's directory when no workspace is open). Their environment includes the selected project interpreter's Scripts/bin directory at the front of PATH and sets VIRTUAL_ENV when a virtual environment is selected. Shell sessions use redirected pipes rather than a full ConPTY/PTY terminal emulator: interactive command-line programs that require terminal device features, full-screen TUI rendering, or terminal resize events may not behave like a standalone console. Ordinary shell commands, Python REPLs, pip, and interactive line-oriented prompts are supported.
+
+
+## Code quality and testing (1.8.0 development)
+
+Open **Tools → Formatter, Linter & Test Explorer** or select the **Quality** panel. All external tools run through the Python interpreter selected for the active workspace; PyLex never relies on an unrelated global `black`, `ruff`, or `pytest` executable.
+
+- **Format Buffer** sends the current editor buffer to Black over stdin. The result is applied to that same editor tab, remains unsaved, and can be reviewed before saving.
+- **Format Project** runs Black across the workspace. PyLex blocks this action while any editor tab has unsaved changes, avoiding conflicts between in-memory buffers and files changed on disk.
+- **Lint Buffer / Lint Project** runs Ruff and displays structured diagnostics. Double-click a diagnostic to open the affected file and navigate to its line and column.
+- **Test Explorer** discovers pytest test node IDs, displays the discovered tests, and runs either the complete workspace test suite or the selected test. Output and exit status are shown in the Tool Output tab.
+- **Install Tools** explicitly installs or upgrades Black, Ruff, and pytest in the selected interpreter. These tools are also listed in `requirements.txt`.
+
+Quality tasks run in background threads so the Tkinter interface remains responsive. Stop terminates the active quality-tool process. Ruff and Black settings are centralized in `pyproject.toml`; pytest discovers tests under `tests/` by default.
+
+For command-line use:
+
+```bash
+python -m black .
+python -m ruff check .
+python -m pytest -v
+```
