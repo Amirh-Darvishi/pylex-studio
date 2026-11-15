@@ -5,7 +5,7 @@
 ### Architecture
 - Added a UI-independent command registry with stable command IDs, shortcut-aware search, duplicate registration protection, and explicit command execution.
 - Extracted the searchable Command Palette into a dedicated Tkinter UI component; the main application now supplies registered actions and theme context.
-- Added a persistent, accent-colored Command Palette launcher at the far right of the main action toolbar, alongside the existing keyboard shortcut.
+- Added a transparent, outlined Command Palette launcher stacked above the Run and Stop controls; its anchored popup matches the launcher's width and retains the existing keyboard shortcut.
 - Added focused tests for command registration, search, lookup, ordering, and execution without requiring a Tk display.
 - Added a real child-process integration test verifying that a saved file in a nested directory inherits the Workspace working directory and Python import path.
 
