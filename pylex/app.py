@@ -227,9 +227,9 @@ class PyLexApp(tk.Tk):
     def _toolbar(self):
         """Build a two-tier command surface: categorized menus above the brand/action row."""
         menu_row = ttk.Frame(self, style="PyLex.Toolbar.TFrame", padding=(12, 3))
+        # Let Tk calculate the row height from the actual themed controls. A fixed
+        # height clips glyphs on Windows when font/DPI scaling changes.
         menu_row.pack(fill="x", side="top")
-        menu_row.configure(height=38)
-        menu_row.pack_propagate(False)
 
         def add_menu(title, icon_name, color_key, commands):
             menu = tk.Menu(menu_row, tearoff=False)
@@ -262,76 +262,60 @@ class PyLexApp(tk.Tk):
             button.pack(side="left", padx=(0, 3), ipady=2)
             button.configure(takefocus=False)
             self._toolbar_icon_bindings.append((button, icon_name, color_key))
-            pending = {"id": None, "monitor_id": None}
+            pending = {"open_id": None, "close_id": None}
 
-            def cancel_pending():
-                if pending["id"] is not None:
+            def cancel_timer(key):
+                timer_id = pending[key]
+                if timer_id is not None:
                     try:
-                        button.after_cancel(pending["id"])
+                        button.after_cancel(timer_id)
                     except tk.TclError:
                         pass
-                    pending["id"] = None
+                    pending[key] = None
 
-            def pointer_inside_menu_area():
-                px, py = button.winfo_pointerxy()
-                bx, by = button.winfo_rootx(), button.winfo_rooty()
-                if bx <= px < bx + button.winfo_width() and by <= py < by + button.winfo_height():
-                    return True
-                for candidate in menu_tree:
-                    try:
-                        if candidate.winfo_ismapped():
-                            mx, my = candidate.winfo_rootx(), candidate.winfo_rooty()
-                            if mx <= px < mx + candidate.winfo_width() and my <= py < my + candidate.winfo_height():
-                                return True
-                    except tk.TclError:
-                        continue
-                return False
+            def cancel_open():
+                cancel_timer("open_id")
 
-            def stop_pointer_monitor():
-                monitor_id = pending.get("monitor_id")
-                if monitor_id is not None:
-                    try:
-                        button.after_cancel(monitor_id)
-                    except tk.TclError:
-                        pass
-                    pending["monitor_id"] = None
+            def cancel_close(_event=None):
+                cancel_timer("close_id")
 
-            def monitor_pointer():
-                pending["monitor_id"] = None
+            def close_menu():
+                pending["close_id"] = None
                 try:
-                    if not menu.winfo_ismapped():
-                        return
-                    if pointer_inside_menu_area():
-                        pending["monitor_id"] = button.after(90, monitor_pointer)
-                    else:
+                    if menu.winfo_ismapped():
                         menu.unpost()
-                        stop_pointer_monitor()
                 except tk.TclError:
-                    stop_pointer_monitor()
+                    pass
 
-            def start_pointer_monitor():
-                stop_pointer_monitor()
-                pending["monitor_id"] = button.after(90, monitor_pointer)
+            def schedule_close(_event=None):
+                cancel_open()
+                cancel_close()
+                pending["close_id"] = button.after(140, close_menu)
 
             def post_menu():
-                pending["id"] = None
-                if button.winfo_exists():
+                cancel_open()
+                cancel_close()
+                if button.winfo_exists() and not menu.winfo_ismapped():
                     menu.post(
                         button.winfo_rootx(),
                         button.winfo_rooty() + button.winfo_height(),
                     )
-                    start_pointer_monitor()
 
             def open_on_hover(_event=None):
-                cancel_pending()
-                pending["id"] = button.after(180, post_menu)
+                cancel_close()
+                cancel_open()
+                if not menu.winfo_ismapped():
+                    pending["open_id"] = button.after(180, post_menu)
 
             button.bind("<Enter>", open_on_hover, add="+")
-            button.bind("<Leave>", lambda _event: cancel_pending(), add="+")
+            button.bind("<Leave>", schedule_close, add="+")
             button.bind("<Button-1>", lambda _event: (post_menu(), "break"), add="+")
-            menu.bind("<Unmap>", lambda _event: stop_pointer_monitor(), add="+")
-            for candidate in menu_tree[1:]:
-                candidate.bind("<Unmap>", lambda _event: None, add="+")
+            for candidate in menu_tree:
+                # Native Tk menus are separate windows on Windows. Track their
+                # own enter/leave events instead of polling unreliable screen bounds.
+                candidate.bind("<Enter>", cancel_close, add="+")
+                candidate.bind("<Leave>", schedule_close, add="+")
+                candidate.bind("<Unmap>", cancel_close, add="+")
             return button
 
         add_menu("File", "folder2-open", "accent", [
@@ -706,11 +690,13 @@ class PyLexApp(tk.Tk):
             image=self._icon("person-circle", self.theme_palette.get("muted"), size=21), compound="top",
         )
         account_button.pack(side="bottom", fill="x", pady=4, ipady=7)
+        account_button.configure(takefocus=False)
         settings_button = ttk.Button(
             activity, text="Manage", command=self.open_preferences, style="PyLex.Activity.TButton",
             image=self._icon("gear-fill", self.theme_palette.get("muted"), size=21), compound="top",
         )
         settings_button.pack(side="bottom", fill="x", pady=4, ipady=7)
+        settings_button.configure(takefocus=False)
         self.activity_account_button = (account_button, "person-circle", "muted")
         self.activity_settings_button = (settings_button, "gear-fill", "muted")
         workspace = ttk.Panedwindow(shell, orient="horizontal")
