@@ -141,6 +141,42 @@ class ThemeManager:
             borderwidth=0,
         )
         self.style.configure(
+            "PyLex.Menu.TMenubutton",
+            font=(ui_font_family, ui_font_size + 1, "bold"),
+            padding=(12, 7),
+            borderwidth=0,
+            background=palette["surface"],
+            foreground=palette["editor_fg"],
+        )
+        self.style.map(
+            "PyLex.Menu.TMenubutton",
+            background=[("active", palette["selection_bg"]), ("pressed", palette["selection_bg"])],
+            foreground=[("active", palette["accent"]), ("pressed", palette["accent"])],
+        )
+        self.style.configure(
+            "PyLex.Activity.TFrame",
+            background=palette["panel_bg"],
+        )
+        self.style.configure(
+            "PyLex.Activity.TButton",
+            font=(ui_font_family, max(7, ui_font_size - 2)),
+            padding=(2, 6),
+            borderwidth=0,
+            background=palette["panel_bg"],
+            foreground=palette["muted"],
+        )
+        self.style.map(
+            "PyLex.Activity.TButton",
+            background=[("active", palette["selection_bg"]), ("pressed", palette["selection_bg"])],
+            foreground=[("active", palette["accent"]), ("pressed", palette["accent"])],
+        )
+        self.style.configure(
+            "PyLex.IconAction.TButton",
+            font=(ui_font_family, max(7, ui_font_size - 2)),
+            padding=(5, 5),
+            borderwidth=0,
+        )
+        self.style.configure(
             "PyLex.Primary.TButton",
             font=(ui_font_family, ui_font_size, "bold"),
             padding=(12, 6),
@@ -150,8 +186,16 @@ class ThemeManager:
         )
         self.style.map(
             "PyLex.Primary.TButton",
-            background=[("active", palette["accent_hover"])],
-            foreground=[("active", "#ffffff")],
+            background=[
+                ("disabled", palette["panel_bg"]),
+                ("pressed", palette["accent_hover"]),
+                ("active", palette["accent_hover"]),
+            ],
+            foreground=[
+                ("disabled", palette["muted"]),
+                ("pressed", "#ffffff"),
+                ("active", "#ffffff"),
+            ],
         )
         self.style.configure(
             "PyLex.Danger.TButton",
@@ -160,6 +204,19 @@ class ThemeManager:
             background=palette["danger"],
             foreground="#ffffff",
             borderwidth=0,
+        )
+        self.style.map(
+            "PyLex.Danger.TButton",
+            background=[
+                ("disabled", palette["panel_bg"]),
+                ("pressed", palette["danger"]),
+                ("active", palette["danger"]),
+            ],
+            foreground=[
+                ("disabled", palette["muted"]),
+                ("pressed", "#ffffff"),
+                ("active", "#ffffff"),
+            ],
         )
         self.style.configure(
             "PyLex.Muted.TLabel",
