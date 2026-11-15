@@ -33,6 +33,20 @@ class TerminalHelperTests(unittest.TestCase):
         self.assertEqual(env["VIRTUAL_ENV"], r"C:\project\.venv")
         self.assertNotIn("PYTHONHOME", env)
 
+    def test_python_file_command_quotes_paths_for_supported_shells(self):
+        command = python_file_command(
+            "powershell", r"C:\Program Files\Python\python.exe",
+            r"C:\Project Files\main.py",
+        )
+        self.assertEqual(
+            command,
+            r"& 'C:\Program Files\Python\python.exe' 'C:\Project Files\main.py'",
+        )
+        bash_command = python_file_command(
+            "bash", "/opt/python/bin/python", "/home/user/My Project/main.py",
+        )
+        self.assertIn("'My Project/main.py'", bash_command)
+
     def test_active_editor_context_is_preserved_in_terminal_environment(self):
         base = {
             "PATH": "system-path",
