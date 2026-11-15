@@ -22,7 +22,7 @@ jobs:
       - run: python -m pytest -q
       - name: Black formatting check
         if: ${{ matrix.python-version == '3.11' && matrix.os == 'ubuntu-latest' }}
-        run: python -m black --check pylex/quality.py tests/test_quality.py
+        run: python -m black --check pylex/quality.py tests/test_quality.py pylex/ui/theme.py tests/test_theme.py
       - name: Ruff lint check
         if: ${{ matrix.python-version == '3.11' }}
-        run: python -m ruff check pylex/quality.py pylex/git.py pylex/git_panel.py tests/test_quality.py tests/test_git.py
+        run: python -m ruff check pylex/quality.py pylex/git.py pylex/git_panel.py tests/test_quality.py tests/test_git.py pylex/ui/theme.py tests/test_theme.py
