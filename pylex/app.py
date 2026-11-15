@@ -2911,7 +2911,7 @@ class PyLexApp(tk.Tk):
             return "break"
         if sent:
             self.output_input.delete(0, "end")
-            self._append_output(f"> {value}\\n", "system")
+            self._append_output(f"> {value}\n", "system")
             self.status.configure(text="Input sent to running process.")
         else:
             self.status.configure(text="The process is not accepting input.")
