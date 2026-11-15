@@ -30,6 +30,19 @@ THEMES = {
         "file_markup": "#e88c72",
         "file_style": "#b59aff",
         "file_data": "#71c7a5",
+        "file_shell": "#c7a6ff",
+        "file_compiled": "#8fa4bd",
+        "file_image": "#e58bbd",
+        "file_audio": "#e58bbd",
+        "file_video": "#e58bbd",
+        "file_pdf": "#ef8d83",
+        "file_document": "#8fa4bd",
+        "file_archive": "#d5a56c",
+        "file_database": "#6fc6c2",
+        "file_font": "#c7a6ff",
+        "file_text": "#aebbd0",
+        "file_binary": "#8794a8",
+        "file_unknown": "#8794a8",
     },
     "light": {
         "bootstrap_theme": "flatly",
@@ -57,6 +70,19 @@ THEMES = {
         "file_markup": "#bd573e",
         "file_style": "#7655c8",
         "file_data": "#267b60",
+        "file_shell": "#7655c8",
+        "file_compiled": "#52657d",
+        "file_image": "#a34883",
+        "file_audio": "#a34883",
+        "file_video": "#a34883",
+        "file_pdf": "#b43f38",
+        "file_document": "#52657d",
+        "file_archive": "#93611d",
+        "file_database": "#167b78",
+        "file_font": "#7655c8",
+        "file_text": "#53657d",
+        "file_binary": "#68778d",
+        "file_unknown": "#68778d",
     },
 }
 
@@ -169,6 +195,16 @@ class ThemeManager:
         self.style.configure(
             "Treeview.Heading",
             font=(ui_font_family, ui_font_size, "bold"),
+        )
+        self.style.map(
+            "Treeview",
+            background=[("selected", palette["accent"])],
+            foreground=[("selected", "#ffffff")],
+        )
+        self.style.map(
+            "TNotebook.Tab",
+            background=[("selected", palette["surface"])],
+            foreground=[("selected", palette["accent"])],
         )
         self.style.configure(
             "TNotebook.Tab",
