@@ -62,7 +62,7 @@ class PyLexApp(tk.Tk):
     @project.setter
     def project(self, value):
         if hasattr(self, "workspace_controller"):
-            self.workspace_controller._project = value
+            self.workspace_controller.project = value
         else:
             self._project = value
 
