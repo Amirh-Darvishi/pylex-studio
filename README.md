@@ -1,6 +1,6 @@
 # PyLex Studio
 
-**Current version: 1.6.0 — Advanced Debugger**
+**Current development version: 1.7.0 — Integrated Terminal**
 
 A lightweight Python desktop editor with independent lexical and syntax analysis.
 
@@ -34,6 +34,9 @@ A lightweight Python desktop editor with independent lexical and syntax analysis
 - Matching bracket highlighting and Go to Line with Ctrl+G
 - Find and replace with Ctrl+H
 - pdb-backed debugging with conditional and temporary breakpoints, Continue, Step Into, Step Over, Run Until, Return, Jump, expression evaluation, function arguments, variables, and stack inspection
+- Integrated persistent terminal sessions with PowerShell, Command Prompt, Git Bash (when installed), and POSIX shells
+- Multiple terminal tabs, live output streaming, command input with per-session Up/Down history, Ctrl+C interruption, process-tree termination, and per-session working directories
+- Terminal sessions inherit the active workspace environment and selected Python virtual environment
 - Adjustable editor font family and font size
 - Persistent preferences for theme, font, font size, project explorer visibility, execution timeout, and interpreter selection
 - Structured error panel with exact exception type and source location
@@ -142,3 +145,11 @@ Interpreter probing and dependency inspection are not a security sandbox. Progra
 ## Smart Editor (1.5.0 development)
 
 The editor continues indentation when pressing Enter, adds one indentation level after Python suite headers, and removes indentation in four-column steps with Backspace. Shift+Tab dedents the selected lines or current line. Use Ctrl+/ to toggle comments, Ctrl+D to duplicate a line or selection, Alt+Up / Alt+Down to move the current line, and Ctrl+G to navigate to a line. Matching Python delimiters are highlighted while the caret is adjacent to a bracket. These are editor conveniences, not a replacement for a language server or full semantic IntelliSense.
+
+## Integrated terminal (1.7.0 development)
+
+Open Tools → Integrated Terminal or use the Terminal toolbar button. The terminal is separate from Output, Run, and Debug: each terminal tab owns a persistent shell process, so commands such as cd, environment-variable changes, and activated environments remain in that session.
+
+On Windows, PowerShell and Command Prompt are supported; Git Bash is offered when detected. On Linux and macOS, available Bash, Zsh, or POSIX shell sessions are offered. Create multiple sessions, send commands through the input line, navigate that session's command history with Up/Down (including restoration of an unfinished input draft), interrupt the foreground command with Interrupt / Ctrl+C, clear a session's display, or close/kill a session. Output is collected asynchronously so shell activity does not block the Tk event loop.
+
+New sessions start in the active workspace (or the active file's directory when no workspace is open). Their environment includes the selected project interpreter's Scripts/bin directory at the front of PATH and sets VIRTUAL_ENV when a virtual environment is selected. Shell sessions use redirected pipes rather than a full ConPTY/PTY terminal emulator: interactive command-line programs that require terminal device features, full-screen TUI rendering, or terminal resize events may not behave like a standalone console. Ordinary shell commands, Python REPLs, pip, and interactive line-oriented prompts are supported.
