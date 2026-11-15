@@ -1,6 +1,8 @@
 """Main graphical interface for PyLex Studio."""
 import tkinter as tk
 from tkinter import ttk, filedialog, messagebox
+import queue
+import threading
 from pathlib import Path
 import os
 import subprocess
@@ -18,6 +20,7 @@ from .core.file_types import file_type_for, read_text_file
 from .services.execution import ExecutionService
 from .debugger import DebugSession
 from .preferences import load_preferences, save_preferences
+from .interpreters import create_virtual_environment, discover_interpreters, find_project_environment, probe_interpreter
 
 
 class PyLexApp(tk.Tk):
@@ -25,7 +28,7 @@ class PyLexApp(tk.Tk):
 
     def __init__(self):
         super().__init__()
-        self.title("PyLex Studio 1.3.0 — Python Editor")
+        self.title("PyLex Studio 1.4.0 — Python Editor")
         self.geometry("1180x780")
         self.minsize(850, 560)
         self.current_path = None
@@ -58,6 +61,7 @@ class PyLexApp(tk.Tk):
             ("New", self.new_file), ("Open...", self.open_file),
             ("Open Workspace...", self.open_project_folder),
             ("Close Workspace", self.close_workspace),
+            ("Python", self.manage_interpreter),
             ("Save", self.save_file), ("Save As...", self.save_as),
             ("Close Tab", self.close_tab),
         ]:
@@ -74,6 +78,8 @@ class PyLexApp(tk.Tk):
         menu.add_cascade(label="Edit", menu=edit_menu)
 
         tools_menu = tk.Menu(menu, tearoff=False)
+        tools_menu.add_command(label="Python Interpreter...", command=self.manage_interpreter)
+        tools_menu.add_separator()
         tools_menu.add_command(label="Analyze All", command=self.analyze_all)
         tools_menu.add_command(label="Lexical Analysis", command=self.analyze_lexical)
         tools_menu.add_command(label="Syntax Analysis", command=self.analyze_syntax)
@@ -202,6 +208,7 @@ class PyLexApp(tk.Tk):
         actions = ttk.Frame(frame)
         actions.pack(fill="x", pady=(0, 4))
         ttk.Button(actions, text="Scan Current File", command=self.scan_dependencies).pack(side="left")
+        ttk.Button(actions, text="Python Interpreter...", command=self.manage_interpreter).pack(side="left", padx=4)
         ttk.Button(actions, text="Copy Python Install Command", command=self.copy_install_command).pack(side="left", padx=4)
         self.dependency_environment = ttk.Label(frame, text="Python environment: not scanned")
         self.dependency_environment.pack(fill="x", pady=(2, 5))
@@ -219,7 +226,137 @@ class PyLexApp(tk.Tk):
         self.dependency_tree.tag_configure("installed", foreground="#5b9b68")
         self.tabs.add(frame, text="Dependencies")
 
-    def _update_dependency_view(self, dependencies, scan_error=None):
+    def _interpreter_for_project(self, project=None):
+        """Resolve project override, local .venv, global setting, or current Python."""
+        root = project.root if project is not None else None
+        mapping = self.preferences.get("project_interpreters", {})
+        selected = mapping.get(str(root)) if root is not None else None
+        if selected:
+            return probe_interpreter(selected)
+        if root is not None:
+            detected = find_project_environment(root)
+            if detected is not None:
+                return detected
+        return probe_interpreter(self.preferences.get("interpreter_path") or sys.executable)
+
+    def manage_interpreter(self):
+        """Select a verified Python interpreter for this workspace or globally."""
+        project = self._project_for_document(self._active_document())
+        try:
+            current = self._interpreter_for_project(project)
+        except (OSError, ValueError, TimeoutError) as exc:
+            messagebox.showerror("Python Interpreter", str(exc))
+            return
+        dialog = tk.Toplevel(self)
+        dialog.title("Python Interpreter")
+        dialog.transient(self)
+        dialog.resizable(True, False)
+        body = ttk.Frame(dialog, padding=12)
+        body.pack(fill="both", expand=True)
+        ttk.Label(body, text="Workspace: " + str(project.root)).grid(row=0, column=0, columnspan=3, sticky="w")
+        ttk.Label(body, text="Interpreter").grid(row=1, column=0, sticky="w", pady=6)
+        status = ttk.Label(body, text=current.executable)
+        status.grid(row=2, column=0, columnspan=3, sticky="w", pady=6)
+        entries = {}
+        choice = tk.StringVar(value=current.label)
+        combo = ttk.Combobox(body, textvariable=choice, state="readonly", width=82)
+        combo.grid(row=1, column=1, sticky="ew", padx=5)
+        body.columnconfigure(1, weight=1)
+        def add(info):
+            entries[info.label] = info
+            values = list(combo.cget("values"))
+            if info.label not in values:
+                values.append(info.label)
+                combo.configure(values=values)
+            choice.set(info.label)
+        for info in discover_interpreters():
+            add(info)
+        add(current)
+        def browse():
+            path = filedialog.askopenfilename(parent=dialog, title="Select Python", filetypes=[("Python executable", "*.exe" if os.name == "nt" else "python"), ("All files", "*.*")])
+            if path:
+                try:
+                    add(probe_interpreter(path))
+                except (OSError, ValueError, TimeoutError) as exc:
+                    messagebox.showerror("Invalid Python", str(exc), parent=dialog)
+        ttk.Button(body, text="Browse...", command=browse).grid(row=1, column=2)
+        def selected():
+            info = entries.get(choice.get())
+            if info is None:
+                raise ValueError("Choose a verified Python interpreter.")
+            return info
+        def apply(scope):
+            try:
+                info = selected()
+            except ValueError as exc:
+                messagebox.showerror("Python Interpreter", str(exc), parent=dialog)
+                return
+            if scope == "project":
+                mapping = dict(self.preferences.get("project_interpreters", {}))
+                mapping[str(project.root)] = info.executable
+                self.preferences["project_interpreters"] = mapping
+            else:
+                self.preferences["interpreter_path"] = info.executable
+            self._persist_preferences()
+            self.status.configure(text="Python " + info.version + " selected.")
+            dialog.destroy()
+        def reset():
+            mapping = dict(self.preferences.get("project_interpreters", {}))
+            mapping.pop(str(project.root), None)
+            self.preferences["project_interpreters"] = mapping
+            self._persist_preferences()
+            self.status.configure(text="Workspace interpreter set to automatic detection.")
+            dialog.destroy()
+        def create_env():
+            try:
+                base = selected()
+            except ValueError as exc:
+                messagebox.showerror("Create .venv", str(exc), parent=dialog)
+                return
+            target = project.root / ".venv"
+            if target.exists() and any(target.iterdir()):
+                messagebox.showerror("Create .venv", "The .venv folder already exists and is not empty.", parent=dialog)
+                return
+            create_button.configure(state="disabled")
+            status.configure(text="Creating project virtual environment...")
+            result = queue.Queue()
+            def worker():
+                try:
+                    result.put(("ok", create_virtual_environment(base.executable, target)))
+                except Exception as exc:
+                    result.put(("error", exc))
+            threading.Thread(target=worker, daemon=True).start()
+            def poll():
+                try:
+                    kind, value = result.get_nowait()
+                except queue.Empty:
+                    if dialog.winfo_exists():
+                        dialog.after(100, poll)
+                    return
+                if not dialog.winfo_exists():
+                    return
+                create_button.configure(state="normal")
+                if kind == "error":
+                    status.configure(text="Environment creation failed.")
+                    messagebox.showerror("Create .venv", str(value), parent=dialog)
+                    return
+                add(value)
+                mapping = dict(self.preferences.get("project_interpreters", {}))
+                mapping[str(project.root)] = value.executable
+                self.preferences["project_interpreters"] = mapping
+                self._persist_preferences()
+                status.configure(text="Created and selected " + value.executable)
+                self.status.configure(text="Project virtual environment created.")
+            dialog.after(100, poll)
+        buttons = ttk.Frame(body)
+        buttons.grid(row=3, column=0, columnspan=3, sticky="ew", pady=10)
+        ttk.Button(buttons, text="Use for Workspace", command=lambda: apply("project")).pack(side="left", padx=3)
+        ttk.Button(buttons, text="Use Globally", command=lambda: apply("global")).pack(side="left", padx=3)
+        ttk.Button(buttons, text="Auto Detect", command=reset).pack(side="left", padx=3)
+        create_button = ttk.Button(buttons, text="Create Project .venv", command=create_env)
+        create_button.pack(side="left", padx=3)
+        ttk.Button(buttons, text="Close", command=dialog.destroy).pack(side="right", padx=3)
+    def _update_dependency_view(self, dependencies, scan_error=None, python_executable=None):
         for item in self.dependency_tree.get_children():
             self.dependency_tree.delete(item)
         for dependency in dependencies:
@@ -230,7 +367,7 @@ class PyLexApp(tk.Tk):
                         dependency.distribution, version),
                 tags=(dependency.status,),
             )
-        env = python_environment()
+        env = python_environment(python_executable or self._interpreter_for_project(self._project_for_document(self._active_document())).executable)
         mode = "venv" if env["virtual_environment"] else "base interpreter"
         message = f"Python {env['version']} ({mode}) — {env['executable']}"
         if scan_error:
@@ -240,8 +377,9 @@ class PyLexApp(tk.Tk):
     def scan_dependencies(self):
         document = self._active_document()
         root = self._project_for_document(document).root
-        dependencies, error = inspect_dependencies(self.editor.get_content(), search_root=root)
-        self._update_dependency_view(dependencies, error)
+        interpreter = self._interpreter_for_project(self._project_for_document(document))
+        dependencies, error = inspect_dependencies(self.editor.get_content(), search_root=root, python_executable=interpreter.executable)
+        self._update_dependency_view(dependencies, error, interpreter.executable)
         self.tabs.select(self.dependency_tree.master)
         missing = sum(item.status == "missing" for item in dependencies)
         self.status.configure(
@@ -824,10 +962,11 @@ class PyLexApp(tk.Tk):
         source = self.editor.get_content()
         document = self._active_document()
         project = self._project_for_document(document)
-        dependencies, scan_error = inspect_dependencies(source, search_root=project.root)
-        self._update_dependency_view(dependencies, scan_error)
+        interpreter = self._interpreter_for_project(project)
+        dependencies, scan_error = inspect_dependencies(source, search_root=project.root, python_executable=interpreter.executable)
+        self._update_dependency_view(dependencies, scan_error, interpreter.executable)
         self._show(self.output, "")
-        env = python_environment()
+        env = python_environment(interpreter.executable)
         self._append_output(
             f"Python: {env['version']} | {env['executable']}\n"
             f"Environment: {'virtual environment' if env['virtual_environment'] else 'base interpreter'}\n",
@@ -858,6 +997,7 @@ class PyLexApp(tk.Tk):
             self.execution = self.execution_service.start_document(
                 source, document.get("path") if document else None, project,
                 timeout=timeout, dirty=bool(document and document.get("dirty")),
+                python_executable=interpreter.executable,
             )
         except OSError as exc:
             self._append_output(f"Could not start Python process: {exc}\n", "stderr")
@@ -1015,6 +1155,7 @@ class PyLexApp(tk.Tk):
             self.debug_session = self.execution_service.start_debugger_document(
                 self.editor.get_content(), document.get("path") if document else None,
                 project, dirty=bool(document and document.get("dirty")),
+                python_executable=self._interpreter_for_project(project).executable,
             )
         except OSError as exc:
             messagebox.showerror("Debugger Error", str(exc))
