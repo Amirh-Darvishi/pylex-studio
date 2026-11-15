@@ -97,7 +97,7 @@ class ThemeManager:
 
     def __init__(self, root):
         self.root = root
-        self.style = ttkb.Style(theme="darkly")
+        self.style = ttkb.Style(theme="vapor-dark")
 
     def apply(self, dark=True, ui_font_family="Segoe UI", ui_font_size=9):
         """Apply a complete theme and return its palette for classic Tk widgets."""
