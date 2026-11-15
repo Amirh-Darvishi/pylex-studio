@@ -99,6 +99,22 @@ class PyLexApp(tk.Tk):
         edit_menu.add_command(label="Go to Line...", command=lambda: self.editor._go_to_line(), accelerator="Ctrl+G")
         menu.add_cascade(label="Edit", menu=edit_menu)
 
+        navigate_menu = tk.Menu(menu, tearoff=False)
+        self._menus.append(navigate_menu)
+        navigate_menu.add_command(
+            label="Quick Open File...", command=self.open_quick_file,
+            accelerator="Ctrl+P",
+        )
+        navigate_menu.add_command(
+            label="Go to Line...", command=lambda: self.editor._go_to_line(),
+            accelerator="Ctrl+G",
+        )
+        navigate_menu.add_command(
+            label="Command Palette...", command=self.open_command_palette,
+            accelerator="Ctrl+Shift+P",
+        )
+        menu.add_cascade(label="Navigate", menu=navigate_menu)
+
         tools_menu = tk.Menu(menu, tearoff=False)
         self._menus.append(tools_menu)
         tools_menu.add_command(label="Python Interpreter...", command=self.manage_interpreter)
@@ -151,6 +167,7 @@ class PyLexApp(tk.Tk):
         self.config(menu=menu)
 
         self.bind_all("<Control-Shift-P>", lambda event: self.open_command_palette())
+        self.bind_all("<Control-p>", lambda event: self.open_quick_file())
         self.bind_all("<Control-comma>", lambda event: self.open_preferences())
         self.bind_all("<Control-n>", lambda event: self.new_file())
         self.bind_all("<Control-o>", lambda event: self.open_file())
@@ -2027,7 +2044,8 @@ class PyLexApp(tk.Tk):
             "Ctrl+F5 Debug         F6  Analyze all\n"
             "F9      Toggle breakpoint   F10  Step over\n"
             "F11     Step into     Ctrl+Shift+P  Command palette\n"
-            "Ctrl+,  Settings     Ctrl+G  Go to line\n\n"
+            "Ctrl+,  Settings     Ctrl+P  Quick open file\n"
+            "Ctrl+G  Go to line\n\n"
             "TIPS\n"
             "• Drag pane separators to resize the workspace.\n"
             "• Use the mouse wheel over the editor and panels to scroll.\n"
@@ -2132,6 +2150,111 @@ class PyLexApp(tk.Tk):
         """Open the built-in getting-started guide directly in Settings."""
         self.open_preferences(initial_tab="help")
 
+    def open_quick_file(self):
+        """Search workspace paths quickly, inspired by modern editor quick-open."""
+        root = self.project_root
+        if root is None or not root.is_dir():
+            self.open_file()
+            return
+
+        ignored = {
+            ".git", ".venv", "venv", "__pycache__", ".pytest_cache",
+            ".mypy_cache", ".ruff_cache", ".tox", "node_modules", "dist", "build",
+        }
+        candidates = []
+        for directory, subdirectories, filenames in os.walk(root):
+            subdirectories[:] = sorted(
+                name for name in subdirectories
+                if name not in ignored and not (Path(directory) / name).is_symlink()
+            )
+            for filename in filenames:
+                path = Path(directory) / filename
+                try:
+                    relative = path.relative_to(root).as_posix()
+                except ValueError:
+                    continue
+                candidates.append((relative, path))
+                if len(candidates) >= 6000:
+                    break
+            if len(candidates) >= 6000:
+                break
+        candidates.sort(key=lambda item: item[0].casefold())
+
+        dialog = tk.Toplevel(self)
+        dialog.title("Quick Open")
+        dialog.transient(self)
+        dialog.geometry("660x460")
+        dialog.minsize(440, 300)
+        query = tk.StringVar()
+        entry = ttk.Entry(dialog, textvariable=query, font=(
+            self.preferences.get("ui_font_family", "Segoe UI"), 11
+        ))
+        entry.pack(fill="x", padx=12, pady=12)
+        listing = tk.Listbox(
+            dialog, activestyle="none", height=16, borderwidth=0,
+            bg=self.theme_palette["surface"], fg=self.theme_palette["editor_fg"],
+            selectbackground=self.theme_palette["accent"],
+            selectforeground="#ffffff", highlightthickness=0,
+        )
+        listing.pack(fill="both", expand=True, padx=12, pady=(0, 8))
+        hint = ttk.Label(
+            dialog, text="Type to filter  ·  Enter to open  ·  Esc to close",
+            style="PyLex.Muted.TLabel", padding=(12, 0, 12, 10),
+        )
+        hint.pack(anchor="w")
+        matches = []
+
+        def refresh(*_args):
+            listing.delete(0, "end")
+            matches.clear()
+            term = query.get().strip().casefold()
+            ranked = []
+            for relative, path in candidates:
+                folded = relative.casefold()
+                basename = path.name.casefold()
+                if not term:
+                    rank = (0, len(relative), folded)
+                elif term in basename:
+                    rank = (0, basename.find(term), len(relative), folded)
+                elif term in folded:
+                    rank = (1, folded.find(term), len(relative), folded)
+                else:
+                    continue
+                ranked.append((rank, relative, path))
+            for _rank, relative, path in sorted(ranked)[:200]:
+                matches.append(path)
+                listing.insert("end", relative)
+            if matches:
+                listing.selection_set(0)
+                listing.activate(0)
+
+        def execute(_event=None):
+            selection = listing.curselection()
+            index = selection[0] if selection else (0 if matches else None)
+            if index is None or index >= len(matches):
+                return "break"
+            path = matches[index]
+            dialog.destroy()
+            self._open_path(path)
+            return "break"
+
+        def focus_results(_event=None):
+            if matches:
+                listing.focus_set()
+                listing.selection_clear(0, "end")
+                listing.selection_set(0)
+                listing.activate(0)
+            return "break"
+
+        query.trace_add("write", refresh)
+        listing.bind("<Double-1>", execute)
+        listing.bind("<Return>", execute)
+        entry.bind("<Down>", focus_results)
+        dialog.bind("<Return>", execute)
+        dialog.bind("<Escape>", lambda _event: dialog.destroy())
+        refresh()
+        entry.focus_set()
+
     def open_command_palette(self):
         """Show searchable commands and their keyboard shortcuts."""
         commands = [
@@ -2139,6 +2262,7 @@ class PyLexApp(tk.Tk):
             ("Open File", "Ctrl+O", self.open_file),
             ("Save File", "Ctrl+S", self.save_file),
             ("Open Workspace", "", self.open_project_folder),
+            ("Quick Open File", "Ctrl+P", self.open_quick_file),
             ("Run Current File", "F5", self.run_code),
             ("Stop Execution", "Shift+F5", self.stop_execution),
             ("Analyze All", "F6", self.analyze_all),
