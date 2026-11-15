@@ -327,7 +327,7 @@ class PyLexApp(tk.Tk):
                     state["outside_polls"] += 1
                     # Ignore transient geometry/focus reports while the pointer
                     # is moving between the toolbar anchor and its popup.
-                    if state["outside_polls"] >= 5:
+                    if state["outside_polls"] >= 2:
                         destroy_popups()
                         return
                 state["poll_id"] = self.after(70, poll_pointer)
@@ -335,6 +335,22 @@ class PyLexApp(tk.Tk):
             def schedule_poll():
                 cancel_timer("poll_id")
                 state["poll_id"] = self.after(70, poll_pointer)
+
+            def close_descendant_popups(parent_popup):
+                """Close only popups branching from this menu, preserving ancestors."""
+                try:
+                    parent_index = state["windows"].index(parent_popup)
+                except ValueError:
+                    return
+                descendants = state["windows"][parent_index + 1:]
+                del state["windows"][parent_index + 1:]
+                for child_popup in reversed(descendants):
+                    try:
+                        if child_popup.winfo_exists():
+                            child_popup.destroy()
+                    except tk.TclError:
+                        pass
+                cancel_timer("submenu_id")
 
             def make_popup(anchor, items, parent_popup=None):
                 popup = tk.Toplevel(self)
@@ -493,10 +509,15 @@ class PyLexApp(tk.Tk):
                             add="+",
                         )
                     else:
+                        def enter_command_row(_event=None, owner_popup=popup):
+                            cancel_timer("submenu_id")
+                            # A sibling command replaces the currently displayed
+                            # cascade: keep this menu and its ancestors, but close
+                            # every submenu opened from it.
+                            close_descendant_popups(owner_popup)
+
                         item_button.bind(
-                            "<Enter>",
-                            lambda _event: cancel_timer("submenu_id"),
-                            add="+",
+                            "<Enter>", enter_command_row, add="+",
                         )
                 popup.update_idletasks()
                 req_w = max(210, popup.winfo_reqwidth())
