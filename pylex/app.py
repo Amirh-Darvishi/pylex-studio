@@ -44,6 +44,7 @@ class PyLexApp(tk.Tk):
         self._debug_poll = None
         self._last_timeout_display = None
         self.breakpoints = {}
+        self.conditional_breakpoints = {}
         self.documents = {}
         self.editor = None
         self._menu()
@@ -1230,12 +1231,14 @@ class PyLexApp(tk.Tk):
         points = self.breakpoints.setdefault(self.editor, set())
         if line in points:
             points.remove(line)
+            self.conditional_breakpoints.setdefault(self.editor, {}).pop(line, None)
             if self.debug_session is not None and not self.debug_session.done:
                 self.debug_session.clear_breakpoint(line)
             self.editor.set_breakpoints(points)
             self.status.configure(text=f"Breakpoint removed from line {line}.")
         else:
             points.add(line)
+            self.conditional_breakpoints.setdefault(self.editor, {}).pop(line, None)
             if self.debug_session is not None and not self.debug_session.done:
                 self.debug_session.set_breakpoint(line)
             self.editor.set_breakpoints(points)
@@ -1264,8 +1267,13 @@ class PyLexApp(tk.Tk):
             messagebox.showerror("Debugger Error", str(exc))
             return
         self._show(self.output, "Debugger started. Set breakpoints, then choose Continue.\n")
+        conditions = self.conditional_breakpoints.get(self.editor, {})
         for line in sorted(self.breakpoints.get(self.editor, set())):
-            self.debug_session.set_breakpoint(line)
+            condition = conditions.get(line)
+            if condition:
+                self.debug_session.set_conditional_breakpoint(line, condition)
+            else:
+                self.debug_session.set_breakpoint(line)
         self.status.configure(text="Debugger ready — set breakpoints or press Continue.")
         self._poll_debugger()
 
@@ -1388,6 +1396,7 @@ class PyLexApp(tk.Tk):
         try:
             session.set_conditional_breakpoint(line, condition)
             self.breakpoints.setdefault(self.editor, set()).add(line)
+            self.conditional_breakpoints.setdefault(self.editor, {})[line] = condition
             self.editor.set_breakpoints(self.breakpoints[self.editor])
             self.status.configure(text=f"Conditional breakpoint requested at line {line}.")
         except ValueError as exc:
@@ -1427,6 +1436,7 @@ class PyLexApp(tk.Tk):
     def debug_clear_breakpoints(self):
         points = self.breakpoints.setdefault(self.editor, set())
         points.clear()
+        self.conditional_breakpoints.setdefault(self.editor, {}).clear()
         self.editor.set_breakpoints(points)
         session = self._active_debug_session()
         if session is not None:
