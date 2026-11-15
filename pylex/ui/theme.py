@@ -191,6 +191,8 @@ class ThemeManager:
             background=palette["panel_bg"],
             foreground=palette["muted"],
             relief="flat",
+            focusthickness=0,
+            focuscolor=palette["panel_bg"],
         )
         self.style.map(
             "PyLex.Activity.TButton",
