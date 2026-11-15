@@ -123,6 +123,11 @@ class PyLexApp(tk.Tk):
         self.bind_all("<F5>", lambda event: self.run_code())
         self.bind_all("<Shift-F5>", lambda event: self.stop_execution())
         self.bind_all("<F6>", lambda event: self.analyze_all())
+        self.bind_all("<F9>", lambda event: self.toggle_breakpoint())
+        self.bind_all("<F10>", lambda event: self.debug_next())
+        self.bind_all("<F11>", lambda event: self.debug_step())
+        self.bind_all("<Control-F5>", lambda event: self.start_debugging())
+        self.bind_all("<Control-F10>", lambda event: self.debug_continue())
 
     def _toolbar(self):
         bar = ttk.Frame(self, padding=6)
@@ -203,7 +208,8 @@ class PyLexApp(tk.Tk):
             actions.grid(row=0, column=0, columnspan=2, sticky="ew")
             ttk.Button(actions, text="Clear Output", command=self.clear_output).pack(side="left", padx=2)
             ttk.Button(actions, text="Save Output...", command=self.save_output).pack(side="left", padx=2)
-            ttk.Button(actions, text="Force Stop", command=self.stop_execution).pack(side="left", padx=2)
+            ttk.Button(actions, text="Force Stop Run", command=self.stop_execution).pack(side="left", padx=2)
+            ttk.Button(actions, text="Stop Debugger", command=self.stop_debugging).pack(side="left", padx=2)
             row = 1
         text = tk.Text(frame, wrap="none", font=("Consolas", 10), height=8)
         text.tag_configure("stderr", foreground="#d9534f")
