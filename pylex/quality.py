@@ -196,12 +196,13 @@ class QualityPanel(ttk.Frame):
         output_frame = ttk.Frame(self.notebook, padding=4)
         self.output = tk.Text(output_frame, wrap="none", height=8, state="disabled")
         self.output.pack(fill="both", expand=True)
-        self.output.bind(
-            "<Shift-MouseWheel>",
-            lambda event: (self.output.xview_scroll(-int(event.delta / 120) * 3, "units"), "break"),
-            add="+",
-        )
+        self.output.bind("<Shift-MouseWheel>", self._scroll_output_horizontally, add="+")
         self.notebook.add(output_frame, text="Tool Output")
+
+    def _scroll_output_horizontally(self, event):
+        """Scroll tool output horizontally while Shift and the wheel are used."""
+        self.output.xview_scroll(-int(event.delta / 120) * 3, "units")
+        return "break"
 
     def _context(self):
         root, interpreter, env = self.context_provider()
