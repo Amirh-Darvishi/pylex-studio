@@ -53,6 +53,7 @@ class ExecutionHandle:
         self._done = threading.Event()
         self._lock = threading.Lock()
         self._stop_requested = False
+        self._input_lock = threading.Lock()
         self._result = None
         self._events = queue.Queue()
         self._stdout_parts = []
@@ -99,6 +100,32 @@ class ExecutionHandle:
                 chunks.append(self._events.get_nowait())
             except queue.Empty:
                 return chunks
+
+    def send_input(self, value):
+        """Send one line of interactive input to the running program."""
+        if self.done or self.process.stdin is None:
+            return False
+        value = str(value)
+        if "\\x00" in value:
+            raise ValueError("Program input cannot contain a NUL character.")
+        with self._input_lock:
+            if self.done or self.process.poll() is not None:
+                return False
+            try:
+                self.process.stdin.write(value + "\\n")
+                self.process.stdin.flush()
+                return True
+            except (BrokenPipeError, OSError, ValueError):
+                return False
+
+    def close_input(self):
+        """Send EOF to a program that no longer needs interactive input."""
+        with self._input_lock:
+            try:
+                if self.process.stdin is not None and not self.process.stdin.closed:
+                    self.process.stdin.close()
+            except OSError:
+                pass
 
     def stop(self):
         """Force-stop the process tree so descendants cannot keep pipes alive."""
@@ -184,7 +211,7 @@ def start_source(source, timeout=10, cwd=None, env=None, python_executable=None)
         process = subprocess.Popen(
             [str(python_executable or sys.executable), "-u", str(script_path)],
             cwd=str(cwd) if cwd is not None else None, env=env,
-            stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+            stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
             text=True, encoding="utf-8", errors="replace", bufsize=1,
             **_process_options(),
         )
