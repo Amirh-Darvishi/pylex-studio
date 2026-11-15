@@ -1,5 +1,6 @@
 """Interactive pdb-backed debugging for Python source files."""
 from pathlib import Path
+import codecs
 import os
 import queue
 import signal
@@ -78,17 +79,22 @@ class DebugSession:
         return self.process.poll() is not None
 
     def _read_output(self):
-        """Collect output and close pdb after normal completion or an uncaught exception."""
+        """Collect raw pdb output and close the session when the debuggee finishes."""
+        decoder = codecs.getincrementaldecoder("utf-8")(errors="replace")
         line_buffer = ""
         try:
             while True:
-                chunk = self.process.stdout.read(1)
-                if not chunk:
+                data = os.read(self.process.stdout.fileno(), 4096)
+                if not data:
                     break
+                chunk = decoder.decode(data)
+                if not chunk:
+                    continue
                 self._output.put(chunk)
                 line_buffer = (line_buffer + chunk)[-512:]
-                if chunk == "\n" and not self._completion_sent:
-                    line = line_buffer.strip()
+                while "\n" in line_buffer and not self._completion_sent:
+                    line, line_buffer = line_buffer.split("\n", 1)
+                    line = line.strip()
                     if line == "The program finished and will be restarted" or line == "The program exited":
                         self.completion_status = "finished"
                         self._completion_sent = True
@@ -99,7 +105,9 @@ class DebugSession:
                         self.completion_status = "error"
                         self._completion_sent = True
                         self.command("q")
-                    line_buffer = ""
+            tail = decoder.decode(b"", final=True)
+            if tail:
+                self._output.put(tail)
         finally:
             self._output.put(None)
 
