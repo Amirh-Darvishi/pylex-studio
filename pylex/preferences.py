@@ -60,16 +60,16 @@ def _normalise(values):
     allowed_status_items = {"position", "indent", "encoding", "eol", "language", "mode"}
     if not isinstance(status_items, list):
         status_items = list(DEFAULTS["status_bar_items"])
-    result["status_bar_items"] = [
-        item for item in dict.fromkeys(status_items)
+    result["status_bar_items"] = list(dict.fromkeys(
+        item for item in status_items
         if isinstance(item, str) and item in allowed_status_items
-    ]
+    ))
     for key, allowed in (
         ("status_bar_indent", {"Spaces: 2", "Spaces: 4", "Spaces: 8", "Tabs"}),
         ("status_bar_encoding", {"UTF-8", "UTF-8 with BOM", "ASCII"}),
         ("status_bar_eol", {"Auto", "LF", "CRLF"}),
     ):
-        if result[key] not in allowed:
+        if not isinstance(result[key], str) or result[key] not in allowed:
             result[key] = DEFAULTS[key]
     if not isinstance(result["last_workspace"], str):
         result["last_workspace"] = ""
