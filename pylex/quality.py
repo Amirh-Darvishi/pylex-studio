@@ -195,10 +195,12 @@ class QualityPanel(ttk.Frame):
 
         output_frame = ttk.Frame(self.notebook, padding=4)
         self.output = tk.Text(output_frame, wrap="none", height=8, state="disabled")
-        ybar = ttk.Scrollbar(output_frame, command=self.output.yview)
-        self.output.configure(yscrollcommand=ybar.set)
-        self.output.pack(side="left", fill="both", expand=True)
-        ybar.pack(side="right", fill="y")
+        self.output.pack(fill="both", expand=True)
+        self.output.bind(
+            "<Shift-MouseWheel>",
+            lambda event: (self.output.xview_scroll(-int(event.delta / 120) * 3, "units"), "break"),
+            add="+",
+        )
         self.notebook.add(output_frame, text="Tool Output")
 
     def _context(self):
