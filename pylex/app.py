@@ -2,6 +2,12 @@
 
 from . import __version__
 from .commands import Command, CommandRegistry
+from .controllers import (
+    DebuggerController,
+    DocumentController,
+    ExecutionController,
+    WorkspaceController,
+)
 import tkinter as tk
 from tkinter import ttk, filedialog, messagebox, simpledialog, font as tkfont
 import ttkbootstrap as ttkb
@@ -43,7 +49,62 @@ from .ui.command_palette import CommandPalette
 
 
 class PyLexApp(tk.Tk):
-    """Main application window and coordinator for editor tools."""
+    """Main application window and UI composition root."""
+
+    @property
+    def project(self):
+        return self.workspace_controller.project if hasattr(self, "workspace_controller") else self._project
+
+    @project.setter
+    def project(self, value):
+        if hasattr(self, "workspace_controller"):
+            self.workspace_controller._project = value
+        else:
+            self._project = value
+
+    @property
+    def documents(self):
+        return self.document_controller.documents if hasattr(self, "document_controller") else self._documents
+
+    @documents.setter
+    def documents(self, value):
+        if hasattr(self, "document_controller"):
+            self.document_controller.documents = value
+        else:
+            self._documents = value
+
+    @property
+    def editor(self):
+        return self.document_controller.active_editor if hasattr(self, "document_controller") else self._editor
+
+    @editor.setter
+    def editor(self, value):
+        if hasattr(self, "document_controller"):
+            self.document_controller.active_editor = value
+        else:
+            self._editor = value
+
+    @property
+    def execution(self):
+        return self.execution_controller.handle if hasattr(self, "execution_controller") else self._execution
+
+    @execution.setter
+    def execution(self, value):
+        if hasattr(self, "execution_controller"):
+            self.execution_controller.handle = value
+        else:
+            self._execution = value
+
+    @property
+    def debug_session(self):
+        return self.debugger_controller.session if hasattr(self, "debugger_controller") else self._debug_session
+
+    @debug_session.setter
+    def debug_session(self, value):
+        if hasattr(self, "debugger_controller"):
+            self.debugger_controller.session = value
+        else:
+            self._debug_session = value
 
     def __init__(self):
         # Tk must become DPI-aware before its root window is created; otherwise
@@ -77,6 +138,10 @@ class PyLexApp(tk.Tk):
         self.conditional_breakpoints = {}
         self.documents = {}
         self.editor = None
+        self.workspace_controller = WorkspaceController(self._project)
+        self.document_controller = DocumentController(self._documents, self._editor)
+        self.execution_controller = ExecutionController(self.execution_service)
+        self.debugger_controller = DebuggerController(self.execution_service)
         self._menu()
         self._toolbar()
         self._workspace()
@@ -2663,16 +2728,13 @@ class PyLexApp(tk.Tk):
                     self.error_summary.configure(
                         text="Source changed. Run Analyze All to refresh diagnostics."
                     )
+        self.document_controller.mark_dirty(editor, True)
         editor.clear_diagnostic()
 
     def _project_for_document(self, document=None):
         """Resolve a project context for a document or the current workspace."""
         path = document.get("path") if document else None
-        if self.project is not None and (path is None or self.project.contains(path)):
-            return self.project
-        if path is not None:
-            return Project.from_file(path)
-        return self.project or Project.open(Path.cwd())
+        return self.workspace_controller.project_for_file(path)
 
     def _confirm_all_dirty_documents(self):
         """Resolve every modified tab before changing the active workspace."""
@@ -2869,7 +2931,7 @@ class PyLexApp(tk.Tk):
         if not self._confirm_all_dirty_documents():
             self.status.configure(text="Workspace change cancelled.")
             return False
-        self.project = candidate
+        self.workspace_controller.open(candidate)
         self.project_root = candidate.root
         self._remember_workspace(candidate.root)
         self._populate_project_tree()
@@ -2897,7 +2959,7 @@ class PyLexApp(tk.Tk):
             self.status.configure(text="Close workspace cancelled.")
             return
         closed = self.project.root
-        self.project = None
+        self.workspace_controller.close()
         self.project_root = None
         self.project_tree.delete(*self.project_tree.get_children())
         self.workspace_path_label.configure(
@@ -2915,9 +2977,8 @@ class PyLexApp(tk.Tk):
         previous = self.preferences.get("last_workspace", "")
         if not previous:
             return
-        try:
-            self.project = Project.open(previous)
-        except (OSError, ValueError):
+        self.project = self.workspace_controller.restore(previous)
+        if self.project is None:
             self.preferences["last_workspace"] = ""
             self._persist_preferences()
             return
@@ -2956,12 +3017,13 @@ class PyLexApp(tk.Tk):
 
     def _select_open_document(self, path):
         resolved = Path(path).resolve()
-        for editor, document in self.documents.items():
-            if document["path"] and document["path"].resolve() == resolved:
-                self.editor_tabs.select(document["frame"])
-                self.editor = editor
-                self._sync_active_document()
-                return True
+        editor = self.document_controller.find_path(resolved)
+        if editor is not None:
+            document = self.documents[editor]
+            self.editor_tabs.select(document["frame"])
+            self.editor = editor
+            self._sync_active_document()
+            return True
         return False
 
     def _open_path(self, path):
@@ -3497,11 +3559,14 @@ class PyLexApp(tk.Tk):
         editor.indent_string = self._configured_indent_string()
         editor.text.bind("<<PyLexAnalyze>>", lambda _event: self.analyze_all(), add="+")
         editor.set_content(content)
-        self.documents[editor] = {
-            "frame": frame,
-            "path": Path(path) if path else None,
-            "dirty": False,
-        }
+        self.document_controller.register(
+            editor,
+            {
+                "frame": frame,
+                "path": Path(path) if path else None,
+                "dirty": False,
+            },
+        )
         self._refresh_open_editors()
         document = self.documents[editor]
         if document["path"]:
@@ -3530,7 +3595,7 @@ class PyLexApp(tk.Tk):
         return editor
 
     def _active_document(self):
-        return self.documents.get(self.editor)
+        return self.document_controller.get(self.editor)
 
     def _sync_active_document(self):
         document = self._active_document()
@@ -3762,7 +3827,7 @@ class PyLexApp(tk.Tk):
         self._append_output("Starting program...\n", "system")
         try:
             timeout = self.preferences["timeout_seconds"]
-            self.execution = self.execution_service.start_document(
+            self.execution_controller.start_document(
                 source,
                 document.get("path") if document else None,
                 project,
@@ -3783,12 +3848,10 @@ class PyLexApp(tk.Tk):
         self._poll_execution()
 
     def stop_execution(self):
-        if self.execution is not None and not self.execution.done:
-            self.execution.force_stop()
+        if self.execution_controller.stop():
             self.status.configure(text="Force-stopping process and child processes...")
             return
-        if self.debug_session is not None and not self.debug_session.done:
-            self.debug_session.stop()
+        if self.debugger_controller.stop():
             self.status.configure(text="Force-stopping debugger and child processes...")
             return
         self.status.configure(text="No program is currently running.")
@@ -3834,7 +3897,7 @@ class PyLexApp(tk.Tk):
         self.status.configure(
             text=f"Execution {result.status} — exit code {result.exit_code}."
         )
-        self.execution = None
+        self.execution_controller.finish(handle)
         self._execution_poll = None
 
     def run_active_file_in_terminal(self):
@@ -4016,7 +4079,7 @@ class PyLexApp(tk.Tk):
         try:
             document = self._active_document()
             project = self._project_for_document(document)
-            self.debug_session = self.execution_service.start_debugger_document(
+            self.debugger_controller.start_document(
                 self.editor.get_content(),
                 document.get("path") if document else None,
                 project,
@@ -4223,7 +4286,7 @@ class PyLexApp(tk.Tk):
         if self.debug_session is None:
             self.status.configure(text="No active debugging session.")
             return
-        self.debug_session.stop()
+        self.debugger_controller.stop()
         self.status.configure(text="Stopping debugger...")
 
     def _poll_debugger(self):
@@ -4239,7 +4302,7 @@ class PyLexApp(tk.Tk):
             final_output = session.read_available()
             if final_output:
                 self._append_output(final_output)
-            self.debug_session = None
+            self.debugger_controller.finish(session=session)
             self._debug_poll = None
             if completion == "error":
                 self._append_output(
