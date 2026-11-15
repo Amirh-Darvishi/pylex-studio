@@ -158,10 +158,11 @@ class ExecutionHandle:
                 _terminate_process_tree(self.process)
                 self.process.wait()
             if self.process.stdin is not None:
-                try:
-                    self.process.stdin.close()
-                except OSError:
-                    pass
+                with self._stdin_lock:
+                    try:
+                        self.process.stdin.close()
+                    except (OSError, ValueError):
+                        pass
             for reader in self._readers:
                 reader.join(timeout=3)
             with self._lock:
