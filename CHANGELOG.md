@@ -6,6 +6,7 @@
 - Added a UI-independent command registry with stable command IDs, shortcut-aware search, duplicate registration protection, and explicit command execution.
 - Extracted the searchable Command Palette into a dedicated Tkinter UI component; the main application now supplies registered actions and theme context.
 - Added focused tests for command registration, search, lookup, ordering, and execution without requiring a Tk display.
+- Added a real child-process integration test verifying that a saved file in a nested directory inherits the Workspace working directory and Python import path.
 
 ### Quality and validation
 - Expanded Ruff linting from a hand-picked file list to the complete `pylex` and `tests` trees.
