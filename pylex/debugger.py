@@ -104,18 +104,66 @@ class DebugSession:
     def command(self, value):
         if self.done or self.process.stdin is None:
             return False
+        value = str(value)
+        if any(char in value for char in ("\n", "\r", "\x00")):
+            return False
         try:
-            self.process.stdin.write(value.rstrip("\n") + "\n")
+            self.process.stdin.write(value + "\n")
             self.process.stdin.flush()
             return True
         except (BrokenPipeError, OSError, ValueError):
             return False
 
+    @staticmethod
+    def _positive_number(value, label="number"):
+        try:
+            number = int(value)
+        except (TypeError, ValueError):
+            raise ValueError(f"{label} must be a positive integer.")
+        if number < 1:
+            raise ValueError(f"{label} must be a positive integer.")
+        return number
+
+    @staticmethod
+    def _single_line(value, label="value"):
+        value = str(value).strip()
+        if not value or any(char in value for char in ("\n", "\r", "\x00")):
+            raise ValueError(f"{label} must be a non-empty single line.")
+        return value
+
     def set_breakpoint(self, line):
-        return self.command(f"b {int(line)}")
+        """Set a source-line breakpoint after validating its line number."""
+        return self.command(f"b {self._positive_number(line, 'Line number')}")
+
+    def set_conditional_breakpoint(self, line, condition):
+        """Set a breakpoint that is active only when its expression is true."""
+        line = self._positive_number(line, "Line number")
+        condition = self._single_line(condition, "Breakpoint condition")
+        return self.command(f"b {line}, {condition}")
+
+    def set_temporary_breakpoint(self, line):
+        """Set a one-shot breakpoint."""
+        return self.command(f"tbreak {self._positive_number(line, 'Line number')}")
 
     def clear_breakpoint(self, line):
-        return self.command(f"cl {int(line)}")
+        return self.command(f"cl {self._positive_number(line, 'Line number')}")
+
+    def clear_all_breakpoints(self):
+        """Remove all breakpoints, confirming pdb's interactive prompt."""
+        if not self.command("cl"):
+            return False
+        return self.command("y")
+
+    def enable_breakpoint(self, number):
+        return self.command(f"enable {self._positive_number(number, 'Breakpoint number')}")
+
+    def disable_breakpoint(self, number):
+        return self.command(f"disable {self._positive_number(number, 'Breakpoint number')}")
+
+    def ignore_breakpoint(self, number, count):
+        number = self._positive_number(number, "Breakpoint number")
+        count = self._positive_number(count, "Ignore count")
+        return self.command(f"ignore {number} {count}")
 
     def continue_execution(self):
         return self.command("c")
@@ -126,14 +174,32 @@ class DebugSession:
     def next(self):
         return self.command("n")
 
+    def until(self, line=None):
+        """Run until the current frame reaches a later line, or a target line."""
+        return self.command("until" if line is None else
+                            f"until {self._positive_number(line, 'Line number')}")
+
+    def return_from_frame(self):
+        """Continue until the current function returns."""
+        return self.command("return")
+
+    def jump(self, line):
+        """Move the current frame's next execution line (pdb restrictions apply)."""
+        return self.command(f"jump {self._positive_number(line, 'Line number')}")
+
     def inspect_variables(self):
         return self.command("p locals()")
 
+    def show_arguments(self):
+        return self.command("args")
+
+    def pretty_print(self, expression):
+        expression = self._single_line(expression, "Expression")
+        return self.command(f"pp {expression}")
+
     def evaluate(self, expression):
         """Evaluate a Python expression in the current paused frame."""
-        expression = str(expression).strip()
-        if not expression or "\n" in expression:
-            return False
+        expression = self._single_line(expression, "Expression")
         return self.command(f"p {expression}")
 
     def stop(self):

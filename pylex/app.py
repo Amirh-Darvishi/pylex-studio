@@ -1,6 +1,6 @@
 """Main graphical interface for PyLex Studio."""
 import tkinter as tk
-from tkinter import ttk, filedialog, messagebox
+from tkinter import ttk, filedialog, messagebox, simpledialog
 import queue
 import threading
 from pathlib import Path
@@ -28,7 +28,7 @@ class PyLexApp(tk.Tk):
 
     def __init__(self):
         super().__init__()
-        self.title("PyLex Studio 1.5.0 — Python Editor")
+        self.title("PyLex Studio 1.6.0 — Python Editor")
         self.geometry("1180x780")
         self.minsize(850, 560)
         self.current_path = None
@@ -44,6 +44,7 @@ class PyLexApp(tk.Tk):
         self._debug_poll = None
         self._last_timeout_display = None
         self.breakpoints = {}
+        self.conditional_breakpoints = {}
         self.documents = {}
         self.editor = None
         self._menu()
@@ -98,6 +99,17 @@ class PyLexApp(tk.Tk):
         tools_menu.add_command(label="Toggle Breakpoint", command=self.toggle_breakpoint)
         tools_menu.add_command(label="Inspect Variables", command=self.debug_variables)
         tools_menu.add_command(label="Show Stack", command=self.debug_stack)
+        tools_menu.add_command(label="Show Function Arguments", command=self.debug_arguments)
+        tools_menu.add_command(label="Run Until Line", command=self.debug_until)
+        tools_menu.add_command(label="Run Until Return", command=self.debug_return)
+        tools_menu.add_command(label="Jump to Line", command=self.debug_jump)
+        tools_menu.add_command(label="Evaluate Expression...", command=self.debug_evaluate)
+        tools_menu.add_command(label="Conditional Breakpoint...", command=self.debug_conditional_breakpoint)
+        tools_menu.add_command(label="Temporary Breakpoint", command=self.debug_temporary_breakpoint)
+        tools_menu.add_command(label="Enable Breakpoint...", command=lambda: self.debug_manage_breakpoint("enable"))
+        tools_menu.add_command(label="Disable Breakpoint...", command=lambda: self.debug_manage_breakpoint("disable"))
+        tools_menu.add_command(label="Ignore Breakpoint Hits...", command=lambda: self.debug_manage_breakpoint("ignore"))
+        tools_menu.add_command(label="Clear All Breakpoints", command=self.debug_clear_breakpoints)
         tools_menu.add_command(label="Stop Debugging", command=self.stop_debugging)
         menu.add_cascade(label="Tools", menu=tools_menu)
 
@@ -116,6 +128,11 @@ class PyLexApp(tk.Tk):
         self.bind_all("<F5>", lambda event: self.run_code())
         self.bind_all("<Shift-F5>", lambda event: self.stop_execution())
         self.bind_all("<F6>", lambda event: self.analyze_all())
+        self.bind_all("<F9>", lambda event: self.toggle_breakpoint())
+        self.bind_all("<F10>", lambda event: self.debug_next())
+        self.bind_all("<F11>", lambda event: self.debug_step())
+        self.bind_all("<Control-F5>", lambda event: self.start_debugging())
+        self.bind_all("<Control-F10>", lambda event: self.debug_continue())
 
     def _toolbar(self):
         bar = ttk.Frame(self, padding=6)
@@ -128,8 +145,12 @@ class PyLexApp(tk.Tk):
             ("Save", self.save_file), ("▶ Run", self.run_code), ("■ Force Stop", self.stop_execution),
             ("Debug", self.start_debugging), ("Continue", self.debug_continue),
             ("Step", self.debug_step), ("Next", self.debug_next),
-            ("Breakpoint", self.toggle_breakpoint), ("Variables", self.debug_variables),
+            ("Breakpoint", self.toggle_breakpoint), ("Temp BP", self.debug_temporary_breakpoint), ("Variables", self.debug_variables),
             ("Stack", self.debug_stack),
+            ("Arguments", self.debug_arguments),
+            ("Until", self.debug_until),
+            ("Return", self.debug_return),
+            ("Evaluate", self.debug_evaluate),
             ("Analyze All", self.analyze_all),
             ("Lexical", self.analyze_lexical), ("Syntax", self.analyze_syntax),
             ("Clear Results", self.clear_results),
@@ -192,7 +213,8 @@ class PyLexApp(tk.Tk):
             actions.grid(row=0, column=0, columnspan=2, sticky="ew")
             ttk.Button(actions, text="Clear Output", command=self.clear_output).pack(side="left", padx=2)
             ttk.Button(actions, text="Save Output...", command=self.save_output).pack(side="left", padx=2)
-            ttk.Button(actions, text="Force Stop", command=self.stop_execution).pack(side="left", padx=2)
+            ttk.Button(actions, text="Force Stop Run", command=self.stop_execution).pack(side="left", padx=2)
+            ttk.Button(actions, text="Stop Debugger", command=self.stop_debugging).pack(side="left", padx=2)
             row = 1
         text = tk.Text(frame, wrap="none", font=("Consolas", 10), height=8)
         text.tag_configure("stderr", foreground="#d9534f")
@@ -904,7 +926,7 @@ class PyLexApp(tk.Tk):
 
     def _title(self):
         name = self.current_path.name if self.current_path else "Untitled"
-        self.title(f"{'*' if self.dirty else ''}{name} — PyLex Studio 1.5.0")
+        self.title(f"{'*' if self.dirty else ''}{name} — PyLex Studio 1.6.0")
 
     def _confirm(self):
         document = self._active_document()
@@ -1209,12 +1231,14 @@ class PyLexApp(tk.Tk):
         points = self.breakpoints.setdefault(self.editor, set())
         if line in points:
             points.remove(line)
+            self.conditional_breakpoints.setdefault(self.editor, {}).pop(line, None)
             if self.debug_session is not None and not self.debug_session.done:
                 self.debug_session.clear_breakpoint(line)
             self.editor.set_breakpoints(points)
             self.status.configure(text=f"Breakpoint removed from line {line}.")
         else:
             points.add(line)
+            self.conditional_breakpoints.setdefault(self.editor, {}).pop(line, None)
             if self.debug_session is not None and not self.debug_session.done:
                 self.debug_session.set_breakpoint(line)
             self.editor.set_breakpoints(points)
@@ -1243,8 +1267,13 @@ class PyLexApp(tk.Tk):
             messagebox.showerror("Debugger Error", str(exc))
             return
         self._show(self.output, "Debugger started. Set breakpoints, then choose Continue.\n")
+        conditions = self.conditional_breakpoints.get(self.editor, {})
         for line in sorted(self.breakpoints.get(self.editor, set())):
-            self.debug_session.set_breakpoint(line)
+            condition = conditions.get(line)
+            if condition:
+                self.debug_session.set_conditional_breakpoint(line, condition)
+            else:
+                self.debug_session.set_breakpoint(line)
         self.status.configure(text="Debugger ready — set breakpoints or press Continue.")
         self._poll_debugger()
 
@@ -1282,6 +1311,137 @@ class PyLexApp(tk.Tk):
             return
         self.debug_session.command("where")
         self.status.configure(text="Requested current stack trace.")
+
+    def _active_debug_session(self):
+        session = self.debug_session
+        if session is None or session.done:
+            self.status.configure(text="No active debugging session.")
+            return None
+        return session
+
+    def debug_arguments(self):
+        session = self._active_debug_session()
+        if session is not None:
+            session.show_arguments()
+            self.status.configure(text="Requested current function arguments.")
+
+    def debug_until(self):
+        session = self._active_debug_session()
+        if session is None:
+            return
+        line = int(self.editor.text.index("insert").split(".")[0])
+        session.until(line)
+        self.status.configure(text=f"Running until line {line}.")
+
+    def debug_return(self):
+        session = self._active_debug_session()
+        if session is not None:
+            session.return_from_frame()
+            self.status.configure(text="Running until the current function returns.")
+
+    def debug_jump(self):
+        session = self._active_debug_session()
+        if session is None:
+            return
+        line = simpledialog.askinteger(
+            "Debugger — Jump to Line", "Target line:",
+            parent=self, minvalue=1,
+        )
+        if line is not None:
+            try:
+                session.jump(line)
+                self.status.configure(text=f"Requested jump to line {line} (pdb frame restrictions apply).")
+            except ValueError as exc:
+                messagebox.showerror("Debugger", str(exc))
+
+    def debug_evaluate(self):
+        session = self._active_debug_session()
+        if session is None:
+            return
+        expression = simpledialog.askstring(
+            "Debugger — Evaluate", "Python expression in the selected frame:",
+            parent=self,
+        )
+        if expression is None:
+            return
+        try:
+            session.pretty_print(expression)
+            self.status.configure(text="Expression evaluation requested; see Output.")
+        except ValueError as exc:
+            messagebox.showerror("Debugger", str(exc))
+
+    def debug_temporary_breakpoint(self):
+        session = self._active_debug_session()
+        if session is None:
+            return
+        line = int(self.editor.text.index("insert").split(".")[0])
+        try:
+            session.set_temporary_breakpoint(line)
+            self.status.configure(text=f"Temporary breakpoint requested at line {line}.")
+        except ValueError as exc:
+            messagebox.showerror("Debugger", str(exc))
+
+    def debug_conditional_breakpoint(self):
+        session = self._active_debug_session()
+        if session is None:
+            return
+        line = int(self.editor.text.index("insert").split(".")[0])
+        condition = simpledialog.askstring(
+            "Conditional Breakpoint",
+            f"Stop at line {line} only when this expression is true:",
+            parent=self,
+        )
+        if condition is None:
+            return
+        try:
+            session.set_conditional_breakpoint(line, condition)
+            self.breakpoints.setdefault(self.editor, set()).add(line)
+            self.conditional_breakpoints.setdefault(self.editor, {})[line] = condition
+            self.editor.set_breakpoints(self.breakpoints[self.editor])
+            self.status.configure(text=f"Conditional breakpoint requested at line {line}.")
+        except ValueError as exc:
+            messagebox.showerror("Debugger", str(exc))
+
+    def debug_manage_breakpoint(self, action):
+        session = self._active_debug_session()
+        if session is None:
+            return
+        number = simpledialog.askinteger(
+            "Debugger — Breakpoint",
+            "Breakpoint number (shown by pdb's breakpoint list):",
+            parent=self, minvalue=1,
+        )
+        if number is None:
+            return
+        try:
+            if action == "enable":
+                session.enable_breakpoint(number)
+                message = f"Enabled breakpoint {number}."
+            elif action == "disable":
+                session.disable_breakpoint(number)
+                message = f"Disabled breakpoint {number}."
+            else:
+                count = simpledialog.askinteger(
+                    "Ignore Breakpoint Hits", "Number of hits to ignore:",
+                    parent=self, minvalue=1,
+                )
+                if count is None:
+                    return
+                session.ignore_breakpoint(number, count)
+                message = f"Breakpoint {number} will ignore the next {count} hit(s)."
+            self.status.configure(text=message)
+        except ValueError as exc:
+            messagebox.showerror("Debugger", str(exc))
+
+    def debug_clear_breakpoints(self):
+        points = self.breakpoints.setdefault(self.editor, set())
+        points.clear()
+        self.conditional_breakpoints.setdefault(self.editor, {}).clear()
+        self.editor.set_breakpoints(points)
+        session = self._active_debug_session()
+        if session is not None:
+            session.clear_all_breakpoints()
+        self.status.configure(text="All breakpoints cleared.")
 
     def stop_debugging(self):
         if self.debug_session is None:
