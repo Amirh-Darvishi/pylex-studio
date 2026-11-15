@@ -1,4 +1,5 @@
 """Python interpreter discovery and virtual-environment management."""
+
 from __future__ import annotations
 
 import json
@@ -36,6 +37,7 @@ print(json.dumps({
 @dataclass(frozen=True)
 class InterpreterInfo:
     """Metadata for one verified Python interpreter."""
+
     executable: str
     version: str
     implementation: str
@@ -72,14 +74,20 @@ def _normalise_executable(value: os.PathLike | str) -> str:
     return os.path.realpath(absolute) if os.name == "nt" else absolute
 
 
-def probe_interpreter(executable: os.PathLike | str, timeout: float = 6.0) -> InterpreterInfo:
+def probe_interpreter(
+    executable: os.PathLike | str, timeout: float = 6.0
+) -> InterpreterInfo:
     """Run a short isolated probe and reject non-Python or broken executables."""
     resolved = _normalise_executable(executable)
     try:
         completed = subprocess.run(
             [resolved, "-I", "-c", _PROBE],
-            capture_output=True, text=True, encoding="utf-8", errors="replace",
-            timeout=timeout, check=False,
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+            timeout=timeout,
+            check=False,
         )
     except subprocess.TimeoutExpired as exc:
         raise TimeoutError(f"Python interpreter probe timed out: {resolved}") from exc
@@ -99,10 +107,14 @@ def probe_interpreter(executable: os.PathLike | str, timeout: float = 6.0) -> In
         # sys.executable may report an 8.3 short path even when the caller
         # supplied the canonical venv path.
         executable=os.path.abspath(resolved),
-        version=info.version, implementation=info.implementation,
-        prefix=info.prefix, base_prefix=info.base_prefix,
-        is_venv=info.is_venv, architecture=info.architecture,
-        platform=info.platform, pip_available=info.pip_available,
+        version=info.version,
+        implementation=info.implementation,
+        prefix=info.prefix,
+        base_prefix=info.base_prefix,
+        is_venv=info.is_venv,
+        architecture=info.architecture,
+        platform=info.platform,
+        pip_available=info.pip_available,
     )
 
 
@@ -119,8 +131,13 @@ def _launcher_candidates() -> Iterable[str]:
         for command in commands:
             try:
                 result = subprocess.run(
-                    command, capture_output=True, text=True,
-                    encoding="utf-8", errors="replace", timeout=5, check=False,
+                    command,
+                    capture_output=True,
+                    text=True,
+                    encoding="utf-8",
+                    errors="replace",
+                    timeout=5,
+                    check=False,
                 )
             except (OSError, subprocess.SubprocessError):
                 continue
@@ -137,10 +154,20 @@ def _launcher_candidates() -> Iterable[str]:
                 break
     return paths
 
-def discover_interpreters(extra_paths: Iterable[str] = (), timeout: float = 6.0) -> list[InterpreterInfo]:
+
+def discover_interpreters(
+    extra_paths: Iterable[str] = (), timeout: float = 6.0
+) -> list[InterpreterInfo]:
     """Discover and verify common PATH, active, and Windows launcher interpreters."""
     candidates = [sys.executable]
-    for name in ("python", "python3", "python3.13", "python3.12", "python3.11", "python3.10"):
+    for name in (
+        "python",
+        "python3",
+        "python3.13",
+        "python3.12",
+        "python3.11",
+        "python3.10",
+    ):
         found = shutil.which(name)
         if found:
             candidates.append(found)
@@ -157,11 +184,18 @@ def discover_interpreters(extra_paths: Iterable[str] = (), timeout: float = 6.0)
         if key not in seen:
             seen.add(key)
             results.append(info)
-    return sorted(results, key=lambda item: (
-        not item.is_venv, tuple(int(part) if part.isdigit() else 0
-                            for part in item.version.split(".")[:3]),
-        item.executable.lower(),
-    ), reverse=True)
+    return sorted(
+        results,
+        key=lambda item: (
+            not item.is_venv,
+            tuple(
+                int(part) if part.isdigit() else 0
+                for part in item.version.split(".")[:3]
+            ),
+            item.executable.lower(),
+        ),
+        reverse=True,
+    )
 
 
 def virtual_environment_python(environment_path: os.PathLike | str) -> Path:
@@ -185,7 +219,9 @@ def create_virtual_environment(
     base = probe_interpreter(base_interpreter)
     requested_target = Path(environment_path).expanduser()
     if requested_target.is_symlink():
-        raise ValueError(f"Environment target must not be a symlink: {requested_target}")
+        raise ValueError(
+            f"Environment target must not be a symlink: {requested_target}"
+        )
     target = requested_target.resolve()
     if target.exists():
         if not target.is_dir():
@@ -204,8 +240,13 @@ def create_virtual_environment(
     command.append(str(target))
     try:
         result = subprocess.run(
-            command, capture_output=True, text=True, encoding="utf-8",
-            errors="replace", timeout=timeout, check=False,
+            command,
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+            timeout=timeout,
+            check=False,
         )
     except subprocess.TimeoutExpired as exc:
         raise TimeoutError(f"Virtual environment creation timed out: {target}") from exc
@@ -215,13 +256,15 @@ def create_virtual_environment(
     executable = virtual_environment_python(target)
     try:
         info = probe_interpreter(executable)
-    except Exception:
+    except Exception as exc:
         # Preserve a useful failure message but never report a broken environment as ready.
         raise RuntimeError(
             f"Virtual environment was created but its interpreter could not be verified: {executable}"
-        )
+        ) from exc
     if not info.is_venv:
-        raise RuntimeError(f"Created interpreter is not recognized as a virtual environment: {executable}")
+        raise RuntimeError(
+            f"Created interpreter is not recognized as a virtual environment: {executable}"
+        )
     return info
 
 
@@ -240,16 +283,23 @@ def find_project_environment(project_root: os.PathLike | str) -> InterpreterInfo
     return None
 
 
-def ensure_pip(interpreter: os.PathLike | str, timeout: float = 120.0) -> subprocess.CompletedProcess:
+def ensure_pip(
+    interpreter: os.PathLike | str, timeout: float = 120.0
+) -> subprocess.CompletedProcess:
     """Bootstrap or repair pip in the selected interpreter using ensurepip."""
     info = probe_interpreter(interpreter)
     if info.pip_available:
-        return subprocess.CompletedProcess([info.executable, "-m", "pip"], 0,
-                                           "pip is already available.\n", "")
+        return subprocess.CompletedProcess(
+            [info.executable, "-m", "pip"], 0, "pip is already available.\n", ""
+        )
     result = subprocess.run(
         [info.executable, "-m", "ensurepip", "--upgrade"],
-        capture_output=True, text=True, encoding="utf-8", errors="replace",
-        timeout=timeout, check=False,
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+        errors="replace",
+        timeout=timeout,
+        check=False,
     )
     if result.returncode != 0:
         detail = result.stderr.strip() or result.stdout.strip() or "ensurepip failed."
@@ -271,13 +321,27 @@ def run_pip(
     args = [str(item) for item in arguments]
     if not args:
         raise ValueError("A pip subcommand is required.")
-    if args[0] not in {"install", "list", "show", "check", "freeze", "uninstall", "--version"}:
+    if args[0] not in {
+        "install",
+        "list",
+        "show",
+        "check",
+        "freeze",
+        "uninstall",
+        "--version",
+    }:
         raise ValueError(f"Unsupported pip operation: {args[0]}")
     if not info.pip_available:
-        raise RuntimeError("pip is not installed in this interpreter. Use ensure_pip() to bootstrap it first.")
+        raise RuntimeError(
+            "pip is not installed in this interpreter. Use ensure_pip() to bootstrap it first."
+        )
     return subprocess.run(
         [info.executable, "-m", "pip", *args],
         cwd=str(Path(cwd).resolve()) if cwd is not None else None,
-        capture_output=True, text=True, encoding="utf-8", errors="replace",
-        timeout=timeout, check=False,
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+        errors="replace",
+        timeout=timeout,
+        check=False,
     )

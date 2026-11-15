@@ -68,7 +68,11 @@ class GitPanel(ttk.Frame):
         entry = ttk.Entry(commit, textvariable=self.message)
         entry.pack(side="left", fill="x", expand=True, padx=(0, 5))
         entry.bind("<Return>", lambda _event: self.commit())
-        entry.bind("<Button-3>", lambda event: self._show_entry_context_menu(entry, event), add="+")
+        entry.bind(
+            "<Button-3>",
+            lambda event: self._show_entry_context_menu(entry, event),
+            add="+",
+        )
         ttk.Button(commit, text="Commit Staged", command=self.commit).pack(side="right")
 
         branch = ttk.LabelFrame(self, text="Branches", padding=5)
@@ -354,10 +358,16 @@ class GitPanel(ttk.Frame):
     def _context_menu(self):
         root = self.winfo_toplevel()
         preferences = getattr(root, "preferences", {})
-        font_family = root._resolved_ui_font() if hasattr(root, "_resolved_ui_font") else "Segoe UI"
+        font_family = (
+            root._resolved_ui_font()
+            if hasattr(root, "_resolved_ui_font")
+            else "Segoe UI"
+        )
         return ContextMenu(
-            self, palette=getattr(root, "theme_palette", {}),
-            font_family=font_family, font_size=preferences.get("ui_font_size", 9),
+            self,
+            palette=getattr(root, "theme_palette", {}),
+            font_family=font_family,
+            font_size=preferences.get("ui_font_size", 9),
         )
 
     def _show_tree_context_menu(self, event):
@@ -372,11 +382,15 @@ class GitPanel(ttk.Frame):
             path = values[-1] if values else ""
             menu.add_command(label="Stage Selected", command=self.stage_selected)
             menu.add_command(label="Unstage Selected", command=self.unstage_selected)
-            menu.add_command(label="Discard Selected Changes…", command=self.discard_selected)
+            menu.add_command(
+                label="Discard Selected Changes…", command=self.discard_selected
+            )
             menu.add_separator()
             menu.add_command(label="Show Diff", command=self.show_diff)
             menu.add_command(label="Show Staged Diff", command=self.show_staged_diff)
-            menu.add_command(label="Copy File Path", command=lambda: self._copy_context_text(path))
+            menu.add_command(
+                label="Copy File Path", command=lambda: self._copy_context_text(path)
+            )
         menu.add_separator()
         menu.add_command(label="Stage All", command=self.stage_all)
         menu.add_command(label="Unstage All", command=self.unstage_all)
@@ -394,12 +408,22 @@ class GitPanel(ttk.Frame):
     def _show_entry_context_menu(self, widget, event):
         menu = self._context_menu()
         selected = bool(widget.selection_present())
-        menu.add_command(label="Cut", command=lambda: widget.event_generate("<<Cut>>"),
-                         state="normal" if selected else "disabled")
-        menu.add_command(label="Copy", command=lambda: widget.event_generate("<<Copy>>"),
-                         state="normal" if selected else "disabled")
-        menu.add_command(label="Paste", command=lambda: widget.event_generate("<<Paste>>"))
-        menu.add_command(label="Select All", command=lambda: widget.select_range(0, "end"))
+        menu.add_command(
+            label="Cut",
+            command=lambda: widget.event_generate("<<Cut>>"),
+            state="normal" if selected else "disabled",
+        )
+        menu.add_command(
+            label="Copy",
+            command=lambda: widget.event_generate("<<Copy>>"),
+            state="normal" if selected else "disabled",
+        )
+        menu.add_command(
+            label="Paste", command=lambda: widget.event_generate("<<Paste>>")
+        )
+        menu.add_command(
+            label="Select All", command=lambda: widget.select_range(0, "end")
+        )
         menu.add_command(label="Clear Message", command=lambda: widget.delete(0, "end"))
         try:
             menu.tk_popup(event.x_root, event.y_root)

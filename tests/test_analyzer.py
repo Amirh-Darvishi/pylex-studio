@@ -1,4 +1,5 @@
 """Unit tests for PyLex Studio analysis and diagnostic components."""
+
 import tokenize
 import unittest
 
@@ -7,7 +8,10 @@ from pygments.lexers import PythonLexer
 from pygments.token import Keyword
 
 from pylex.analyzer import (
-    lexical_analysis, syntax_analysis, format_tokens, collect_diagnostics,
+    lexical_analysis,
+    syntax_analysis,
+    format_tokens,
+    collect_diagnostics,
 )
 from pylex.editor import CodeEditor
 
@@ -16,10 +20,16 @@ class AnalyzerTests(unittest.TestCase):
     """Verify token spans, syntax diagnostics, and de-duplicated errors."""
 
     def test_keyword(self):
-        self.assertIn("KEYWORD", [token.token_type for token in lexical_analysis("if True:\n    pass")])
+        self.assertIn(
+            "KEYWORD",
+            [token.token_type for token in lexical_analysis("if True:\n    pass")],
+        )
 
     def test_builtin(self):
-        self.assertIn("BUILTIN", [token.token_type for token in lexical_analysis("print(len([]))")])
+        self.assertIn(
+            "BUILTIN",
+            [token.token_type for token in lexical_analysis("print(len([]))")],
+        )
 
     def test_valid_syntax(self):
         self.assertTrue(syntax_analysis("x = 3").success)
@@ -87,7 +97,8 @@ class AnalyzerTests(unittest.TestCase):
 
     def test_pygments_highlighting_classifies_python_keyword(self):
         token_type = next(
-            token_type for token_type, value in lex("if True:\n    pass", PythonLexer())
+            token_type
+            for token_type, value in lex("if True:\n    pass", PythonLexer())
             if value == "if"
         )
         self.assertIn(token_type, Keyword)

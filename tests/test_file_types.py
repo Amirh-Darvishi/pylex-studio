@@ -1,4 +1,5 @@
 """Tests for workspace file type recognition."""
+
 import tempfile
 import unittest
 from pathlib import Path

@@ -1,4 +1,5 @@
 """Independent lexical and syntax analysis for Python source code."""
+
 import ast
 import builtins
 import io
@@ -11,6 +12,7 @@ from typing import Optional
 @dataclass
 class TokenInfo:
     """A lexical token with its type, value, and source span (zero-based columns)."""
+
     token_type: str
     value: str
     line: int
@@ -22,6 +24,7 @@ class TokenInfo:
 @dataclass
 class AnalysisResult:
     """Result of syntax analysis, including a precise diagnostic location."""
+
     success: bool
     message: str
     details: str = ""
@@ -36,6 +39,7 @@ class AnalysisResult:
 @dataclass(frozen=True)
 class Diagnostic:
     """A normalized issue that can be displayed and navigated to in the editor."""
+
     error_type: str
     message: str
     line: int
@@ -65,8 +69,13 @@ def _syntax_error_diagnostic(exc: SyntaxError, source: str) -> Diagnostic:
     end_offset = getattr(exc, "end_offset", None)
     end_column = max(0, end_offset - 1) if end_offset else None
     return Diagnostic(
-        type(exc).__name__, exc.msg or str(exc), line, column,
-        end_line, end_column, _line_text(source, line)
+        type(exc).__name__,
+        exc.msg or str(exc),
+        line,
+        column,
+        end_line,
+        end_column,
+        _line_text(source, line),
     )
 
 
@@ -74,8 +83,15 @@ def _token_error_diagnostic(exc: tokenize.TokenError, source: str) -> Diagnostic
     message = str(exc.args[0]) if exc.args else "Tokenization failed."
     location = exc.args[1] if len(exc.args) > 1 else (1, 0)
     line, column = location
-    return Diagnostic("TokenError", message, max(1, line), max(0, column),
-                      line, column, _line_text(source, line))
+    return Diagnostic(
+        "TokenError",
+        message,
+        max(1, line),
+        max(0, column),
+        line,
+        column,
+        _line_text(source, line),
+    )
 
 
 def lexical_analysis(source: str):
@@ -101,10 +117,16 @@ def lexical_analysis(source: str):
                 name = "BUILTIN"
             else:
                 name = "NAME"
-        result.append(TokenInfo(
-            name, item.string, item.start[0], item.start[1],
-            item.end[0], item.end[1]
-        ))
+        result.append(
+            TokenInfo(
+                name,
+                item.string,
+                item.start[0],
+                item.start[1],
+                item.end[0],
+                item.end[1],
+            )
+        )
     return result
 
 
@@ -114,19 +136,25 @@ def syntax_analysis(source: str) -> AnalysisResult:
         tree = ast.parse(source)
         count = sum(1 for _ in ast.walk(tree))
         return AnalysisResult(
-            True, "Syntax analysis completed successfully.",
-            f"AST node count: {count}"
+            True, "Syntax analysis completed successfully.", f"AST node count: {count}"
         )
     except SyntaxError as exc:
         diagnostic = _syntax_error_diagnostic(exc, source)
         return AnalysisResult(
-            False, diagnostic.message, "",
-            diagnostic.line, diagnostic.column + 1, diagnostic.error_type,
-            diagnostic.end_line, diagnostic.end_column, diagnostic.source_line
+            False,
+            diagnostic.message,
+            "",
+            diagnostic.line,
+            diagnostic.column + 1,
+            diagnostic.error_type,
+            diagnostic.end_line,
+            diagnostic.end_column,
+            diagnostic.source_line,
         )
     except (ValueError, TypeError) as exc:
-        return AnalysisResult(False, str(exc), type(exc).__name__,
-                              error_type=type(exc).__name__)
+        return AnalysisResult(
+            False, str(exc), type(exc).__name__, error_type=type(exc).__name__
+        )
 
 
 def collect_diagnostics(source: str):
@@ -139,15 +167,22 @@ def collect_diagnostics(source: str):
     except SyntaxError as exc:
         found.append(_syntax_error_diagnostic(exc, source))
     except (ValueError, TypeError) as exc:
-        found.append(Diagnostic(type(exc).__name__, str(exc), 1, 0,
-                                source_line=_line_text(source, 1)))
+        found.append(
+            Diagnostic(
+                type(exc).__name__, str(exc), 1, 0, source_line=_line_text(source, 1)
+            )
+        )
 
     syntax = syntax_analysis(source)
     if not syntax.success and syntax.error_type:
         candidate = Diagnostic(
-            syntax.error_type, syntax.message, syntax.line or 1,
+            syntax.error_type,
+            syntax.message,
+            syntax.line or 1,
             max(0, (syntax.column or 1) - 1),
-            syntax.end_line, syntax.end_column, syntax.source_line
+            syntax.end_line,
+            syntax.end_column,
+            syntax.source_line,
         )
         found.append(candidate)
 
@@ -155,19 +190,20 @@ def collect_diagnostics(source: str):
     # same unclosed delimiter/string, but with different messages and columns.
     # Prefer the parser's more actionable explanation for that source line.
     parser_diagnostics = [
-        item for item in found
+        item
+        for item in found
         if item.error_type in {"SyntaxError", "IndentationError", "TabError"}
     ]
     parser_lines = {item.line for item in parser_diagnostics}
     filtered = [
-        item for item in found
+        item
+        for item in found
         if not (
             item.error_type == "TokenError"
             and (
                 item.line in parser_lines
                 or (
-                    parser_diagnostics
-                    and "EOF in multi-line statement" in item.message
+                    parser_diagnostics and "EOF in multi-line statement" in item.message
                 )
             )
         )
@@ -178,7 +214,9 @@ def collect_diagnostics(source: str):
         # When both stages report the same message on the same line, retain the
         # parser diagnostic added last, which has the parser's source position.
         unique[(item.message, item.line)] = item
-    return sorted(unique.values(), key=lambda item: (item.line, item.column, item.error_type))
+    return sorted(
+        unique.values(), key=lambda item: (item.line, item.column, item.error_type)
+    )
 
 
 def format_tokens(tokens):
@@ -189,8 +227,11 @@ def format_tokens(tokens):
     ]
     for token in tokens:
         value = token.value.replace("\n", r"\n").replace("\t", r"\t")
-        end = (f"{token.end_line}:{token.end_column}"
-               if token.end_line is not None and token.end_column is not None else "-")
+        end = (
+            f"{token.end_line}:{token.end_column}"
+            if token.end_line is not None and token.end_column is not None
+            else "-"
+        )
         lines.append(
             f"{token.token_type:<18} {token.line:>5} {token.column:>7} "
             f"{end:>10}  {value}"

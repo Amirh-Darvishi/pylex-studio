@@ -1,9 +1,12 @@
 """Tests for Smart Editor's pure text helpers."""
+
 import unittest
 
 from pylex.editor_features import (
-    find_matching_bracket, indentation_for_newline,
-    smart_backspace_prefix, toggle_comment_block,
+    find_matching_bracket,
+    indentation_for_newline,
+    smart_backspace_prefix,
+    toggle_comment_block,
 )
 
 

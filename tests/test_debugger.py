@@ -1,4 +1,5 @@
 """Tests for the pdb-backed interactive debugger."""
+
 import time
 import unittest
 
@@ -50,9 +51,7 @@ class DebuggerTests(unittest.TestCase):
             session.close()
 
     def test_debugger_forwards_program_input_and_streams_prompt(self):
-        session = DebugSession.start(
-            "name = input('Name: ')\nprint('Hello', name)\n"
-        )
+        session = DebugSession.start("name = input('Name: ')\nprint('Hello', name)\n")
         output = ""
         try:
             self.assertTrue(session.continue_execution())
@@ -121,7 +120,6 @@ class DebuggerTests(unittest.TestCase):
             self.assertTrue(session.step())
         finally:
             session.close()
-
 
     def test_advanced_commands_validate_arguments(self):
         session = DebugSession.start("value = 1\n")

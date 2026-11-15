@@ -1,5 +1,24 @@
 # Changelog
 
+## [2.1.0] - Unreleased
+
+### Architecture
+- Added a UI-independent command registry with stable command IDs, shortcut-aware search, duplicate registration protection, and explicit command execution.
+- Extracted the searchable Command Palette into a dedicated Tkinter UI component; the main application now supplies registered actions and theme context.
+- Added a transparent, outlined Command Palette launcher stacked above the Run and Stop controls; its anchored popup matches the launcher's width and retains the existing keyboard shortcut.
+- Added focused tests for command registration, search, lookup, ordering, and execution without requiring a Tk display.
+- Added a real child-process integration test verifying that a saved file in a nested directory inherits the Workspace working directory and Python import path.
+
+### Quality and validation
+- Expanded Ruff linting from a hand-picked file list to the complete `pylex` and `tests` trees.
+- Added Black formatting checks for the new architecture modules and existing formatting-enforced modules.
+- Removed duplicate unittest/pytest execution from CI; pytest discovers and runs the existing unittest-compatible suite once on every matrix target.
+- Retained the six-platform/version validation matrix: Windows and Ubuntu with Python 3.10, 3.11, and 3.13.
+
+### Documentation
+- Corrected the README link label for the 2.0.2 stable release and documented the 2.1.0 development boundary.
+
+
 ## [2.0.2] - 2026-11-15
 
 ### Fixed

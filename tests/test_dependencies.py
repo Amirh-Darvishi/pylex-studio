@@ -1,11 +1,14 @@
 """Tests for project dependency inspection."""
+
 import tempfile
 import unittest
 from pathlib import Path
 from unittest.mock import patch
 
 from pylex.dependencies import (
-    inspect_dependencies, find_missing_imports, python_environment,
+    inspect_dependencies,
+    find_missing_imports,
+    python_environment,
 )
 
 
@@ -23,8 +26,13 @@ class DependencyInspectionTests(unittest.TestCase):
         self.assertEqual(items[0].status, "local")
 
     def test_missing_package_uses_known_distribution_name(self):
-        with patch("pylex.dependencies.importlib.util.find_spec", return_value=None), \
-             patch("pylex.dependencies.importlib.metadata.packages_distributions", return_value={}):
+        with (
+            patch("pylex.dependencies.importlib.util.find_spec", return_value=None),
+            patch(
+                "pylex.dependencies.importlib.metadata.packages_distributions",
+                return_value={},
+            ),
+        ):
             items, error = inspect_dependencies("import cv2")
         self.assertIsNone(error)
         self.assertEqual(items[0].status, "missing")
@@ -33,9 +41,16 @@ class DependencyInspectionTests(unittest.TestCase):
 
     def test_installed_module_reports_version_and_location(self):
         spec = type("Spec", (), {"origin": "/site-packages/example.py"})()
-        with patch("pylex.dependencies.importlib.util.find_spec", return_value=spec), \
-             patch("pylex.dependencies.importlib.metadata.packages_distributions", return_value={"example": ["example-dist"]}), \
-             patch("pylex.dependencies.importlib.metadata.version", return_value="2.4.1"):
+        with (
+            patch("pylex.dependencies.importlib.util.find_spec", return_value=spec),
+            patch(
+                "pylex.dependencies.importlib.metadata.packages_distributions",
+                return_value={"example": ["example-dist"]},
+            ),
+            patch(
+                "pylex.dependencies.importlib.metadata.version", return_value="2.4.1"
+            ),
+        ):
             items, error = inspect_dependencies("import example")
         self.assertIsNone(error)
         self.assertEqual(items[0].status, "installed")
@@ -54,8 +69,13 @@ class DependencyInspectionTests(unittest.TestCase):
 
     def test_reports_missing_third_party_module(self):
         missing_name = "pylex_studio_test_missing_package_xyz"
-        with patch("pylex.dependencies.importlib.util.find_spec", return_value=None), \
-             patch("pylex.dependencies.importlib.metadata.packages_distributions", return_value={}):
+        with (
+            patch("pylex.dependencies.importlib.util.find_spec", return_value=None),
+            patch(
+                "pylex.dependencies.importlib.metadata.packages_distributions",
+                return_value={},
+            ),
+        ):
             missing = find_missing_imports(f"import {missing_name}")
         self.assertIn((missing_name, missing_name), missing)
 
@@ -66,8 +86,13 @@ class DependencyInspectionTests(unittest.TestCase):
 
     def test_maps_common_distribution_names(self):
         # Keep this test independent from packages installed on the test machine.
-        with patch("pylex.dependencies.importlib.util.find_spec", return_value=None), \
-             patch("pylex.dependencies.importlib.metadata.packages_distributions", return_value={}):
+        with (
+            patch("pylex.dependencies.importlib.util.find_spec", return_value=None),
+            patch(
+                "pylex.dependencies.importlib.metadata.packages_distributions",
+                return_value={},
+            ),
+        ):
             missing = find_missing_imports("import cv2\nimport yaml")
         self.assertIn(("cv2", "opencv-python"), missing)
         self.assertIn(("yaml", "PyYAML"), missing)

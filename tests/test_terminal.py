@@ -1,8 +1,10 @@
 """Unit tests for integrated terminal helpers."""
+
 import os
 import unittest
 from unittest.mock import patch
 from pylex.terminal import shell_command, terminal_environment, python_file_command
+
 
 class TerminalHelperTests(unittest.TestCase):
     def test_rejects_unknown_shell(self):
@@ -10,9 +12,14 @@ class TerminalHelperTests(unittest.TestCase):
             shell_command("unknown-shell")
 
     def test_powershell_uses_non_profile_interactive_command(self):
-        with patch("pylex.terminal.os.name", "nt"), patch(
-            "pylex.terminal.shutil.which",
-            side_effect=lambda name: r"C:\PowerShell\pwsh.exe" if name == "pwsh" else None
+        with (
+            patch("pylex.terminal.os.name", "nt"),
+            patch(
+                "pylex.terminal.shutil.which",
+                side_effect=lambda name: (
+                    r"C:\PowerShell\pwsh.exe" if name == "pwsh" else None
+                ),
+            ),
         ):
             command = shell_command("powershell")
         self.assertEqual(command[0], r"C:\PowerShell\pwsh.exe")
@@ -21,8 +28,9 @@ class TerminalHelperTests(unittest.TestCase):
         self.assertNotIn("-Command", command)
 
     def test_cmd_uses_windows_command_processor(self):
-        with patch("pylex.terminal.os.name", "nt"), patch.dict(
-            os.environ, {"COMSPEC": r"C:\Windows\System32\cmd.exe"}
+        with (
+            patch("pylex.terminal.os.name", "nt"),
+            patch.dict(os.environ, {"COMSPEC": r"C:\Windows\System32\cmd.exe"}),
         ):
             self.assertEqual(shell_command("cmd")[-2:], ["/Q", "/K"])
 
@@ -35,7 +43,8 @@ class TerminalHelperTests(unittest.TestCase):
 
     def test_python_file_command_quotes_paths_for_supported_shells(self):
         command = python_file_command(
-            "powershell", r"C:\Program Files\Python\python.exe",
+            "powershell",
+            r"C:\Program Files\Python\python.exe",
             r"C:\Project Files\main.py",
         )
         self.assertEqual(
@@ -43,7 +52,9 @@ class TerminalHelperTests(unittest.TestCase):
             r"& 'C:\Program Files\Python\python.exe' 'C:\Project Files\main.py'",
         )
         bash_command = python_file_command(
-            "bash", "/opt/python/bin/python", "/home/user/My Project/main.py",
+            "bash",
+            "/opt/python/bin/python",
+            "/home/user/My Project/main.py",
         )
         self.assertIn("'/home/user/My Project/main.py'", bash_command)
 
@@ -61,6 +72,7 @@ class TerminalHelperTests(unittest.TestCase):
         base = {"PATH": "original"}
         terminal_environment(base, r"C:\venv\Scripts\python.exe")
         self.assertEqual(base, {"PATH": "original"})
+
 
 if __name__ == "__main__":
     unittest.main()

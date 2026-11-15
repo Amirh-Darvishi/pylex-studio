@@ -1,4 +1,5 @@
 """Tests for project roots and filesystem context."""
+
 import os
 import tempfile
 import unittest
@@ -11,7 +12,9 @@ class ProjectTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as folder:
             project = Project.open(folder)
             self.assertEqual(project.root, Path(folder).resolve())
-            self.assertEqual(project.resolve("src/main.py"), project.root / "src" / "main.py")
+            self.assertEqual(
+                project.resolve("src/main.py"), project.root / "src" / "main.py"
+            )
 
     def test_contains_and_relative_path(self):
         with tempfile.TemporaryDirectory() as folder:
@@ -28,7 +31,9 @@ class ProjectTests(unittest.TestCase):
             project = Project.open(root)
             # Windows may expose the same directory through an 8.3 alias
             # (for example, USERNA~1) or its long name. Compare resolved paths.
-            self.assertEqual(project.working_directory_for(root / "src/main.py"), root.resolve())
+            self.assertEqual(
+                project.working_directory_for(root / "src/main.py"), root.resolve()
+            )
             self.assertEqual(project.working_directory_for(), root.resolve())
 
     def test_external_file_uses_its_parent(self):
@@ -46,7 +51,9 @@ class ProjectTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as folder:
             project = Project.open(folder)
             env = project.execution_environment({"PYTHONPATH": "existing"})
-            self.assertEqual(env["PYTHONPATH"], os.pathsep.join([str(project.root), "existing"]))
+            self.assertEqual(
+                env["PYTHONPATH"], os.pathsep.join([str(project.root), "existing"])
+            )
 
     def test_invalid_project_paths_raise(self):
         with tempfile.TemporaryDirectory() as folder:

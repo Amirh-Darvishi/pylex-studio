@@ -1,4 +1,5 @@
 """Interactive pdb-backed debugging for Python source files."""
+
 from pathlib import Path
 import codecs
 import os
@@ -36,11 +37,19 @@ class DebugSession:
                 script_path = Path(script.name)
             options = (
                 {"creationflags": getattr(subprocess, "CREATE_NEW_PROCESS_GROUP", 0)}
-                if os.name == "nt" else {"start_new_session": True}
+                if os.name == "nt"
+                else {"start_new_session": True}
             )
             process = subprocess.Popen(
-                [str(python_executable or sys.executable), "-u", "-m", "pdb", str(script_path)],
-                cwd=str(cwd) if cwd is not None else None, env=env,
+                [
+                    str(python_executable or sys.executable),
+                    "-u",
+                    "-m",
+                    "pdb",
+                    str(script_path),
+                ],
+                cwd=str(cwd) if cwd is not None else None,
+                env=env,
                 stdin=subprocess.PIPE,
                 stdout=subprocess.PIPE,
                 stderr=subprocess.STDOUT,
@@ -62,13 +71,25 @@ class DebugSession:
             raise FileNotFoundError(f"Python file does not exist: {script_path}")
         options = (
             {"creationflags": getattr(subprocess, "CREATE_NEW_PROCESS_GROUP", 0)}
-            if os.name == "nt" else {"start_new_session": True}
+            if os.name == "nt"
+            else {"start_new_session": True}
         )
         process = subprocess.Popen(
-            [str(python_executable or sys.executable), "-u", "-m", "pdb", str(script_path)],
-            cwd=str(cwd) if cwd is not None else None, env=env,
-            stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
-            text=False, bufsize=0, **options,
+            [
+                str(python_executable or sys.executable),
+                "-u",
+                "-m",
+                "pdb",
+                str(script_path),
+            ],
+            cwd=str(cwd) if cwd is not None else None,
+            env=env,
+            stdin=subprocess.PIPE,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            text=False,
+            bufsize=0,
+            **options,
         )
         return cls(process, script_path, cleanup_script=False)
 
@@ -94,7 +115,10 @@ class DebugSession:
                 while "\n" in line_buffer and not self._completion_sent:
                     line, line_buffer = line_buffer.split("\n", 1)
                     line = line.strip()
-                    if line == "The program finished and will be restarted" or line == "The program exited":
+                    if (
+                        line == "The program finished and will be restarted"
+                        or line == "The program exited"
+                    ):
                         pending_completion = "finished"
                     elif "Uncaught exception. Entering post mortem debugging" in line:
                         pending_completion = "error"
@@ -188,7 +212,7 @@ class DebugSession:
         try:
             number = int(value)
         except (TypeError, ValueError):
-            raise ValueError(f"{label} must be a positive integer.")
+            raise ValueError(f"{label} must be a positive integer.") from None
         if number < 1:
             raise ValueError(f"{label} must be a positive integer.")
         return number
@@ -224,10 +248,14 @@ class DebugSession:
         return self.command("y")
 
     def enable_breakpoint(self, number):
-        return self.command(f"enable {self._positive_number(number, 'Breakpoint number')}")
+        return self.command(
+            f"enable {self._positive_number(number, 'Breakpoint number')}"
+        )
 
     def disable_breakpoint(self, number):
-        return self.command(f"disable {self._positive_number(number, 'Breakpoint number')}")
+        return self.command(
+            f"disable {self._positive_number(number, 'Breakpoint number')}"
+        )
 
     def ignore_breakpoint(self, number, count):
         number = self._positive_number(number, "Breakpoint number")
@@ -245,8 +273,11 @@ class DebugSession:
 
     def until(self, line=None):
         """Run until the current frame reaches a later line, or a target line."""
-        return self.command("until" if line is None else
-                            f"until {self._positive_number(line, 'Line number')}")
+        return self.command(
+            "until"
+            if line is None
+            else f"until {self._positive_number(line, 'Line number')}"
+        )
 
     def return_from_frame(self):
         """Continue until the current function returns."""
@@ -279,8 +310,10 @@ class DebugSession:
             if os.name == "nt":
                 subprocess.run(
                     ["taskkill", "/PID", str(self.process.pid), "/T", "/F"],
-                    stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
-                    check=False, timeout=5,
+                    stdout=subprocess.DEVNULL,
+                    stderr=subprocess.DEVNULL,
+                    check=False,
+                    timeout=5,
                 )
             else:
                 os.killpg(self.process.pid, signal.SIGKILL)

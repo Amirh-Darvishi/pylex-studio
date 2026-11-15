@@ -1,4 +1,5 @@
 """Run Python source in an isolated process group with streaming output and cancellation."""
+
 from dataclasses import dataclass
 import codecs
 import os
@@ -15,6 +16,7 @@ import time
 @dataclass(frozen=True)
 class ExecutionResult:
     """Immutable result returned when a child process finishes."""
+
     stdout: str
     stderr: str
     exit_code: int
@@ -30,8 +32,10 @@ def _terminate_process_tree(process):
         if os.name == "nt":
             subprocess.run(
                 ["taskkill", "/PID", str(process.pid), "/T", "/F"],
-                stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
-                check=False, timeout=5,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+                check=False,
+                timeout=5,
             )
         else:
             os.killpg(process.pid, signal.SIGKILL)
@@ -60,10 +64,12 @@ class ExecutionHandle:
         self._stdout_parts = []
         self._stderr_parts = []
         self._readers = [
-            threading.Thread(target=self._read_stream, args=(process.stdout, "stdout"),
-                             daemon=True),
-            threading.Thread(target=self._read_stream, args=(process.stderr, "stderr"),
-                             daemon=True),
+            threading.Thread(
+                target=self._read_stream, args=(process.stdout, "stdout"), daemon=True
+            ),
+            threading.Thread(
+                target=self._read_stream, args=(process.stderr, "stderr"), daemon=True
+            ),
         ]
         for reader in self._readers:
             reader.start()
@@ -202,7 +208,8 @@ class ExecutionHandle:
                 except OSError:
                     pass
             result = ExecutionResult(
-                stdout=stdout or "", stderr=stderr or "",
+                stdout=stdout or "",
+                stderr=stderr or "",
                 exit_code=exit_code if exit_code is not None else -1,
                 status=status,
                 duration=max(0.0, time.monotonic() - self.started_at),
@@ -223,14 +230,22 @@ def start_source(source, timeout=10, cwd=None, env=None, python_executable=None)
     """Start unsaved source in an explicit project context. Code is not sandboxed."""
     script_path = None
     try:
-        with tempfile.NamedTemporaryFile(mode="w", suffix=".py", encoding="utf-8", delete=False) as script:
+        with tempfile.NamedTemporaryFile(
+            mode="w", suffix=".py", encoding="utf-8", delete=False
+        ) as script:
             script.write(source)
             script_path = Path(script.name)
         process = subprocess.Popen(
             [str(python_executable or sys.executable), "-u", str(script_path)],
-            cwd=str(cwd) if cwd is not None else None, env=env,
-            stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-            text=True, encoding="utf-8", errors="replace", bufsize=1,
+            cwd=str(cwd) if cwd is not None else None,
+            env=env,
+            stdin=subprocess.PIPE,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+            bufsize=1,
             **_process_options(),
         )
         return ExecutionHandle(process, script_path, timeout)
@@ -247,9 +262,15 @@ def start_file(path, timeout=10, cwd=None, env=None, python_executable=None):
         raise FileNotFoundError(f"Python file does not exist: {script_path}")
     process = subprocess.Popen(
         [str(python_executable or sys.executable), "-u", str(script_path)],
-        cwd=str(cwd) if cwd is not None else None, env=env,
-        stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-        text=True, encoding="utf-8", errors="replace", bufsize=1,
+        cwd=str(cwd) if cwd is not None else None,
+        env=env,
+        stdin=subprocess.PIPE,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        text=True,
+        encoding="utf-8",
+        errors="replace",
+        bufsize=1,
         **_process_options(),
     )
     return ExecutionHandle(process, script_path, timeout, cleanup_script=False)

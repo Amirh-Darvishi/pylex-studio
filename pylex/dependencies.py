@@ -1,4 +1,5 @@
 """Dependency inspection against the selected project's Python interpreter."""
+
 import ast
 from dataclasses import dataclass
 import importlib.metadata
@@ -11,11 +12,16 @@ import sys
 from .interpreters import probe_interpreter
 
 PIP_NAMES = {
-    "PIL": "Pillow", "cv2": "opencv-python", "yaml": "PyYAML",
-    "sklearn": "scikit-learn", "bs4": "beautifulsoup4",
-    "dotenv": "python-dotenv", "Crypto": "pycryptodome",
+    "PIL": "Pillow",
+    "cv2": "opencv-python",
+    "yaml": "PyYAML",
+    "sklearn": "scikit-learn",
+    "bs4": "beautifulsoup4",
+    "dotenv": "python-dotenv",
+    "Crypto": "pycryptodome",
     "OpenSSL": "pyOpenSSL",
 }
+
 
 @dataclass(frozen=True)
 class Dependency:
@@ -55,7 +61,7 @@ def _distribution_for(name, package_map):
 
 def _inspect_with_interpreter(names, executable):
     """Inspect modules in one subprocess so results match the selected interpreter."""
-    script = r'''
+    script = r"""
 import importlib.metadata, importlib.util, json, sys
 names = json.loads(sys.stdin.read())
 stdlib = set(getattr(sys, "stdlib_module_names", ())) | set(sys.builtin_module_names)
@@ -83,12 +89,17 @@ for name in names:
     result.append({"name": name, "distribution": distribution, "status": "installed",
                    "version": version, "location": spec.origin or ""})
 print(json.dumps(result))
-'''
+"""
     info = probe_interpreter(executable)
     completed = subprocess.run(
         [info.executable, "-I", "-c", script],
-        input=json.dumps(names), capture_output=True, text=True,
-        encoding="utf-8", errors="replace", timeout=15, check=False,
+        input=json.dumps(names),
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+        errors="replace",
+        timeout=15,
+        check=False,
     )
     if completed.returncode:
         detail = completed.stderr.strip() or "Interpreter dependency scan failed."
@@ -101,7 +112,10 @@ def inspect_dependencies(source, search_root=None, python_executable=None):
     try:
         tree = ast.parse(source)
     except SyntaxError as exc:
-        return [], f"Cannot scan imports until syntax is corrected: {exc.msg} (line {exc.lineno})"
+        return (
+            [],
+            f"Cannot scan imports until syntax is corrected: {exc.msg} (line {exc.lineno})",
+        )
 
     names = set()
     for node in ast.walk(tree):
@@ -113,40 +127,65 @@ def inspect_dependencies(source, search_root=None, python_executable=None):
     root = Path(search_root or Path.cwd()).resolve()
     local_names = {name for name in names if _local_module(name, root)}
     external_names = sorted(names - local_names)
-    results = [Dependency(name, "Local project module", "local")
-               for name in sorted(local_names)]
+    results = [
+        Dependency(name, "Local project module", "local")
+        for name in sorted(local_names)
+    ]
     try:
         if python_executable:
             inspected = _inspect_with_interpreter(external_names, python_executable)
             for item in inspected:
-                distribution = item["distribution"] or PIP_NAMES.get(item["name"], item["name"])
+                distribution = item["distribution"] or PIP_NAMES.get(
+                    item["name"], item["name"]
+                )
                 if distribution == item["name"]:
                     distribution = PIP_NAMES.get(item["name"], distribution)
-                results.append(Dependency(
-                    item["name"], distribution, item["status"],
-                    item["version"], item["location"],
-                ))
+                results.append(
+                    Dependency(
+                        item["name"],
+                        distribution,
+                        item["status"],
+                        item["version"],
+                        item["location"],
+                    )
+                )
         else:
-            stdlib = set(getattr(sys, "stdlib_module_names", ())) | set(sys.builtin_module_names)
+            stdlib = set(getattr(sys, "stdlib_module_names", ())) | set(
+                sys.builtin_module_names
+            )
             package_map = importlib.metadata.packages_distributions()
             for name in external_names:
                 if name in stdlib:
-                    results.append(Dependency(name, "Python standard library", "standard"))
+                    results.append(
+                        Dependency(name, "Python standard library", "standard")
+                    )
                     continue
                 try:
                     spec = importlib.util.find_spec(name)
                 except (ImportError, ModuleNotFoundError, ValueError, AttributeError):
                     spec = None
                 if spec is None:
-                    results.append(Dependency(name, PIP_NAMES.get(name, name), "missing"))
+                    results.append(
+                        Dependency(name, PIP_NAMES.get(name, name), "missing")
+                    )
                     continue
                 distribution = _distribution_for(name, package_map)
                 try:
                     version = importlib.metadata.version(distribution)
                 except importlib.metadata.PackageNotFoundError:
                     version = "available (metadata unavailable)"
-                results.append(Dependency(name, distribution, "installed", version, spec.origin or ""))
-    except (OSError, ValueError, RuntimeError, subprocess.SubprocessError, json.JSONDecodeError) as exc:
+                results.append(
+                    Dependency(
+                        name, distribution, "installed", version, spec.origin or ""
+                    )
+                )
+    except (
+        OSError,
+        ValueError,
+        RuntimeError,
+        subprocess.SubprocessError,
+        json.JSONDecodeError,
+    ) as exc:
         return results, f"Could not inspect selected interpreter: {exc}"
     return sorted(results, key=lambda item: item.import_name.lower()), None
 
@@ -154,7 +193,12 @@ def inspect_dependencies(source, search_root=None, python_executable=None):
 def find_missing_imports(source, search_root=None, python_executable=None):
     """Backward-compatible missing-import API."""
     dependencies, _error = inspect_dependencies(
-        source, search_root, python_executable=python_executable,
+        source,
+        search_root,
+        python_executable=python_executable,
     )
-    return [(item.import_name, item.distribution)
-            for item in dependencies if item.status == "missing"]
+    return [
+        (item.import_name, item.distribution)
+        for item in dependencies
+        if item.status == "missing"
+    ]

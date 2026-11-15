@@ -1,4 +1,5 @@
 """Pure text helpers for Smart Editor behaviour."""
+
 from io import StringIO
 import tokenize
 
@@ -9,13 +10,19 @@ from pygments.token import Punctuation
 
 def indentation_for_newline(source_line, indent_width=4):
     """Return indentation for a newline after a Python source line."""
-    leading = source_line[:len(source_line) - len(source_line.lstrip(" \t"))]
+    leading = source_line[: len(source_line) - len(source_line.lstrip(" \t"))]
     try:
         tokens = [
-            item for item in tokenize.generate_tokens(StringIO(source_line).readline)
-            if item.type not in {
-                tokenize.ENCODING, tokenize.NL, tokenize.NEWLINE,
-                tokenize.INDENT, tokenize.DEDENT, tokenize.COMMENT,
+            item
+            for item in tokenize.generate_tokens(StringIO(source_line).readline)
+            if item.type
+            not in {
+                tokenize.ENCODING,
+                tokenize.NL,
+                tokenize.NEWLINE,
+                tokenize.INDENT,
+                tokenize.DEDENT,
+                tokenize.COMMENT,
                 tokenize.ENDMARKER,
             }
         ]
@@ -45,13 +52,15 @@ def toggle_comment_block(source):
     uncomment = all(line.lstrip().startswith("#") for line in nonblank)
     result = []
     for line in lines:
-        ending = "\r\n" if line.endswith("\r\n") else "\n" if line.endswith("\n") else ""
-        body = line[:-len(ending)] if ending else line
+        ending = (
+            "\r\n" if line.endswith("\r\n") else "\n" if line.endswith("\n") else ""
+        )
+        body = line[: -len(ending)] if ending else line
         if not body.strip():
             result.append(line)
             continue
-        indent = body[:len(body) - len(body.lstrip(" \t"))]
-        content = body[len(indent):]
+        indent = body[: len(body) - len(body.lstrip(" \t"))]
+        content = body[len(indent) :]
         if uncomment and content.startswith("#"):
             content = content[1:]
             if content.startswith(" "):
@@ -93,7 +102,7 @@ def find_matching_bracket(source, cursor_offset):
             elif value in reverse:
                 if not stack or pairs[stack[-1][1]] != value:
                     return None
-                opening = stack.pop()
+                stack.pop()
                 if not stack:
                     return (position, candidate)
     else:
@@ -106,7 +115,7 @@ def find_matching_bracket(source, cursor_offset):
             elif value in pairs:
                 if not stack or reverse[stack[-1][1]] != value:
                     return None
-                opening = stack.pop()
+                stack.pop()
                 if not stack:
                     return (candidate, position)
     return None
