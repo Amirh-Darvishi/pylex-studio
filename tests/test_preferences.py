@@ -19,12 +19,15 @@ class PreferencesTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as folder:
             with patch("pylex.preferences.Path.home", return_value=Path(folder)):
                 values = dict(DEFAULTS)
-                values.update(theme="light", font_family="Cascadia Code", font_size=16)
+                values.update(theme="light", font_family="Cascadia Code", font_size=16,
+                              ui_font_family="Segoe UI", ui_font_size=10)
                 save_preferences(values)
                 loaded = load_preferences()
                 self.assertEqual(loaded["theme"], "light")
                 self.assertEqual(loaded["font_family"], "Cascadia Code")
                 self.assertEqual(loaded["font_size"], 16)
+                self.assertEqual(loaded["ui_font_family"], "Segoe UI")
+                self.assertEqual(loaded["ui_font_size"], 10)
 
     def test_timeout_preference_round_trip_and_unlimited(self):
         with tempfile.TemporaryDirectory() as folder:
@@ -80,6 +83,7 @@ class PreferencesTests(unittest.TestCase):
                 self.assertEqual(loaded["theme"], DEFAULTS["theme"])
                 self.assertEqual(loaded["font_family"], DEFAULTS["font_family"])
                 self.assertEqual(loaded["font_size"], 40)
+                self.assertEqual(loaded["ui_font_size"], DEFAULTS["ui_font_size"])
 
 
 if __name__ == "__main__":
