@@ -1381,6 +1381,7 @@ class PyLexApp(tk.Tk):
         self.dependency_tree.column("distribution", width=220)
         self.dependency_tree.column("version", width=170)
         self.dependency_tree.pack(fill="both", expand=True)
+        self.dependency_tree.bind("<Button-3>", lambda event, tree=self.dependency_tree: self._show_tree_data_context_menu(tree, event), add="+")
         self.dependency_tree.tag_configure("missing", foreground="#d9534f")
         self.dependency_tree.tag_configure("installed", foreground="#5b9b68")
         self._add_tool_tab(frame, "Dependencies", "boxes", "warning")
@@ -1648,6 +1649,7 @@ class PyLexApp(tk.Tk):
         self.error_tree.column("message", width=330)
         self.error_tree.column("source", width=360)
         self.error_tree.pack(fill="both", expand=True)
+        self.error_tree.bind("<Button-3>", lambda event, tree=self.error_tree: self._show_tree_data_context_menu(tree, event), add="+")
         self.error_tree.tag_configure("error", foreground="#ef6b73")
         self.error_tree.tag_configure("warning", foreground="#e6b45a")
         self.error_tree.tag_configure("info", foreground="#4f8cff")
@@ -2257,6 +2259,7 @@ class PyLexApp(tk.Tk):
             on_cursor_change=lambda: self._update_editor_status(editor),
         )
         editor.pack(fill="both", expand=True)
+        editor.text.bind("<<PyLexAnalyze>>", lambda _event: self.analyze_all(), add="+")
         editor.set_content(content)
         self.documents[editor] = {
             "frame": frame, "path": Path(path) if path else None, "dirty": False,
