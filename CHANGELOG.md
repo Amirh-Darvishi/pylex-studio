@@ -1,6 +1,13 @@
 # Changelog
 
-## [2.0.1] - Unreleased
+## [2.0.2] - Unreleased
+
+### Fixed
+- Added interactive standard input for both saved Python files and unsaved editor buffers, with a dedicated input field in Output.
+- Added a Run Active File action to the integrated terminal and exposed the active editor file and workspace root to terminal sessions.
+- Corrected the debugger startup and completion lifecycle so execution proceeds after breakpoints are registered and pdb closes after normal completion or an uncaught exception.
+
+## [2.0.1] - 2026-11-15
 
 ### Documentation and release metadata
 - Updated the README to identify 2.0.0 as the latest stable release and link to the complete Persian project guide.
