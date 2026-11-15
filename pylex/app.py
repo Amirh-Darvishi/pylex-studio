@@ -67,15 +67,19 @@ class PyLexApp(tk.Tk):
         self._menus = [menu]
         file_menu = tk.Menu(menu, tearoff=False)
         self._menus.append(file_menu)
-        for label, command in [
-            ("New", self.new_file), ("Open...", self.open_file),
-            ("Open Workspace...", self.open_project_folder),
-            ("Close Workspace", self.close_workspace),
-            ("Python", self.manage_interpreter),
-            ("Save", self.save_file), ("Save As...", self.save_as),
-            ("Close Tab", self.close_tab),
+        for label, command, shortcut in [
+            ("New", self.new_file, "Ctrl+N"),
+            ("Open...", self.open_file, "Ctrl+O"),
+            ("Open Workspace...", self.open_project_folder, ""),
+            ("Close Workspace", self.close_workspace, "Ctrl+Shift+W"),
+            ("Python Interpreter...", self.manage_interpreter, ""),
+            ("Save", self.save_file, "Ctrl+S"),
+            ("Save As...", self.save_as, "Ctrl+Shift+S"),
+            ("Close Tab", self.close_tab, "Ctrl+W"),
         ]:
-            file_menu.add_command(label=label, command=command)
+            file_menu.add_command(
+                label=label, command=command, accelerator=shortcut
+            )
         self.recent_workspace_menu = tk.Menu(file_menu, tearoff=False)
         self._menus.append(self.recent_workspace_menu)
         file_menu.add_cascade(label="Open Recent Workspace", menu=self.recent_workspace_menu)
@@ -722,6 +726,9 @@ class PyLexApp(tk.Tk):
         self.error_tree.column("message", width=330)
         self.error_tree.column("source", width=360)
         self.error_tree.pack(fill="both", expand=True)
+        self.error_tree.tag_configure("error", foreground="#ef6b73")
+        self.error_tree.tag_configure("warning", foreground="#e6b45a")
+        self.error_tree.tag_configure("info", foreground="#4f8cff")
         self.error_tree.bind("<<TreeviewSelect>>", self._navigate_to_selected_error)
         self.error_tree.bind("<Double-1>", self._navigate_to_selected_error)
         self.tabs.add(frame, text="⚠  Problems")
@@ -739,6 +746,11 @@ class PyLexApp(tk.Tk):
         for item in self.error_tree.get_children():
             self.error_tree.delete(item)
         for index, diagnostic in enumerate(self.diagnostics):
+            severity = (
+                "warning" if "warning" in diagnostic.error_type.lower()
+                else "info" if "info" in diagnostic.error_type.lower()
+                else "error"
+            )
             self.error_tree.insert(
                 "", "end", iid=str(index),
                 values=(
@@ -746,6 +758,7 @@ class PyLexApp(tk.Tk):
                     diagnostic.column + 1, diagnostic.message,
                     diagnostic.source_line.strip(),
                 ),
+                tags=(severity,),
             )
         count = len(self.diagnostics)
         self.error_summary.configure(
@@ -2079,6 +2092,10 @@ class PyLexApp(tk.Tk):
             panel.tag_configure("stdout", foreground=palette["success"])
             panel.tag_configure("system", foreground=palette["accent"])
         self.terminal_panel.set_theme(self.dark, palette)
+        if hasattr(self, "error_tree"):
+            self.error_tree.tag_configure("error", foreground=palette["danger"])
+            self.error_tree.tag_configure("warning", foreground=palette["warning"])
+            self.error_tree.tag_configure("info", foreground=palette["accent"])
         if hasattr(self, "project_tree"):
             self.project_tree.tag_configure("directory", foreground=palette["accent"])
             for kind in ("python", "web", "markup", "style", "data"):
