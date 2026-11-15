@@ -263,21 +263,44 @@ class PyLexApp(tk.Tk):
         combo = ttk.Combobox(body, textvariable=choice, state="readonly", width=82)
         combo.grid(row=1, column=1, sticky="ew", padx=5)
         body.columnconfigure(1, weight=1)
-        def add(info):
+        def add(info, select=False):
             entries[info.label] = info
             values = list(combo.cget("values"))
             if info.label not in values:
                 values.append(info.label)
                 combo.configure(values=values)
-            choice.set(info.label)
-        for info in discover_interpreters():
-            add(info)
-        add(current)
+            if select:
+                choice.set(info.label)
+        add(current, select=True)
+        status.configure(text="Scanning installed Python interpreters in the background...")
+        discovery_queue = queue.Queue()
+        def discovery_worker():
+            try:
+                discovery_queue.put(("ok", discover_interpreters()))
+            except Exception as exc:
+                discovery_queue.put(("error", exc))
+        threading.Thread(target=discovery_worker, daemon=True).start()
+        def poll_discovery():
+            if not dialog.winfo_exists():
+                return
+            try:
+                kind, value = discovery_queue.get_nowait()
+            except queue.Empty:
+                dialog.after(120, poll_discovery)
+                return
+            if kind == "error":
+                status.configure(text="Interpreter discovery warning: " + str(value))
+                return
+            for info in value:
+                add(info)
+            add(current, select=True)
+            status.configure(text="Found " + str(len(value)) + " verified Python interpreter(s).")
+        dialog.after(120, poll_discovery)
         def browse():
             path = filedialog.askopenfilename(parent=dialog, title="Select Python", filetypes=[("Python executable", "*.exe" if os.name == "nt" else "python*"), ("All files", "*.*")])
             if path:
                 try:
-                    add(probe_interpreter(path))
+                    add(probe_interpreter(path), select=True)
                 except (OSError, ValueError, TimeoutError) as exc:
                     messagebox.showerror("Invalid Python", str(exc), parent=dialog)
         ttk.Button(body, text="Browse...", command=browse).grid(row=1, column=2)
@@ -338,7 +361,7 @@ class PyLexApp(tk.Tk):
                     status.configure(text="pip repair failed.")
                     messagebox.showerror("Repair pip", str(value), parent=dialog)
                     return
-                add(value)
+                add(value, select=True)
                 status.configure(text="pip is available: " + value.executable)
             dialog.after(100, poll_repair)
         def create_env():
@@ -374,7 +397,7 @@ class PyLexApp(tk.Tk):
                     status.configure(text="Environment creation failed.")
                     messagebox.showerror("Create .venv", str(value), parent=dialog)
                     return
-                add(value)
+                add(value, select=True)
                 mapping = dict(self.preferences.get("project_interpreters", {}))
                 mapping[str(project.root)] = value.executable
                 self.preferences["project_interpreters"] = mapping
