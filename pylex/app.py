@@ -8,6 +8,7 @@ import threading
 from pathlib import Path
 import os
 import subprocess
+import shutil
 import sys
 import re
 import time
@@ -904,6 +905,8 @@ class PyLexApp(tk.Tk):
             label.pack(side="left")
             self._editor_status_items[key] = label
         ttk.Separator(self, orient="horizontal").pack(fill="x", side="bottom")
+        self.status_row = status_row
+        status_row.bind("<Button-3>", self._show_status_context_menu, add="+")
         self._update_editor_status()
 
         shell = ttk.Frame(self)
@@ -985,6 +988,16 @@ class PyLexApp(tk.Tk):
         )
         self.open_editors_list.pack(fill="x", padx=6, pady=(0, 8))
         self.open_editors_list.bind("<Double-1>", self._select_open_editor)
+        self.open_editors_list.bind("<Button-3>", self._show_open_editors_context_menu, add="+")
+        ttk.Label(self.explorer_frame, text="RECENT WORKSPACES", style="PyLex.Group.TLabel", padding=(9, 4)).pack(fill="x")
+        self.recent_workspaces_list = tk.Listbox(
+            self.explorer_frame, height=3, activestyle="none", borderwidth=0,
+            highlightthickness=0, bg=self.theme_palette["surface"],
+            fg=self.theme_palette["editor_fg"], selectbackground=self.theme_palette["accent"],
+        )
+        self.recent_workspaces_list.pack(fill="x", padx=6, pady=(0, 7))
+        self.recent_workspaces_list.bind("<Double-1>", self._select_recent_workspace)
+        self.recent_workspaces_list.bind("<Button-3>", self._show_recent_workspace_context_menu, add="+")
         ttk.Label(self.explorer_frame, text="WORKSPACE", style="PyLex.Group.TLabel", padding=(9, 4)).pack(fill="x")
         self.workspace_path_label = ttk.Label(
             self.explorer_frame, text="No folder opened", style="PyLex.Muted.TLabel", padding=(9, 4),
@@ -1001,6 +1014,8 @@ class PyLexApp(tk.Tk):
         self.project_tree.tag_configure("config", foreground=self.theme_palette["muted"])
         self.project_tree.tag_configure("text", foreground=self.theme_palette["editor_fg"])
         self.project_tree.bind("<Double-1>", self._on_project_tree_open)
+        self.project_tree.bind("<Button-3>", self._show_project_tree_context_menu, add="+")
+        self.project_tree.bind("<Shift-F10>", self._show_project_tree_context_menu, add="+")
         if self.preferences["show_project_explorer"]:
             workspace.add(self.explorer_frame, weight=1)
 
@@ -1011,6 +1026,7 @@ class PyLexApp(tk.Tk):
         panes.add(self.editor_tabs, weight=4)
         self.editor_tabs.bind("<<NotebookTabChanged>>", self._on_tab_changed)
         self.editor_tabs.bind("<Button-1>", self._on_tab_close_click, add="+")
+        self.editor_tabs.bind("<Button-3>", self._show_tab_context_menu, add="+")
         self._create_document()
 
         lower = ttk.Frame(panes)
