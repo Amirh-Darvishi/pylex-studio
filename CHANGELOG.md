@@ -2,7 +2,7 @@
 
 All notable changes to PyLex Studio are documented here.
 
-## [1.8.0] - Unreleased
+## [1.8.0] - 2026-11-15
 
 ### Added
 - Added Black formatting for the active editor buffer and whole projects, with protection against formatting while editor tabs contain unsaved changes.
