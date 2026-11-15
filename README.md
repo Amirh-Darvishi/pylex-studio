@@ -1,6 +1,6 @@
 # PyLex Studio
 
-**Current development target: 1.5.0 — Smart Editor** (in development)
+**Current development target: 1.6.0 — Advanced Debugger** (in development)
 
 A lightweight Python desktop editor with independent lexical and syntax analysis.
 
@@ -33,7 +33,7 @@ A lightweight Python desktop editor with independent lexical and syntax analysis
 - Duplicate a line or selection with Ctrl+D; move lines with Alt+Up / Alt+Down
 - Matching bracket highlighting and Go to Line with Ctrl+G
 - Find and replace with Ctrl+H
-- pdb-backed debugging with breakpoints, Continue, Step Into, Step Over, variables, and stack inspection
+- pdb-backed debugging with conditional and temporary breakpoints, Continue, Step Into, Step Over, Run Until, Return, Jump, expression evaluation, function arguments, variables, and stack inspection
 - Adjustable editor font family and font size
 - Persistent preferences for theme, font, font size, project explorer visibility, execution timeout, and interpreter selection
 - Structured error panel with exact exception type and source location
@@ -80,9 +80,11 @@ python main.py
 
 Open View → Preferences to choose the dark or light theme, editor font family, font size, project explorer visibility, and execution timeout (5, 10, 30, or 60 seconds, or Unlimited). Preferences are stored in `.pylex_studio.json` in the user's home directory and are reused on the next launch.
 
-## Debugging (1.2.0 development)
+## Debugging (1.6.0 development)
 
-Use Debug or Tools → Start Debugging to launch the current source under Python's built-in `pdb` debugger. Toggle Breakpoint at the current line, then use Continue, Step Into, Step Over, Variables, and Stack. Debugged code runs with the current user's permissions and is not sandboxed.
+Start a session with **Tools → Start Debugging**. Toggle a normal breakpoint with the Breakpoint toolbar button or F9. The debugger also supports conditional and temporary breakpoints, clearing all breakpoints, enabling/disabling and ignoring breakpoint hits through the debugger API, Continue, Step Into, Step Over, Run Until the current line, Run Until Return, and Jump to Line (subject to Python pdb frame restrictions).
+
+Inspect the current frame's local variables, function arguments, and stack; evaluate or pretty-print an expression in the paused frame from **Tools → Evaluate Expression**. Debug commands are sent to a dedicated child process using the selected workspace interpreter and project execution context. Stop Debugging terminates the debugger process tree. Debugged code runs with the current user's permissions and is not sandboxed.
 
 ## File and project management (1.2.0 development)
 
