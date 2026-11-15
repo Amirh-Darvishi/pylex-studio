@@ -2948,8 +2948,6 @@ class PyLexApp(tk.Tk):
         if not hasattr(self, "output_input"):
             return "break"
         value = self.output_input.get()
-        if not value:
-            return "break"
         accepted = False
         if self.execution is not None and not self.execution.done:
             accepted = self.execution.send_input(value)
