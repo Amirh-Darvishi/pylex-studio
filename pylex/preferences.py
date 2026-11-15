@@ -106,7 +106,9 @@ def _normalise(values):
         result["terminal_shell"] = ""
     if not isinstance(result["account_display_name"], str):
         result["account_display_name"] = "Developer"
-    result["account_display_name"] = result["account_display_name"].strip()[:48] or "Developer"
+    result["account_display_name"] = (
+        result["account_display_name"].strip()[:48] or "Developer"
+    )
     mappings = result["project_interpreters"]
     if not isinstance(mappings, dict):
         mappings = {}
