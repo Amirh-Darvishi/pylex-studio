@@ -243,11 +243,12 @@ class PyLexApp(tk.Tk):
     def manage_interpreter(self):
         """Select a verified Python interpreter for this workspace or globally."""
         project = self._project_for_document(self._active_document())
+        warning = None
         try:
             current = self._interpreter_for_project(project)
         except (OSError, ValueError, TimeoutError) as exc:
-            messagebox.showerror("Python Interpreter", str(exc))
-            return
+            warning = str(exc)
+            current = probe_interpreter(sys.executable)
         dialog = tk.Toplevel(self)
         dialog.title("Python Interpreter")
         dialog.transient(self)
@@ -258,6 +259,8 @@ class PyLexApp(tk.Tk):
         ttk.Label(body, text="Interpreter").grid(row=1, column=0, sticky="w", pady=6)
         status = ttk.Label(body, text=current.executable)
         status.grid(row=2, column=0, columnspan=3, sticky="w", pady=6)
+        if warning:
+            status.configure(text="Saved interpreter is unavailable: " + warning + " — choose a replacement.")
         entries = {}
         choice = tk.StringVar(value=current.label)
         combo = ttk.Combobox(body, textvariable=choice, state="readonly", width=82)
