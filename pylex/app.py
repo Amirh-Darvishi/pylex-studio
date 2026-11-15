@@ -1191,13 +1191,10 @@ class PyLexApp(tk.Tk):
         self._update_editor_status()
 
     def _new_context_menu(self):
-        palette = self.theme_palette
-        return tk.Menu(
-            self, tearoff=False, background=palette["menu_bg"],
-            foreground=palette["menu_fg"], activebackground=palette["elevated"],
-            activeforeground=palette["accent"], disabledforeground=palette["muted"],
-            borderwidth=1, relief="solid",
-            font=(self._resolved_ui_font(), self.preferences.get("ui_font_size", 9)),
+        return ContextMenu(
+            self, palette=self.theme_palette,
+            font_family=self._resolved_ui_font(),
+            font_size=self.preferences.get("ui_font_size", 9),
         )
 
     def _show_status_context_menu(self, event):
