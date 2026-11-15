@@ -81,7 +81,6 @@ class DebugSession:
         decoder = codecs.getincrementaldecoder("utf-8")(errors="replace")
         line_buffer = ""
         pending_completion = None
-        expected_frame_prefix = f"> {self.script_path}("
         try:
             while True:
                 data = os.read(self.process.stdout.fileno(), 4096)
@@ -99,15 +98,12 @@ class DebugSession:
                         pending_completion = "finished"
                     elif line == "Uncaught exception. Entering post mortem debugging":
                         pending_completion = "error"
-                    elif (
-                        pending_completion == "error"
-                        and line == "Running 'cont' or 'step' will restart the program"
-                    ):
-                        self.completion_status = "error"
-                        self._completion_sent = True
-                        self.command("q")
-                    elif pending_completion == "finished" and line.startswith(expected_frame_prefix):
-                        self.completion_status = "finished"
+                    elif pending_completion and line.startswith("> "):
+                        # Both normal completion and post-mortem exceptions return
+                        # to a pdb frame before presenting the next prompt. Do not
+                        # require an exact path match: Windows may report an 8.3
+                        # short path while tempfile returns the long path.
+                        self.completion_status = pending_completion
                         self._completion_sent = True
                         self.command("q")
             tail = decoder.decode(b"", final=True)
