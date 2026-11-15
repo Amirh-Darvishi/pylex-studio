@@ -57,6 +57,8 @@ class ContextMenu:
         if self._closed:
             return
         self._closed = True
+        if self._parent_menu is not None:
+            self._parent_menu._dismiss()
         if self._submenu is not None:
             self._submenu._dismiss()
             self._submenu = None
@@ -68,8 +70,14 @@ class ContextMenu:
                 pass
         self.window = None
 
+    def _root_menu(self):
+        menu = self
+        while menu._parent_menu is not None:
+            menu = menu._parent_menu
+        return menu
+
     def _invoke(self, item):
-        self._dismiss()
+        self._root_menu()._dismiss()
         callback = item.get("command")
         if callback is not None:
             callback()
@@ -145,22 +153,43 @@ class ContextMenu:
                     padx=10,
                 ).pack(side="right")
 
+            hover_job = {"id": None}
+
+            def set_row_hover(target, target_label, active, color):
+                if not active:
+                    return
+                target.configure(background=color)
+                for child_widget in target.winfo_children():
+                    child_widget.configure(background=color)
+                    if child_widget is target_label:
+                        child_widget.configure(
+                            foreground=self._color("accent", "#8FB7D8")
+                            if color != surface else fg
+                        )
+
             def hover(_event, target=row, target_label=text_label, active=enabled):
-                if active:
-                    color = self._color("elevated", "#303B49")
-                    target.configure(background=color)
-                    for child_widget in target.winfo_children():
-                        child_widget.configure(background=color)
-                        if child_widget is target_label:
-                            child_widget.configure(foreground=self._color("accent", "#8FB7D8"))
+                if hover_job["id"] is not None:
+                    try:
+                        self.window.after_cancel(hover_job["id"])
+                    except tk.TclError:
+                        pass
+                    hover_job["id"] = None
+                set_row_hover(target, target_label, active, self._color("elevated", "#303B49"))
 
             def unhover(_event, target=row, target_label=text_label, active=enabled):
-                if active:
-                    target.configure(background=surface)
-                    for child_widget in target.winfo_children():
-                        child_widget.configure(background=surface)
-                        if child_widget is target_label:
-                            child_widget.configure(foreground=fg)
+                if not active:
+                    return
+                def settle():
+                    hover_job["id"] = None
+                    try:
+                        x, y = self.window.winfo_pointerxy()
+                        inside = (target.winfo_rootx() <= x < target.winfo_rootx() + target.winfo_width()
+                                  and target.winfo_rooty() <= y < target.winfo_rooty() + target.winfo_height())
+                    except tk.TclError:
+                        inside = False
+                    if not inside:
+                        set_row_hover(target, target_label, active, surface)
+                hover_job["id"] = self.window.after(45, settle)
 
             for widget in (row, text_label, *row.winfo_children()):
                 widget.bind("<Enter>", hover, add="+")
@@ -217,10 +246,26 @@ class ContextMenu:
         self.window.geometry(f"+{max(0, x)}+{max(0, y)}")
         self.window.deiconify()
         self.window.lift()
+        self.window.bind("<Escape>", lambda _event: self._dismiss(), add="+")
+        self.window.bind("<Button-1>", self._outside_click, add="+")
         try:
             self.window.grab_set()
         except tk.TclError:
             pass
+
+    def _outside_click(self, event):
+        x, y = event.x_root, event.y_root
+        try:
+            left, top = self.window.winfo_rootx(), self.window.winfo_rooty()
+            inside = left <= x < left + self.window.winfo_width() and top <= y < top + self.window.winfo_height()
+            if self._submenu is not None and self._submenu.window is not None:
+                child = self._submenu.window
+                cx, cy = child.winfo_rootx(), child.winfo_rooty()
+                inside = inside or (cx <= x < cx + child.winfo_width() and cy <= y < cy + child.winfo_height())
+        except tk.TclError:
+            inside = False
+        if not inside:
+            self._dismiss()
 
     def grab_release(self):
         # Keep the popup visible; unlike native tk.Menu, the window owns its grab.
