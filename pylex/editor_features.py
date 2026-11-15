@@ -93,7 +93,7 @@ def find_matching_bracket(source, cursor_offset):
             elif value in reverse:
                 if not stack or pairs[stack[-1][1]] != value:
                     return None
-                opening = stack.pop()
+                stack.pop()
                 if not stack:
                     return (position, candidate)
     else:
