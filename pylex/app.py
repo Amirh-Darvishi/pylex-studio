@@ -1436,6 +1436,14 @@ class PyLexApp(tk.Tk):
         text.grid(row=row, column=0, columnspan=2, sticky="nsew")
         frame.rowconfigure(row, weight=1)
         frame.columnconfigure(0, weight=1)
+        if title == "Output":
+            input_row = ttk.Frame(frame, padding=(5, 4))
+            input_row.grid(row=row + 1, column=0, columnspan=2, sticky="ew")
+            ttk.Label(input_row, text="Program Input").pack(side="left", padx=(0, 7))
+            self.output_input = ttk.Entry(input_row)
+            self.output_input.pack(side="left", fill="x", expand=True)
+            self.output_input.bind("<Return>", self._send_output_input)
+            ttk.Button(input_row, text="Send", command=self._send_output_input).pack(side="left", padx=(5, 0))
         panel_icons = {
             "Output": ("terminal", "accent"),
             "Lexical Analysis": ("braces", "violet"),
@@ -2887,6 +2895,24 @@ class PyLexApp(tk.Tk):
         self.output.see("end")
         self.output.configure(state="disabled")
 
+    def _send_output_input(self, _event=None):
+        """Forward a line from the Output input bar to the active child process."""
+        value = self.output_input.get()
+        if self.execution is not None and not self.execution.done:
+            sent = self.execution.send_input(value)
+        elif self.debug_session is not None and not self.debug_session.done:
+            sent = self.debug_session.command(value)
+        else:
+            self.status.configure(text="No running program or debugger is waiting for input.")
+            return "break"
+        if sent:
+            self.output_input.delete(0, "end")
+            self._append_output(f"> {value}\\n", "system")
+            self.status.configure(text="Input sent to running process.")
+        else:
+            self.status.configure(text="The process is not accepting input.")
+        return "break"
+
     def clear_output(self):
         self.output.configure(state="normal")
         self.output.delete("1.0", "end")
@@ -2989,7 +3015,10 @@ class PyLexApp(tk.Tk):
                 self.debug_session.set_conditional_breakpoint(line, condition)
             else:
                 self.debug_session.set_breakpoint(line)
-        self.status.configure(text="Debugger ready — set breakpoints or press Continue.")
+        self.status.configure(text="Debugger running — execution will stop at breakpoints.")
+        # pdb stops at the first line; continue immediately so a session without
+        # breakpoints runs to completion instead of appearing idle.
+        self.debug_session.continue_execution()
         self._poll_debugger()
 
     def debug_continue(self):
@@ -3172,8 +3201,12 @@ class PyLexApp(tk.Tk):
         output = session.read_available()
         if output:
             self._append_output(output)
-            if "The program finished" in output or "The program exited" in output:
-                self.status.configure(text="Program finished — choose Stop Debugging to close the debugger.")
+            if ("The program finished" in output or "The program exited" in output
+                    or "Uncaught exception. Entering post mortem debugging" in output):
+                # pdb otherwise remains at its post-run/post-mortem prompt forever.
+                # Quit it after preserving the completion or exception report.
+                session.command("q")
+                self.status.configure(text="Program finished — closing debugger session.")
         if session.done:
             session.close()
             self.debug_session = None
