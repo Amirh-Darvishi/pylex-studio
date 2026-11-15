@@ -2,6 +2,20 @@
 
 All notable changes to PyLex Studio are documented here.
 
+## [1.9.0] - Unreleased
+
+### Added
+- Added a Git source-control panel for repository status, staged and unstaged changes, file diffs, and commit history.
+- Added file-level and bulk staging/unstaging, separate staged and unstaged diff review, safe discard, and commits of staged changes.
+- Added local branch listing, branch creation, and branch switching.
+- Added asynchronous fetch, fast-forward-only pull, upstream-aware push/pull, remote discovery, and stash operations.
+- Added a shell-free Git service with workspace path restrictions and automated tests.
+
+### Security
+- Git commands use argument arrays, disable interactive prompts, and restrict path operations to the active repository.
+- Untracked directory deletion is disabled; pull is fast-forward-only.
+
+
 ## [1.8.0] - 2026-11-15
 
 ### Added

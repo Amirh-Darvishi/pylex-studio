@@ -1,4 +1,4 @@
 Pygments>=2.18,<3.0
-black>=24,<27
+black==25.9.0
 ruff>=0.9,<1
 pytest>=8,<10
