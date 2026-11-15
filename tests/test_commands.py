@@ -10,9 +10,24 @@ class CommandRegistryTests(unittest.TestCase):
         self.calls = []
         self.registry = CommandRegistry(
             [
-                Command("file.save", "Save File", "Ctrl+S", lambda: self.calls.append("save")),
-                Command("run.active", "Run Current File", "F5", lambda: self.calls.append("run")),
-                Command("view.theme", "Toggle Theme", "", lambda: self.calls.append("theme")),
+                Command(
+                    "file.save",
+                    "Save File",
+                    "Ctrl+S",
+                    lambda: self.calls.append("save"),
+                ),
+                Command(
+                    "run.active",
+                    "Run Current File",
+                    "F5",
+                    lambda: self.calls.append("run"),
+                ),
+                Command(
+                    "view.theme",
+                    "Toggle Theme",
+                    "",
+                    lambda: self.calls.append("theme"),
+                ),
             ]
         )
 
