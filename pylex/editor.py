@@ -19,9 +19,10 @@ from .editor_features import (
 class CodeEditor(tk.Frame):
     """Text editor with line numbers, current-line emphasis, and error markers."""
 
-    def __init__(self, master, on_change=None):
+    def __init__(self, master, on_change=None, on_cursor_change=None):
         super().__init__(master)
         self.on_change = on_change
+        self.on_cursor_change = on_cursor_change
         self.font_size = 12
         self.editor_font = tkfont.Font(family="Consolas", size=self.font_size)
         self._highlight_job = None
@@ -33,13 +34,16 @@ class CodeEditor(tk.Frame):
         self.gutter = tk.Text(
             self, width=5, padx=5, takefocus=0, state="disabled",
             font=self.editor_font, wrap="none", borderwidth=0,
-            cursor="arrow", highlightthickness=0,
+            cursor="arrow", highlightthickness=0, pady=8,
         )
         self.text = tk.Text(
             self, undo=True, wrap="none", font=self.editor_font,
             padx=8, pady=8, borderwidth=0, tabs=("4c"),
             highlightthickness=0,
         )
+        # The gutter and source must share identical vertical text metrics.
+        for widget in (self.gutter, self.text):
+            widget.configure(spacing1=0, spacing2=0, spacing3=0)
         self.sy = tk.Scrollbar(self, orient="vertical", command=self._scroll)
         self.sx = tk.Scrollbar(self, orient="horizontal", command=self.text.xview)
         self.text.configure(yscrollcommand=self._yscroll, xscrollcommand=self.sx.set)
@@ -145,6 +149,8 @@ class CodeEditor(tk.Frame):
             self.refresh_lines()
             self._schedule_highlight()
             self.update_current_line()
+            if self.on_cursor_change:
+                self.on_cursor_change()
             if self.on_change:
                 self.on_change()
 
@@ -179,6 +185,12 @@ class CodeEditor(tk.Frame):
         prefix = self.text.get("insert linestart", "insert")
         indentation = indentation_for_newline(prefix)
         self.text.insert("insert", "\n" + indentation)
+        # Keep the insertion point visible and move the gutter in lockstep.
+        self.text.see("insert")
+        self.text.update_idletasks()
+        first, last = self.text.yview()
+        self.gutter.yview_moveto(first)
+        self._cursor_changed()
         return "break"
 
     def _smart_backspace(self, event=None):
@@ -404,11 +416,19 @@ class CodeEditor(tk.Frame):
         self._completion_list = None
 
     def refresh_lines(self):
+        """Rebuild line numbers without resetting the editor's current scroll offset."""
+        first, _last = self.text.yview()
         count = max(1, int(self.text.index("end-1c").split(".")[0]))
         current = int(self.text.index("insert").split(".")[0])
         self.gutter.configure(state="normal")
         self.gutter.delete("1.0", "end")
-        self.gutter.insert("1.0", "\n".join(("● " if i in self._breakpoints else "  ") + str(i) for i in range(1, count + 1)))
+        self.gutter.insert(
+            "1.0",
+            "\n".join(
+                ("● " if i in self._breakpoints else "  ") + str(i)
+                for i in range(1, count + 1)
+            ),
+        )
         self.gutter.tag_remove("gutter_current", "1.0", "end")
         self.gutter.tag_remove("gutter_error", "1.0", "end")
         self.gutter.tag_add("gutter_current", f"{current}.0", f"{current}.end")
@@ -417,6 +437,7 @@ class CodeEditor(tk.Frame):
             if 1 <= line <= count:
                 self.gutter.tag_add("gutter_error", f"{line}.0", f"{line}.end")
         self.gutter.configure(state="disabled")
+        self.gutter.yview_moveto(first)
 
     def set_breakpoints(self, lines):
         """Display breakpoint markers beside the corresponding line numbers."""
@@ -448,6 +469,8 @@ class CodeEditor(tk.Frame):
     def _cursor_changed(self, event=None):
         self.update_current_line()
         self._update_matching_bracket()
+        if self.on_cursor_change:
+            self.on_cursor_change()
 
     def get_content(self):
         return self.text.get("1.0", "end-1c")
