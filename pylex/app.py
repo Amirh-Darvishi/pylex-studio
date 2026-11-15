@@ -341,10 +341,19 @@ class PyLexApp(tk.Tk):
         ttk.Label(body, text="Local profile", style="PyLex.Field.TLabel").pack(anchor="w", pady=(12, 3))
         ttk.Label(
             body,
-            text="PyLex Studio currently stores preferences and workspace settings on this device. "
-                 "Cloud sign-in and cross-device sync are planned, but are not active yet.",
+            text="Your profile name is stored locally. Online sign-in and cross-device sync are not enabled yet.",
             style="PyLex.Muted.TLabel", wraplength=370, justify="left",
-        ).pack(anchor="w", pady=(0, 14))
+        ).pack(anchor="w", pady=(0, 10))
+        profile_name = tk.StringVar(value=self.preferences.get("account_display_name", "Developer"))
+        ttk.Label(body, text="Display name").pack(anchor="w")
+        profile_entry = ttk.Entry(body, textvariable=profile_name)
+        profile_entry.pack(fill="x", pady=(3, 8))
+        def save_profile():
+            self.preferences["account_display_name"] = profile_name.get().strip()[:48] or "Developer"
+            self._persist_preferences()
+            self.status.configure(text="Local profile updated.")
+            dialog.destroy()
+        ttk.Button(body, text="Save Profile", command=save_profile, style="PyLex.Primary.TButton").pack(anchor="e", pady=(0, 10))
         ttk.Label(body, text="Account services", style="PyLex.Field.TLabel").pack(anchor="w", pady=(4, 5))
         for label, status, color in (
             ("Local profile", "Available", "success"),
