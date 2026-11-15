@@ -1,6 +1,6 @@
 # PyLex Studio
 
-**Development version: 1.10.0 — Final Quality & Documentation**
+**Development version: 2.0.0 — Modern User Interface**
 
 A lightweight Python desktop editor with independent lexical and syntax analysis.
 
@@ -48,12 +48,14 @@ A lightweight Python desktop editor with independent lexical and syntax analysis
 - Current-line emphasis and inline error highlighting
 - Separate Output, Lexical Analysis, Syntax Analysis, and Errors panels
 - Analyze All and Clear Results actions
-- Dark and light editor themes
+- Dark and light application themes, with a dark default
+- Modern grouped toolbar and consistent application styling
 
 ## Requirements
 
 - Python 3.10+
 - Tkinter (usually included with standard Python installations)
+- ttkbootstrap (modern themed interface)
 - Pygments
 
 ## Installation
