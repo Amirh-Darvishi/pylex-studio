@@ -36,7 +36,6 @@ _ICON_GROUPS = {
     "text": ("📄", "Text file"),
     "binary": ("📦", "Binary file"),
     "unknown": ("📄", "Unknown file type"),
-    "binary": ("⚙", "Compiled or binary file"),
 }
 
 _EXTENSION_GROUPS = {
