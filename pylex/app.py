@@ -740,6 +740,21 @@ class PyLexApp(tk.Tk):
             self.theme_button, "sun" if self.dark else "moon-stars", "warning"
         ))
 
+        # Keep the command launcher permanently visible at the far right.
+        self.command_palette_button = ttk.Button(
+            action_row,
+            text="Command Palette",
+            command=self.open_command_palette,
+            style="PyLex.Primary.TButton",
+            image=self._icon("search", self.theme_palette.get("accent")),
+            compound="left",
+        )
+        self.command_palette_button.pack(side="right", padx=(6, 0), ipady=2)
+        self.command_palette_button.configure(takefocus=False)
+        self._toolbar_icon_bindings.append((
+            self.command_palette_button, "search", "accent"
+        ))
+
     def _build_logo(self, parent, size=40):
         """Draw the original PyLex emblem with native vector canvas primitives."""
         canvas = tk.Canvas(parent, width=size, height=size, bg=self.theme_palette["surface"], highlightthickness=0, bd=0)
