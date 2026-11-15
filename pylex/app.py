@@ -1656,6 +1656,7 @@ class PyLexApp(tk.Tk):
         self.preferences["last_workspace"] = normalized
         self._persist_preferences()
         self._refresh_recent_workspace_menu()
+        self._refresh_recent_workspace_list()
 
     def _refresh_recent_workspace_menu(self):
         menu = getattr(self, "recent_workspace_menu", None)
@@ -1675,11 +1676,33 @@ class PyLexApp(tk.Tk):
         menu.add_separator()
         menu.add_command(label="Clear Recent Workspaces", command=self.clear_recent_workspaces)
 
+    def _refresh_recent_workspace_list(self):
+        widget = getattr(self, 'recent_workspaces_list', None)
+        if widget is None:
+            return
+        widget.delete(0, 'end')
+        self._recent_workspace_paths = [p for p in self.preferences.get('recent_workspaces', []) if isinstance(p, str) and Path(p).is_dir()]
+        for path in self._recent_workspace_paths:
+            widget.insert('end', '{}  —  {}'.format(Path(path).name, path))
+        if not self._recent_workspace_paths:
+            widget.insert('end', 'No recent workspaces')
+
+    def _select_recent_workspace(self, _event=None):
+        selection = self.recent_workspaces_list.curselection()
+        if selection and selection[0] < len(getattr(self, '_recent_workspace_paths', [])):
+            self._activate_workspace(self._recent_workspace_paths[selection[0]])
+
+    def _copy_to_clipboard(self, value):
+        self.clipboard_clear()
+        self.clipboard_append(str(value))
+        self.status.configure(text='Copied to clipboard.')
+
     def clear_recent_workspaces(self):
         """Clear workspace history without changing the current workspace."""
         self.preferences["recent_workspaces"] = []
         self._persist_preferences()
         self._refresh_recent_workspace_menu()
+        self._refresh_recent_workspace_list()
         self.status.configure(text="Recent workspace history cleared.")
 
     def _activate_workspace(self, folder):
@@ -1699,6 +1722,7 @@ class PyLexApp(tk.Tk):
         self.project_root = candidate.root
         self._remember_workspace(candidate.root)
         self._populate_project_tree()
+        self._refresh_recent_workspace_list()
         self.workspace_path_label.configure(text=str(candidate.root))
         self.status.configure(text=f"Workspace opened: {candidate.root}")
         self.git_panel.refresh()
@@ -1746,6 +1770,7 @@ class PyLexApp(tk.Tk):
         self._remember_workspace(self.project_root)
         self.workspace_path_label.configure(text=str(self.project_root))
         self._populate_project_tree()
+        self._refresh_recent_workspace_list()
         self.git_panel.refresh()
 
     def refresh_workspace(self):
