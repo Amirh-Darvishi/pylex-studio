@@ -184,14 +184,14 @@ class ContextMenu:
                         )
 
             def hover(_event, target=row, target_label=text_label, active=enabled,
-                      hover_data=hover_job, normal_fg=fg):
+                      hover_data=hover_job, normal_fg=fg, index=row_index):
                 if hover_data["id"] is not None:
                     try:
                         self.window.after_cancel(hover_data["id"])
                     except (tk.TclError, AttributeError):
                         pass
                     hover_data["id"] = None
-                self._active_row_index = row_index
+                self._active_row_index = index
                 set_row_hover(target, target_label, active, self._color("elevated", "#303B49"), normal_fg)
 
             def unhover(_event, target=row, target_label=text_label, active=enabled,
