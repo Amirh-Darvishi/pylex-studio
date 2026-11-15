@@ -3227,7 +3227,7 @@ class PyLexApp(tk.Tk):
             if not self._confirm():
                 return
             self.editor_tabs.forget(self.documents[editor]["frame"])
-            del self.documents[editor]
+            self.document_controller.remove(editor)
         self._refresh_open_editors()
         self.editor_tabs.select(self.documents[keep]["frame"])
         self.editor = keep
@@ -3241,7 +3241,7 @@ class PyLexApp(tk.Tk):
             if not self._confirm():
                 return
             self.editor_tabs.forget(self.documents[editor]["frame"])
-            del self.documents[editor]
+            self.document_controller.remove(editor)
         self._refresh_open_editors()
         self._create_document()
 
@@ -3533,7 +3533,7 @@ class PyLexApp(tk.Tk):
             return
         frame = document["frame"]
         self.editor_tabs.forget(frame)
-        del self.documents[self.editor]
+        self.document_controller.remove(self.editor)
         self._refresh_open_editors()
         if not self.documents:
             self._create_document()
@@ -4302,7 +4302,7 @@ class PyLexApp(tk.Tk):
             final_output = session.read_available()
             if final_output:
                 self._append_output(final_output)
-            self.debugger_controller.finish(session=session)
+            self.debugger_controller.finish(close=False, session=session)
             self._debug_poll = None
             if completion == "error":
                 self._append_output(
