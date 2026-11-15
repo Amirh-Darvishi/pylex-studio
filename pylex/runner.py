@@ -230,7 +230,7 @@ def start_file(path, timeout=10, cwd=None, env=None, python_executable=None):
     process = subprocess.Popen(
         [str(python_executable or sys.executable), "-u", str(script_path)],
         cwd=str(cwd) if cwd is not None else None, env=env,
-        stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+        stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
         text=True, encoding="utf-8", errors="replace", bufsize=1,
         **_process_options(),
     )
