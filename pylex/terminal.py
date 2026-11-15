@@ -252,9 +252,14 @@ class TerminalPanel(ttk.Frame):
         entry = ttk.Entry(input_row)
         entry.pack(side="left", fill="x", expand=True)
         entry.bind("<Return>", lambda _event, item=frame: self._send(item))
+        entry.bind("<Up>", lambda _event, item=frame: self._history_move(item, -1))
+        entry.bind("<Down>", lambda _event, item=frame: self._history_move(item, 1))
         entry.bind("<Control-c>", lambda _event: self.interrupt_current())
         self.sessions[frame] = process
-        self.views[frame] = {"output": output, "entry": entry, "shell": shell}
+        self.views[frame] = {
+            "output": output, "entry": entry, "shell": shell,
+            "history": [], "history_index": 0, "history_draft": "",
+        }
         label = dict((key, name) for name, key in self.shells).get(shell, shell)
         self.notebook.add(frame, text=f"{label} {self._counter}")
         self.notebook.select(frame)
@@ -285,12 +290,34 @@ class TerminalPanel(ttk.Frame):
         if not command.strip():
             return
         self._append(frame, f"> {command}\n")
+        if not view["history"] or view["history"][-1] != command:
+            view["history"].append(command)
+        view["history_index"] = len(view["history"])
+        view["history_draft"] = ""
         view["entry"].delete(0, "end")
         try:
             session.send(command)
         except (OSError, RuntimeError, ValueError) as exc:
             self._append(frame, f"{type(exc).__name__}: {exc}\n", "error")
             self.status.configure(text="Input failed.")
+
+    def _history_move(self, frame, direction):
+        """Navigate command history while preserving any unsubmitted draft."""
+        view = self.views.get(frame)
+        if not view or not view["history"]:
+            return "break"
+        entry = view["entry"]
+        history = view["history"]
+        index = view["history_index"]
+        if index == len(history):
+            view["history_draft"] = entry.get()
+        index = max(0, min(len(history), index + direction))
+        view["history_index"] = index
+        value = history[index] if index < len(history) else view["history_draft"]
+        entry.delete(0, "end")
+        entry.insert(0, value)
+        entry.icursor("end")
+        return "break"
 
     def _append(self, frame, value, tag=None):
         view = self.views.get(frame)
