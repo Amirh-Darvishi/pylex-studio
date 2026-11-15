@@ -4,10 +4,12 @@ on: [push, pull_request]
 
 jobs:
   test:
-    runs-on: ubuntu-latest
+    name: ${{ matrix.os }} / Python ${{ matrix.python-version }}
+    runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
+        os: [ubuntu-latest, windows-latest]
         python-version: ["3.10", "3.11", "3.13"]
     steps:
       - uses: actions/checkout@v4
@@ -19,7 +21,7 @@ jobs:
       - run: python -m unittest discover -s tests -v
       - run: python -m pytest -q
       - name: Black formatting check
-        if: ${{ matrix.python-version == '3.11' }}
+        if: ${{ matrix.python-version == '3.11' && matrix.os == 'ubuntu-latest' }}
         run: python -m black --check pylex/quality.py tests/test_quality.py
       - name: Ruff lint check
         if: ${{ matrix.python-version == '3.11' }}

@@ -1,6 +1,7 @@
 """Load and validate persistent PyLex Studio preferences."""
 import json
 import os
+import tempfile
 from pathlib import Path
 
 
@@ -89,7 +90,29 @@ def load_preferences():
 
 
 def save_preferences(values):
+    """Persist preferences atomically so an interrupted write cannot corrupt them."""
     data = _normalise(values)
     path = preferences_path()
-    path.write_text(json.dumps(data, indent=2), encoding="utf-8")
+    temporary_path = None
+    try:
+        with tempfile.NamedTemporaryFile(
+            mode="w",
+            encoding="utf-8",
+            dir=path.parent,
+            prefix=path.name + ".",
+            suffix=".tmp",
+            delete=False,
+        ) as temporary:
+            temporary_path = Path(temporary.name)
+            json.dump(data, temporary, indent=2)
+            temporary.write("\n")
+            temporary.flush()
+            os.fsync(temporary.fileno())
+        os.replace(temporary_path, path)
+    finally:
+        if temporary_path is not None:
+            try:
+                temporary_path.unlink(missing_ok=True)
+            except OSError:
+                pass
     return path

@@ -1,6 +1,6 @@
 # PyLex Studio
 
-**Current version: 1.8.0 — Formatter, Linter & Test Explorer**
+**Development version: 1.10.0 — Final Quality & Documentation**
 
 A lightweight Python desktop editor with independent lexical and syntax analysis.
 
@@ -83,17 +83,17 @@ python -m pip install -r requirements.txt
 python main.py
 ```
 
-## User interface preferences (1.2.0 development)
+## User interface preferences
 
 Open View → Preferences to choose the dark or light theme, editor font family, font size, project explorer visibility, and execution timeout (5, 10, 30, or 60 seconds, or Unlimited). Preferences are stored in `.pylex_studio.json` in the user's home directory and are reused on the next launch.
 
-## Debugging (1.6.0 development)
+## Debugging
 
 Start a session with **Tools → Start Debugging**. Toggle a normal breakpoint with the Breakpoint toolbar button or F9. The debugger also supports conditional and temporary breakpoints, clearing all breakpoints, enabling/disabling and ignoring breakpoint hits through the debugger API, Continue, Step Into, Step Over, Run Until the current line, Run Until Return, and Jump to Line (subject to Python pdb frame restrictions).
 
 Inspect the current frame's local variables, function arguments, and stack; evaluate or pretty-print an expression in the paused frame from **Tools → Evaluate Expression**. Debug commands are sent to a dedicated child process using the selected workspace interpreter and project execution context. Stop Debugging terminates the debugger process tree. Debugged code runs with the current user's permissions and is not sandboxed.
 
-## File and project management (1.2.0 development)
+## File and project management
 
 Use File → Open Project Folder to browse a project. Double-click supported files in the explorer to open them in tabs. Each tab tracks its own unsaved changes; use Ctrl+W to close the active tab.
 
@@ -101,15 +101,27 @@ Use File → Open Project Folder to browse a project. Double-click supported fil
 
 The lexical analyzer uses Python `tokenize` and reports token start/end positions. The syntax analyzer uses `ast.parse`. Diagnostics preserve concrete exception types (for example, `IndentationError`), are de-duplicated when the tokenizer and parser report the same issue, and can be selected in the Errors panel to navigate to the corresponding editor position. Editor columns are zero-based internally; the UI displays one-based columns.
 
-## Running code (1.2.0 development)
+## Running code
 
 Code runs in a child process. The editor remains responsive while the process is active. Output streams into the console while the program runs. Use Force Stop or Shift+F5 to terminate the process tree (including child processes); executions use the configurable timeout selected in View → Preferences (5, 10, 30, or 60 seconds, or Unlimited). The Output status shows the remaining time while a limited execution is running. The console can be cleared or saved to a text file. A dedicated Dependencies panel classifies standard-library, local-project, installed, and missing imports, including installed versions and module locations. It reports the exact Python executable and virtual-environment status, and provides interpreter-specific pip commands. Static scans cannot identify every dynamic import, so runtime ModuleNotFoundError diagnostics remain authoritative. This is not a security sandbox: code runs with the current user's permissions. Do not run untrusted code.
 
-## Tests
+## Tests and development checks
+
+Run the automated test suite with either unittest or pytest:
 
 ```bash
 python -m unittest discover -s tests -v
+python -m pytest -v
 ```
+
+Run the configured code-quality checks with:
+
+```bash
+python -m black --check pylex/quality.py tests/test_quality.py
+python -m ruff check pylex/quality.py pylex/git.py pylex/git_panel.py tests/test_quality.py tests/test_git.py
+```
+
+The CI workflow validates Python 3.10, 3.11, and 3.13 on Ubuntu and Windows.
 
 ## Security
 
@@ -120,7 +132,7 @@ Code execution runs with the permissions of the current user. The runner is **no
 The Persian project guide is available at `docs/PROJECT_GUIDE.html`.
 
 
-## Project model and execution context (1.3.0 development)
+## Project model and execution context
 
 PyLex Studio models an opened folder as a workspace root. The workspace explorer classifies common source, markup, data, configuration, document, image, audio, video, archive, database, and font formats with dedicated file icons. Text files can be edited in tabs; binary assets are delegated to the operating system's default application. Tabs expose a close control and prompt before discarding unsaved changes. Project paths are
 normalized centrally, dependency inspection uses the project root, and code
@@ -133,7 +145,7 @@ future interpreter and virtual-environment management.
 
 Code execution is not sandboxed and uses the current user's permissions.
 
-## Python interpreter and virtual environments (1.4.0 development)
+## Python interpreter and virtual environments
 
 Open **Tools → Python Interpreter** (also available from the toolbar or Dependencies panel) to inspect detected Python installations. Each candidate is probed by running that executable in isolated mode; PyLex displays its implementation, version, architecture, executable path, and whether it is a virtual environment.
 
@@ -146,11 +158,11 @@ Run, debug, static dependency inspection, and generated pip commands all use the
 Virtual environments are machine-local and generally not portable because installed script entry points can contain absolute interpreter paths. Do not commit .venv to Git. Recreate it on another machine with `python -m venv .venv`, then install project dependencies with `python -m pip install -r requirements.txt`.
 
 Interpreter probing and dependency inspection are not a security sandbox. Programs still run with the current user's operating-system permissions.
-## Smart Editor (1.5.0 development)
+## Smart Editor
 
 The editor continues indentation when pressing Enter, adds one indentation level after Python suite headers, and removes indentation in four-column steps with Backspace. Shift+Tab dedents the selected lines or current line. Use Ctrl+/ to toggle comments, Ctrl+D to duplicate a line or selection, Alt+Up / Alt+Down to move the current line, and Ctrl+G to navigate to a line. Matching Python delimiters are highlighted while the caret is adjacent to a bracket. These are editor conveniences, not a replacement for a language server or full semantic IntelliSense.
 
-## Integrated terminal (1.7.0)
+## Integrated terminal
 
 Open Tools → Integrated Terminal or use the Terminal toolbar button. The terminal is separate from Output, Run, and Debug: each terminal tab owns a persistent shell process, so commands such as cd, environment-variable changes, and activated environments remain in that session.
 
@@ -159,7 +171,7 @@ On Windows, PowerShell and Command Prompt are supported; Git Bash is offered whe
 New sessions start in the active workspace (or the active file's directory when no workspace is open). Their environment includes the selected project interpreter's Scripts/bin directory at the front of PATH and sets VIRTUAL_ENV when a virtual environment is selected. Shell sessions use redirected pipes rather than a full ConPTY/PTY terminal emulator: interactive command-line programs that require terminal device features, full-screen TUI rendering, or terminal resize events may not behave like a standalone console. Ordinary shell commands, Python REPLs, pip, and interactive line-oriented prompts are supported.
 
 
-## Code quality and testing (1.8.0 development)
+## Code quality and testing
 
 Open **Tools → Formatter, Linter & Test Explorer** or select the **Quality** panel. All external tools run through the Python interpreter selected for the active workspace; PyLex never relies on an unrelated global `black`, `ruff`, or `pytest` executable.
 
@@ -180,7 +192,7 @@ python -m pytest -v
 ```
 
 
-## Git source control (1.9.0 development)
+## Git source control
 
 Open **Tools → Git Source Control** or select the **Git** panel while a workspace is open. PyLex uses the Git executable installed on the system and operates on the workspace's repository; it does not require a Python Git package or a GitHub account for local version-control operations.
 

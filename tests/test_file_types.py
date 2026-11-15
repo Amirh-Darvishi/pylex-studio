@@ -31,6 +31,11 @@ class FileTypeTests(unittest.TestCase):
             with self.subTest(filename=filename):
                 self.assertEqual(file_type_for(filename).kind, kind)
 
+    def test_binary_files_keep_binary_description(self):
+        info = file_type_for("payload.bin")
+        self.assertEqual(info.kind, "binary")
+        self.assertEqual(info.description, "Binary file")
+
     def test_special_project_files_are_recognized(self):
         self.assertEqual(file_type_for("Dockerfile").kind, "config")
         self.assertEqual(file_type_for(".gitignore").kind, "config")

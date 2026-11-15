@@ -57,6 +57,18 @@ class PreferencesTests(unittest.TestCase):
                 self.assertEqual(loaded["project_interpreters"], values["project_interpreters"])
                 self.assertEqual(loaded["recent_workspaces"], values["recent_workspaces"])
 
+    def test_failed_atomic_replace_preserves_existing_preferences(self):
+        with tempfile.TemporaryDirectory() as folder:
+            with patch("pylex.preferences.Path.home", return_value=Path(folder)):
+                path = Path(folder) / ".pylex_studio.json"
+                original = json.dumps({"theme": "light"})
+                path.write_text(original, encoding="utf-8")
+                with patch("pylex.preferences.os.replace", side_effect=OSError("locked")):
+                    with self.assertRaisesRegex(OSError, "locked"):
+                        save_preferences({"theme": "dark"})
+                self.assertEqual(path.read_text(encoding="utf-8"), original)
+                self.assertEqual(list(Path(folder).glob(".pylex_studio.json.*.tmp")), [])
+
     def test_invalid_values_are_normalized(self):
         with tempfile.TemporaryDirectory() as folder:
             with patch("pylex.preferences.Path.home", return_value=Path(folder)):
