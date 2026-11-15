@@ -7,7 +7,7 @@ from pathlib import Path
 from unittest.mock import patch
 
 from pylex.interpreters import (
-    create_virtual_environment, discover_interpreters, find_project_environment,
+    create_virtual_environment, discover_interpreters, ensure_pip, find_project_environment,
     probe_interpreter, run_pip, virtual_environment_python,
 )
 
@@ -45,6 +45,10 @@ class InterpreterTests(unittest.TestCase):
             found = find_project_environment(root)
             self.assertIsNotNone(found)
             self.assertTrue(found.is_venv)
+            from pylex.dependencies import inspect_dependencies
+            dependencies, error = inspect_dependencies("import pygments", python_executable=info.executable)
+            self.assertIsNone(error)
+            self.assertEqual(dependencies[0].status, "missing")
 
     def test_create_environment_refuses_nonempty_directory(self):
         with tempfile.TemporaryDirectory() as folder:
@@ -68,6 +72,10 @@ class InterpreterTests(unittest.TestCase):
         result = run_pip(sys.executable, ["--version"])
         self.assertEqual(result.returncode, 0)
         self.assertIn("pip", result.stdout.lower())
+
+    def test_ensure_pip_is_idempotent_when_already_available(self):
+        result = ensure_pip(sys.executable)
+        self.assertEqual(result.returncode, 0)
 
     def test_run_pip_rejects_arbitrary_commands(self):
         with self.assertRaises(ValueError):

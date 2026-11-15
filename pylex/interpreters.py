@@ -49,7 +49,8 @@ class InterpreterInfo:
     @property
     def label(self) -> str:
         kind = "venv" if self.is_venv else "base"
-        return f"{self.implementation} {self.version} ({self.architecture}, {kind}) — {self.executable}"
+        pip_label = "pip available" if self.pip_available else "pip missing"
+        return f"{self.implementation} {self.version} ({self.architecture}, {kind}, {pip_label}) — {self.executable}"
 
 
 def _normalise_executable(value: os.PathLike | str) -> str:
@@ -258,6 +259,8 @@ def run_pip(
         raise ValueError("A pip subcommand is required.")
     if args[0] not in {"install", "list", "show", "check", "freeze", "uninstall", "--version"}:
         raise ValueError(f"Unsupported pip operation: {args[0]}")
+    if not info.pip_available:
+        raise RuntimeError("pip is not installed in this interpreter. Use ensure_pip() to bootstrap it first.")
     return subprocess.run(
         [info.executable, "-m", "pip", *args],
         cwd=str(Path(cwd).resolve()) if cwd is not None else None,
