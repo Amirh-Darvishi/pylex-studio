@@ -64,7 +64,7 @@ def _normalise_executable(value: os.PathLike | str) -> str:
     path = Path(executable)
     if not path.is_file():
         raise FileNotFoundError(f"Python interpreter is not a file: {path}")
-    return str(path.resolve())
+    return os.path.abspath(path)
 
 
 def probe_interpreter(executable: os.PathLike | str, timeout: float = 6.0) -> InterpreterInfo:
@@ -141,7 +141,7 @@ def discover_interpreters(extra_paths: Iterable[str] = (), timeout: float = 6.0)
             seen.add(key)
             results.append(info)
     return sorted(results, key=lambda item: (
-        item.is_venv, tuple(int(part) if part.isdigit() else 0
+        not item.is_venv, tuple(int(part) if part.isdigit() else 0
                             for part in item.version.split(".")[:3]),
         item.executable.lower(),
     ), reverse=True)

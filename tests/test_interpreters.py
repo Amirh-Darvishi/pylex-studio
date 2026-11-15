@@ -15,7 +15,7 @@ from pylex.interpreters import (
 class InterpreterTests(unittest.TestCase):
     def test_probe_current_interpreter(self):
         info = probe_interpreter(sys.executable)
-        self.assertEqual(Path(info.executable).resolve(), Path(sys.executable).resolve())
+        self.assertEqual(Path(os.path.abspath(info.executable)), Path(os.path.abspath(sys.executable)))
         self.assertTrue(info.version)
         self.assertIn(info.architecture, {"32-bit", "64-bit"})
 
@@ -31,7 +31,7 @@ class InterpreterTests(unittest.TestCase):
     def test_discovery_includes_current_interpreter_once(self):
         found = discover_interpreters()
         matches = [item for item in found
-                   if Path(item.executable).resolve() == Path(sys.executable).resolve()]
+                   if os.path.abspath(item.executable) == os.path.abspath(sys.executable)]
         self.assertEqual(len(matches), 1)
 
     def test_create_environment_and_find_project_environment(self):
@@ -40,8 +40,8 @@ class InterpreterTests(unittest.TestCase):
             env_path = root / ".venv"
             info = create_virtual_environment(sys.executable, env_path, timeout=60)
             self.assertTrue(info.is_venv)
-            self.assertEqual(Path(info.executable).resolve(),
-                             virtual_environment_python(env_path).resolve())
+            self.assertEqual(Path(os.path.abspath(info.executable)),
+                             Path(os.path.abspath(virtual_environment_python(env_path))))
             found = find_project_environment(root)
             self.assertIsNotNone(found)
             self.assertTrue(found.is_venv)

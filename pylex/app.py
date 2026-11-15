@@ -210,7 +210,6 @@ class PyLexApp(tk.Tk):
         actions.pack(fill="x", pady=(0, 4))
         ttk.Button(actions, text="Scan Current File", command=self.scan_dependencies).pack(side="left")
         ttk.Button(actions, text="Python Interpreter...", command=self.manage_interpreter).pack(side="left", padx=4)
-        ttk.Button(actions, text="Python Interpreter...", command=self.manage_interpreter).pack(side="left", padx=4)
         ttk.Button(actions, text="Copy Python Install Command", command=self.copy_install_command).pack(side="left", padx=4)
         self.dependency_environment = ttk.Label(frame, text="Python environment: not scanned")
         self.dependency_environment.pack(fill="x", pady=(2, 5))

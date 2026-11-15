@@ -1,5 +1,6 @@
 """Tests for project-aware process orchestration."""
 import tempfile
+import sys
 import unittest
 from unittest.mock import patch
 from pathlib import Path
