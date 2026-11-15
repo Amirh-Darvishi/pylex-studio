@@ -1,7 +1,7 @@
 """Integrated shell sessions with asynchronous, non-blocking output capture."""
 from __future__ import annotations
 import os
-from pathlib import Path, PureWindowsPath
+from pathlib import Path, PurePosixPath, PureWindowsPath
 import queue
 import shutil
 import shlex
@@ -58,7 +58,7 @@ def python_file_command(shell, python_executable, file_path):
     executable = str(python_executable)
     raw_path = str(file_path)
     windows_path = PureWindowsPath(raw_path)
-    if windows_path.is_absolute():
+    if windows_path.is_absolute() or PurePosixPath(raw_path).is_absolute():
         path = raw_path
     else:
         path = str(Path(file_path).expanduser().resolve())
