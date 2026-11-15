@@ -498,8 +498,7 @@ class QualityPanel(ttk.Frame):
                 self.notebook.select(0)
                 self._set_status(f"Discovered {len(self._tests)} test(s).")
             elif (
-                "No module named pytest" in stderr
-                or "No module named pytest" in stdout
+                "No module named pytest" in stderr or "No module named pytest" in stdout
             ):
                 self._tool_missing("pytest")
                 self._set_status(
