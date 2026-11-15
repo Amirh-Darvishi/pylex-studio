@@ -34,6 +34,10 @@ class PyLexApp(tk.Tk):
 
     def __init__(self):
         super().__init__()
+        try:
+            self.attributes("-alpha", 0.965)
+        except tk.TclError:
+            pass
         self._icon_cache = {}
         self._toolbar_icon_bindings = []
         self._tool_tab_icon_bindings = []
@@ -363,44 +367,54 @@ class PyLexApp(tk.Tk):
             brand, text="PyLex Studio", style="PyLex.Brand.TLabel"
         ).pack(side="left", padx=(9, 0))
 
-        actions = (
-            ("New", "file-earmark-plus", self.new_file, "accent"),
-            ("Open", "folder2-open", self.open_file, "muted"),
-            ("Workspace", "folder2-open", self.open_project_folder, "accent"),
-            ("Python", "filetype-py", self.manage_interpreter, "success"),
-            ("Save", "floppy", self.save_file, "muted"),
-            ("Terminal", "terminal", self.open_terminal, "violet"),
-            ("Quality", "check2-square", self.open_quality_tools, "success"),
-            ("Git", "git", self.open_git_tools, "violet"),
-            ("Analyze", "braces", self.analyze_all, "accent"),
-            ("Debug", "bug-fill", self.start_debugging, "warning"),
+        # Keep the command row focused: frequent workspace tools only.
+        action_groups = (
+            (
+                ("Workspace", "folder2-open", self.open_project_folder, "accent"),
+                ("Python", "filetype-py", self.manage_interpreter, "muted"),
+                ("Save", "floppy", self.save_file, "muted"),
+            ),
+            (
+                ("Terminal", "terminal", self.open_terminal, "muted"),
+                ("Quality", "check2-square", self.open_quality_tools, "muted"),
+                ("Git", "git", self.open_git_tools, "muted"),
+            ),
+            (
+                ("Analyze", "braces", self.analyze_all, "muted"),
+                ("Debug", "bug-fill", self.start_debugging, "muted"),
+            ),
         )
-        for label, icon_name, command, color_key in actions:
-            button = ttk.Button(
-                action_row, text=label, command=command,
-                style="PyLex.Toolbar.TButton",
-                image=self._icon(icon_name, self.theme_palette.get(color_key)),
-                compound="left",
-            )
-            button.pack(side="left", padx=2)
-            self._toolbar_icon_bindings.append((button, icon_name, color_key))
+        for group_index, group in enumerate(action_groups):
+            if group_index:
+                ttk.Separator(action_row, orient="vertical").pack(
+                    side="left", fill="y", padx=7, pady=5
+                )
+            for label, icon_name, command, color_key in group:
+                button = ttk.Button(
+                    action_row, text=label, command=command,
+                    style="PyLex.Toolbar.TButton",
+                    image=self._icon(icon_name, self.theme_palette.get(color_key)),
+                    compound="left",
+                )
+                button.pack(side="left", padx=1)
+                self._toolbar_icon_bindings.append((button, icon_name, color_key))
 
         spacer = ttk.Frame(action_row, style="PyLex.Toolbar.TFrame")
         spacer.pack(side="left", fill="x", expand=True)
         self.run_button = ttk.Button(
-            action_row, text="Run", command=self.run_code,
-            style="PyLex.Primary.TButton",
-            image=self._icon("play-fill", self.theme_palette.get("success")),
-            compound="left", width=9,
+            action_row, text="Run  F5", command=self.run_code,
+            style="PyLex.Run.TButton",
+            image=self._icon("play-fill", "#ffffff"),
+            compound="left", width=11,
         )
-        self.run_button.pack(side="left", padx=(6, 4))
+        self.run_button.pack(side="left", padx=(8, 5), ipady=2)
         self.stop_button = ttk.Button(
-            action_row, text="Stop", command=self.stop_execution,
-            style="PyLex.Danger.TButton",
+            action_row, text="Stop  Shift+F5", command=self.stop_execution,
+            style="PyLex.Stop.TButton",
             image=self._icon("stop-fill", self.theme_palette.get("danger")),
-            compound="left", width=9,
+            compound="left", width=13,
         )
-        self.stop_button.pack(side="left", padx=(0, 6))
+        self.stop_button.pack(side="left", padx=(0, 8), ipady=2)
         self._toolbar_icon_bindings.extend([
             (self.run_button, "play-fill", "success"),
             (self.stop_button, "stop-fill", "danger"),
@@ -560,6 +574,8 @@ class PyLexApp(tk.Tk):
 
     def _activity_action(self, view):
         """Route Activity Bar actions to existing workspace tools."""
+        for name, (button, _icon_name, _color_key) in self.activity_buttons.items():
+            button.state(["selected"] if name == view else ["!selected"])
         if view == "explorer":
             if not self.preferences["show_project_explorer"]:
                 self.toggle_project_explorer()
@@ -613,8 +629,10 @@ class PyLexApp(tk.Tk):
         shell = ttk.Frame(self)
         shell.pack(fill="both", expand=True, padx=8, pady=(2, 8))
         self.workspace_shell = shell
-        activity = ttk.Frame(shell, style="PyLex.Activity.TFrame", padding=(3, 7))
+        activity = ttk.Frame(shell, style="PyLex.Activity.TFrame", padding=(4, 9))
         activity.pack(side="left", fill="y")
+        activity.configure(width=66)
+        activity.pack_propagate(False)
         self.activity_buttons = {}
         for view, icon_name, label, color_key in (
             ("explorer", "folder2-open", "Explorer", "accent"),
@@ -626,21 +644,22 @@ class PyLexApp(tk.Tk):
             button = ttk.Button(
                 activity, text=label, command=lambda name=view: self._activity_action(name),
                 style="PyLex.Activity.TButton",
-                image=self._icon(icon_name, self.theme_palette.get(color_key)), compound="top",
+                image=self._icon(icon_name, self.theme_palette.get(color_key), size=19),
+                compound="top",
             )
-            button.pack(fill="x", pady=3, ipadx=2, ipady=5)
+            button.pack(fill="x", pady=4, ipadx=1, ipady=7)
             self.activity_buttons[view] = (button, icon_name, color_key)
         ttk.Separator(activity).pack(fill="x", pady=(10, 6))
         account_button = ttk.Button(
             activity, text="Account", command=self.show_account, style="PyLex.Activity.TButton",
-            image=self._icon("person-circle", self.theme_palette.get("muted")), compound="top",
+            image=self._icon("person-circle", self.theme_palette.get("muted"), size=19), compound="top",
         )
-        account_button.pack(side="bottom", fill="x", pady=3, ipady=5)
+        account_button.pack(side="bottom", fill="x", pady=4, ipady=7)
         settings_button = ttk.Button(
             activity, text="Manage", command=self.open_preferences, style="PyLex.Activity.TButton",
-            image=self._icon("gear-fill", self.theme_palette.get("muted")), compound="top",
+            image=self._icon("gear-fill", self.theme_palette.get("muted"), size=19), compound="top",
         )
-        settings_button.pack(side="bottom", fill="x", pady=3, ipady=5)
+        settings_button.pack(side="bottom", fill="x", pady=4, ipady=7)
         self.activity_account_button = (account_button, "person-circle", "muted")
         self.activity_settings_button = (settings_button, "gear-fill", "muted")
         workspace = ttk.Panedwindow(shell, orient="horizontal")
@@ -2846,7 +2865,7 @@ class PyLexApp(tk.Tk):
                     kind, foreground=palette.get(f"file_{kind}", palette["editor_fg"])
                 )
         if hasattr(self, "run_button"):
-            self.run_button.configure(image=self._icon("play-fill", palette["success"]))
+            self.run_button.configure(image=self._icon("play-fill", "#ffffff"))
             self.stop_button.configure(image=self._icon("stop-fill", palette["danger"]))
         if hasattr(self, "theme_button"):
             self.theme_button.configure(
