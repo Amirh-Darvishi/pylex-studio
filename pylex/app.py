@@ -1465,6 +1465,10 @@ class PyLexApp(tk.Tk):
             Path(path).expanduser().resolve().parent if path else Path.cwd()
         )
         env = project.execution_environment() if project else dict(os.environ)
+        if path:
+            env["PYLEX_ACTIVE_FILE"] = str(Path(path).expanduser().resolve())
+        if project:
+            env["PYLEX_WORKSPACE_ROOT"] = str(project.root)
         try:
             interpreter = self._interpreter_for_project(project).executable
         except (OSError, ValueError, TimeoutError):
