@@ -45,7 +45,7 @@ class TerminalHelperTests(unittest.TestCase):
         bash_command = python_file_command(
             "bash", "/opt/python/bin/python", "/home/user/My Project/main.py",
         )
-        self.assertIn("'My Project/main.py'", bash_command)
+        self.assertIn("'/home/user/My Project/main.py'", bash_command)
 
     def test_active_editor_context_is_preserved_in_terminal_environment(self):
         base = {
