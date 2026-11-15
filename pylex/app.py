@@ -25,6 +25,7 @@ from .interpreters import create_virtual_environment, discover_interpreters, ens
 from .terminal import TerminalPanel
 from .quality import QualityPanel
 from .git_panel import GitPanel
+from .ui.theme import ThemeManager
 
 
 class PyLexApp(tk.Tk):
@@ -41,6 +42,8 @@ class PyLexApp(tk.Tk):
         self.execution_service = ExecutionService()
         self.preferences = load_preferences()
         self.dark = self.preferences["theme"] == "dark"
+        self.theme_manager = ThemeManager(self)
+        self.theme_palette = self.theme_manager.apply(self.dark)
         self.diagnostics = []
         self.execution = None
         self._execution_poll = None
@@ -61,7 +64,9 @@ class PyLexApp(tk.Tk):
 
     def _menu(self):
         menu = tk.Menu(self)
+        self._menus = [menu]
         file_menu = tk.Menu(menu, tearoff=False)
+        self._menus.append(file_menu)
         for label, command in [
             ("New", self.new_file), ("Open...", self.open_file),
             ("Open Workspace...", self.open_project_folder),
@@ -72,6 +77,7 @@ class PyLexApp(tk.Tk):
         ]:
             file_menu.add_command(label=label, command=command)
         self.recent_workspace_menu = tk.Menu(file_menu, tearoff=False)
+        self._menus.append(self.recent_workspace_menu)
         file_menu.add_cascade(label="Open Recent Workspace", menu=self.recent_workspace_menu)
         file_menu.add_separator()
         file_menu.add_command(label="Exit", command=self.close)
@@ -79,6 +85,7 @@ class PyLexApp(tk.Tk):
         menu.add_cascade(label="File", menu=file_menu)
 
         edit_menu = tk.Menu(menu, tearoff=False)
+        self._menus.append(edit_menu)
         edit_menu.add_command(label="Find / Replace...", command=self.find_replace)
         edit_menu.add_command(label="Toggle Line Comment", command=lambda: self.editor._toggle_comment(), accelerator="Ctrl+/")
         edit_menu.add_command(label="Duplicate Line / Selection", command=lambda: self.editor._duplicate_line(), accelerator="Ctrl+D")
@@ -86,6 +93,7 @@ class PyLexApp(tk.Tk):
         menu.add_cascade(label="Edit", menu=edit_menu)
 
         tools_menu = tk.Menu(menu, tearoff=False)
+        self._menus.append(tools_menu)
         tools_menu.add_command(label="Python Interpreter...", command=self.manage_interpreter)
         tools_menu.add_command(label="Integrated Terminal", command=self.open_terminal)
         tools_menu.add_command(label="Formatter, Linter & Test Explorer", command=self.open_quality_tools)
@@ -121,6 +129,7 @@ class PyLexApp(tk.Tk):
         menu.add_cascade(label="Tools", menu=tools_menu)
 
         view_menu = tk.Menu(menu, tearoff=False)
+        self._menus.append(view_menu)
         view_menu.add_command(label="Preferences...", command=self.open_preferences)
         view_menu.add_command(label="Toggle Project Explorer", command=self.toggle_project_explorer)
         menu.add_cascade(label="View", menu=view_menu)
@@ -142,43 +151,80 @@ class PyLexApp(tk.Tk):
         self.bind_all("<Control-F10>", lambda event: self.debug_continue())
 
     def _toolbar(self):
-        bar = ttk.Frame(self, padding=6)
+        """Build a compact, grouped toolbar for the most common workflows."""
+        bar = ttk.Frame(self, style="PyLex.Toolbar.TFrame", padding=(12, 9))
         bar.pack(fill="x")
-        buttons = [
-            ("New", self.new_file), ("Open", self.open_file),
-            ("Open Workspace", self.open_project_folder),
-            ("Close Workspace", self.close_workspace),
-            ("Python", self.manage_interpreter),
-            ("Save", self.save_file), ("▶ Run", self.run_code), ("■ Force Stop", self.stop_execution), ("Terminal", self.open_terminal),
-            ("Quality", self.open_quality_tools), ("Git", self.open_git_tools),
-            ("Debug", self.start_debugging), ("Continue", self.debug_continue),
-            ("Step", self.debug_step), ("Next", self.debug_next),
-            ("Breakpoint", self.toggle_breakpoint), ("Temp BP", self.debug_temporary_breakpoint), ("Variables", self.debug_variables),
-            ("Stack", self.debug_stack),
-            ("Arguments", self.debug_arguments),
-            ("Until", self.debug_until),
-            ("Return", self.debug_return),
-            ("Evaluate", self.debug_evaluate),
-            ("Analyze All", self.analyze_all),
-            ("Lexical", self.analyze_lexical), ("Syntax", self.analyze_syntax),
-            ("Clear Results", self.clear_results),
-            ("Comment", lambda: self.editor._toggle_comment()),
-            ("Duplicate", lambda: self.editor._duplicate_line()),
-            ("A+", lambda: self.zoom(1)), ("A-", lambda: self.zoom(-1)),
-            ("Toggle Theme", self.toggle_theme),
-        ]
-        for label, action in buttons:
-            ttk.Button(bar, text=label, command=action).pack(side="left", padx=2)
+
+        brand = ttk.Label(
+            bar, text="PyLex Studio", style="PyLex.Brand.TLabel"
+        )
+        brand.pack(side="left", padx=(0, 18))
+
+        def add_group(title, actions):
+            group = ttk.Frame(bar, style="PyLex.Toolbar.TFrame")
+            group.pack(side="left", padx=(0, 12))
+            ttk.Label(
+                group, text=title.upper(), style="PyLex.Group.TLabel"
+            ).pack(anchor="w", padx=(2, 0), pady=(0, 3))
+            buttons = ttk.Frame(group, style="PyLex.Toolbar.TFrame")
+            buttons.pack(anchor="w")
+            for label, action, style_name in actions:
+                ttk.Button(
+                    buttons, text=label, command=action,
+                    style=style_name,
+                ).pack(side="left", padx=(0, 4))
+            return group
+
+        add_group("File", [
+            ("New", self.new_file, "PyLex.Toolbar.TButton"),
+            ("Open", self.open_file, "PyLex.Toolbar.TButton"),
+            ("Save", self.save_file, "PyLex.Toolbar.TButton"),
+        ])
+        add_group("Run", [
+            ("Run  F5", self.run_code, "PyLex.Primary.TButton"),
+            ("Stop", self.stop_execution, "PyLex.Danger.TButton"),
+        ])
+        add_group("Tools", [
+            ("Terminal", self.open_terminal, "PyLex.Toolbar.TButton"),
+            ("Quality", self.open_quality_tools, "PyLex.Toolbar.TButton"),
+            ("Git", self.open_git_tools, "PyLex.Toolbar.TButton"),
+        ])
+        add_group("Analysis", [
+            ("Analyze All", self.analyze_all, "PyLex.Toolbar.TButton"),
+            ("Debug", self.start_debugging, "PyLex.Toolbar.TButton"),
+        ])
+
+        spacer = ttk.Frame(bar, style="PyLex.Toolbar.TFrame")
+        spacer.pack(side="left", fill="x", expand=True)
+        ttk.Button(
+            bar, text="A−", width=3, command=lambda: self.zoom(-1),
+            style="PyLex.Toolbar.TButton",
+        ).pack(side="right", padx=(4, 0))
+        ttk.Button(
+            bar, text="A+", width=3, command=lambda: self.zoom(1),
+            style="PyLex.Toolbar.TButton",
+        ).pack(side="right", padx=(4, 0))
+        self.theme_button = ttk.Button(
+            bar, text="Light theme" if self.dark else "Dark theme",
+            command=self.toggle_theme, style="PyLex.Toolbar.TButton",
+        )
+        self.theme_button.pack(side="right", padx=(4, 0))
+        ttk.Button(
+            bar, text="Preferences", command=self.open_preferences,
+            style="PyLex.Toolbar.TButton",
+        ).pack(side="right", padx=(4, 0))
 
     def _workspace(self):
         workspace = ttk.Panedwindow(self, orient="horizontal")
         self.workspace = workspace
-        workspace.pack(fill="both", expand=True, padx=6, pady=5)
+        workspace.pack(fill="both", expand=True, padx=10, pady=(2, 8))
         self.project_root = None
         self.explorer_frame = ttk.Frame(workspace)
         explorer_header = ttk.Frame(self.explorer_frame, padding=(6, 5))
         explorer_header.pack(fill="x")
-        ttk.Label(explorer_header, text="WORKSPACE").pack(side="left")
+        ttk.Label(
+            explorer_header, text="EXPLORER", style="PyLex.Section.TLabel"
+        ).pack(side="left")
         ttk.Button(explorer_header, text="Close", command=self.close_workspace).pack(side="right", padx=(4, 0))
         ttk.Button(explorer_header, text="Open Folder", command=self.open_project_folder).pack(side="right")
         ttk.Button(explorer_header, text="↻", width=3, command=self.refresh_workspace).pack(side="right", padx=(0, 4))
@@ -228,7 +274,9 @@ class PyLexApp(tk.Tk):
         )
         self.tabs.add(self.git_panel, text="Git")
 
-        self.status = ttk.Label(self, text="Ready", padding=5)
+        self.status = ttk.Label(
+            self, text="Ready", style="PyLex.Status.TLabel"
+        )
         self.status.pack(fill="x")
 
     def _text_panel(self, title):
@@ -1800,21 +1848,34 @@ class PyLexApp(tk.Tk):
         self._persist_preferences()
 
     def _theme(self):
-        bg, fg = ("#1e1e1e", "#dddddd") if self.dark else ("#ffffff", "#202020")
+        palette = self.theme_manager.apply(self.dark)
+        self.theme_palette = palette
+        self.configure(bg=palette["window_bg"])
         for editor in self.documents:
             editor.set_theme(self.dark)
         for panel in (self.output, self.lexical, self.syntax):
-            panel.configure(bg=bg, fg=fg, insertbackground=fg)
+            panel.configure(
+                bg=palette["editor_bg"], fg=palette["editor_fg"],
+                insertbackground=palette["editor_fg"],
+                selectbackground=palette["selection_bg"],
+                selectforeground=palette["editor_fg"],
+            )
         self.terminal_panel.set_theme(self.dark)
-        style = ttk.Style(self)
-        if self.dark:
-            style.configure("Treeview", background="#252526", foreground="#dddddd",
-                            fieldbackground="#252526")
-            style.configure("Treeview.Heading", background="#333333", foreground="#ffffff")
-        else:
-            style.configure("Treeview", background="#ffffff", foreground="#202020",
-                            fieldbackground="#ffffff")
-            style.configure("Treeview.Heading", background="#eeeeee", foreground="#202020")
+        if hasattr(self, "theme_button"):
+            self.theme_button.configure(
+                text="Light theme" if self.dark else "Dark theme"
+            )
+        for menu in getattr(self, "_menus", []):
+            try:
+                menu.configure(
+                    background=palette["menu_bg"],
+                    foreground=palette["menu_fg"],
+                    activebackground=palette["accent"],
+                    activeforeground="#ffffff",
+                    borderwidth=0,
+                )
+            except tk.TclError:
+                pass
 
     def close(self):
         for editor, document in list(self.documents.items()):
