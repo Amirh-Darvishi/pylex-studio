@@ -5293,11 +5293,11 @@ class PyLexApp(tk.Tk):
             self._sync_active_document()
             if not self._confirm():
                 return
-        if self.execution is not None and not self.execution.done:
-            self.execution.force_stop()
-            self.execution.wait(timeout=2)
-        if self.debug_session is not None:
-            self.debug_session.close()
+        if self.execution_controller.stop():
+            handle = self.execution
+            handle.wait(timeout=2)
+            self.execution_controller.finish(handle)
+        self.debugger_controller.finish()
         self.terminal_panel.close_all()
         self.quality_panel.close()
         self.git_panel.close()
