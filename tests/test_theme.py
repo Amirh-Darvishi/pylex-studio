@@ -6,9 +6,9 @@ from pylex.ui.theme import THEMES, get_theme
 
 
 class ThemeDefinitionTests(unittest.TestCase):
-    def test_dark_theme_is_the_default_and_uses_vapor(self):
+    def test_dark_theme_is_the_default_and_uses_darkly(self):
         self.assertIs(get_theme("dark"), THEMES["dark"])
-        self.assertEqual(get_theme(None)["bootstrap_theme"], "vapor-dark")
+        self.assertEqual(get_theme(None)["bootstrap_theme"], "darkly")
 
     def test_light_theme_uses_minty(self):
         self.assertEqual(get_theme("light")["bootstrap_theme"], "minty-light")
