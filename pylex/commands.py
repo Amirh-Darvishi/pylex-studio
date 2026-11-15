@@ -31,8 +31,8 @@ class CommandRegistry:
     def register(self, command: Command) -> None:
         """Register a command, rejecting duplicate or empty identifiers."""
         command_id = command.command_id.strip()
-        if not command_id:
-            raise ValueError("A command ID is required.")
+        if not command_id or command_id != command.command_id:
+            raise ValueError("A non-empty, trimmed command ID is required.")
         if command_id in self._commands:
             raise ValueError(f"Command already registered: {command_id}")
         if not command.label.strip():
