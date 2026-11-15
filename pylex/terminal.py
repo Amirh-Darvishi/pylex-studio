@@ -58,7 +58,9 @@ def python_file_command(shell, python_executable, file_path):
     executable = str(python_executable)
     path = str(Path(file_path).expanduser().resolve())
     if shell == "powershell":
-        quote = lambda value: "'" + value.replace("'", "''") + "'"
+        def quote(value):
+            return "'" + value.replace("'", "''") + "'"
+
         return f"& {quote(executable)} {quote(path)}"
     if shell == "cmd":
         return subprocess.list2cmdline([executable, path])
