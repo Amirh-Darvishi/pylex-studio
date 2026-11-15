@@ -53,7 +53,7 @@ PyLex Studio 2.0.0 focuses on a polished, Python-first desktop IDE. The file-typ
 - Separate Output, Lexical Analysis, Syntax Analysis, and Errors panels
 - Analyze All and Clear Results actions
 - Dark and light application themes, with a dark default
-- VS Code-inspired Activity Bar and an Explorer with Open Editors and Workspace sections; recent workspaces are available from the File toolbar menu
+- VS Code-inspired Activity Bar and an Explorer with Open Editors and Workspace sections; recent workspaces are available from the File toolbar menu with open, reveal, terminal, copy-path and remove actions
 - Dedicated cascading menu row above the restored logo/action toolbar, with File, Edit, Navigate, Run, Debug, Code, Tools, View and Help groups
 - Consistent Run / Stop actions with matching dimensions and coordinated hover, pressed and disabled states across dark and light themes
 - Expanded Account Center and Settings windows with local profile, workspace overview, keyboard shortcuts, privacy, security and product roadmap sections
@@ -61,7 +61,7 @@ PyLex Studio 2.0.0 focuses on a polished, Python-first desktop IDE. The file-typ
 - Local Account center with a persistent display name; cloud sign-in and synchronization are not yet enabled
 - Original PyLex Studio vector brand mark in the application header and About window
 - Modern grouped toolbar and consistent application styling
-- Context-aware, theme-matched right-click menus with editor line operations, Git staging/diff actions, test/diagnostic actions and clipboard controls
+- Consistent custom right-click menus with live hover states, cascading submenus, editor line operations, advanced Workspace file/folder actions, terminal-at-folder, Git staging/diff actions, test/diagnostic actions and clipboard controls
 
 ## Requirements
 
