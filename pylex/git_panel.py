@@ -111,7 +111,6 @@ class GitPanel(ttk.Frame):
             service = self._ensure_service()
         except GitError as exc:
             self.branch_label.configure(text=str(exc))
-            self.status_callback(str(exc))
             return
         self._set_busy(True, label + "…")
 
