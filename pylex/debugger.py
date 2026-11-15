@@ -101,8 +101,15 @@ class DebugSession:
                         pending_completion = "finished"
                     elif line == "Uncaught exception. Entering post mortem debugging":
                         pending_completion = "error"
-                    elif pending_completion and line.startswith(expected_frame_prefix):
-                        self.completion_status = pending_completion
+                    elif (
+                        pending_completion == "error"
+                        and line == "Running 'cont' or 'step' will restart the program"
+                    ):
+                        self.completion_status = "error"
+                        self._completion_sent = True
+                        self.command("q")
+                    elif pending_completion == "finished" and line.startswith(expected_frame_prefix):
+                        self.completion_status = "finished"
                         self._completion_sent = True
                         self.command("q")
             tail = decoder.decode(b"", final=True)
