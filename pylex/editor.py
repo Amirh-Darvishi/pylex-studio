@@ -230,7 +230,8 @@ class CodeEditor(tk.Frame):
     def _update_matching_bracket(self):
         self.text.tag_remove("matching_bracket", "1.0", "end")
         source = self.get_content()
-        offset = int(self.text.count("1.0", "insert", "chars")[0])
+        cursor_count = self.text.count("1.0", "insert", "chars")
+        offset = cursor_count[0] if cursor_count else 0
         match = find_matching_bracket(source, offset)
         if match:
             for position in match:
