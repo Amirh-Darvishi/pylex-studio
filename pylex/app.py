@@ -401,7 +401,7 @@ class PyLexApp(tk.Tk):
         if values[1] != "missing":
             self.status.configure(text="The selected dependency is not missing.")
             return
-        env = python_environment()
+        env = python_environment(self._interpreter_for_project(self._project_for_document(self._active_document())).executable)
         command = f'"{env["executable"]}" -m pip install "{values[2]}"'
         self.clipboard_clear()
         self.clipboard_append(command)
