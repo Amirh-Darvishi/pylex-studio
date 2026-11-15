@@ -98,14 +98,22 @@ class DebugSession:
                         pending_completion = "finished"
                     elif line == "Uncaught exception. Entering post mortem debugging":
                         pending_completion = "error"
-                    elif pending_completion and line.startswith("> "):
-                        # Both normal completion and post-mortem exceptions return
-                        # to a pdb frame before presenting the next prompt. Do not
-                        # require an exact path match: Windows may report an 8.3
-                        # short path while tempfile returns the long path.
-                        self.completion_status = pending_completion
+                    elif pending_completion == "finished" and line.startswith("> "):
+                        # A successful run returns to the original script frame.
+                        self.completion_status = "finished"
                         self._completion_sent = True
                         self.command("q")
+                # Post-mortem pdb prints its prompt without a trailing newline.
+                # Wait for that prompt after the exception marker, then quit pdb.
+                # This also works when the frame path is abbreviated on Windows.
+                if (
+                    pending_completion == "error"
+                    and not self._completion_sent
+                    and "(Pdb) " in line_buffer
+                ):
+                    self.completion_status = "error"
+                    self._completion_sent = True
+                    self.command("q")
             tail = decoder.decode(b"", final=True)
             if tail:
                 self._output.put(tail)
