@@ -255,21 +255,28 @@ class PyLexApp(tk.Tk):
             self._toolbar_icon_bindings.append((button, icon_name, color_key))
             pending = {"id": None}
 
-            def open_on_hover(_event=None):
+            def cancel_pending():
                 if pending["id"] is not None:
-                    button.after_cancel(pending["id"])
-                pending["id"] = button.after(
-                    180,
-                    lambda: menu.post(
+                    try:
+                        button.after_cancel(pending["id"])
+                    except tk.TclError:
+                        pass
+                    pending["id"] = None
+
+            def post_menu():
+                pending["id"] = None
+                if button.winfo_exists():
+                    menu.post(
                         button.winfo_rootx(),
                         button.winfo_rooty() + button.winfo_height(),
-                    ),
-                )
+                    )
+
+            def open_on_hover(_event=None):
+                cancel_pending()
+                pending["id"] = button.after(180, post_menu)
 
             button.bind("<Enter>", open_on_hover, add="+")
-            button.bind("<Leave>", lambda _event: (
-                button.after_cancel(pending["id"]) if pending["id"] is not None else None
-            ), add="+")
+            button.bind("<Leave>", lambda _event: cancel_pending(), add="+")
             button.bind("<Button-1>", lambda _event: (
                 menu.post(button.winfo_rootx(), button.winfo_rooty() + button.winfo_height()),
                 "break",
@@ -359,10 +366,13 @@ class PyLexApp(tk.Tk):
         actions = (
             ("New", "file-earmark-plus", self.new_file, "accent"),
             ("Open", "folder2-open", self.open_file, "muted"),
+            ("Workspace", "folder2-open", self.open_project_folder, "accent"),
+            ("Python", "python", self.manage_interpreter, "success"),
             ("Save", "floppy", self.save_file, "muted"),
             ("Terminal", "terminal", self.open_terminal, "violet"),
             ("Quality", "check2-square", self.open_quality_tools, "success"),
             ("Git", "git", self.open_git_tools, "violet"),
+            ("Analyze", "braces", self.analyze_all, "accent"),
             ("Debug", "bug-fill", self.start_debugging, "warning"),
         )
         for label, icon_name, command, color_key in actions:
