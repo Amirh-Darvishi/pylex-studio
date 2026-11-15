@@ -4,6 +4,10 @@
 
 A lightweight Python desktop editor with independent lexical and syntax analysis.
 
+## Language roadmap
+
+PyLex Studio 2.0.0 focuses on a polished, Python-first desktop IDE. The file-type and editor presentation layers are being kept extensible so JavaScript, CSS, and HTML editing can be added in a later release without rebuilding the workspace UI.
+
 ## Features
 
 - Python code editor with line numbers
