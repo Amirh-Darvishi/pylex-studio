@@ -60,5 +60,40 @@ class DebuggerTests(unittest.TestCase):
             session.close()
 
 
+    def test_advanced_commands_validate_arguments(self):
+        session = DebugSession.start("value = 1\\n")
+        try:
+            self.assertTrue(session.set_conditional_breakpoint(1, "value == 1"))
+            self.assertTrue(session.set_temporary_breakpoint(1))
+            self.assertTrue(session.until(1))
+            self.assertTrue(session.return_from_frame())
+            self.assertTrue(session.jump(1))
+            self.assertTrue(session.show_arguments())
+            self.assertTrue(session.pretty_print("value"))
+            self.assertTrue(session.enable_breakpoint(1))
+            self.assertTrue(session.disable_breakpoint(1))
+            self.assertTrue(session.ignore_breakpoint(1, 2))
+            self.assertTrue(session.clear_all_breakpoints())
+        finally:
+            session.close()
+
+    def test_advanced_commands_reject_invalid_input(self):
+        session = DebugSession.start("value = 1\\n")
+        try:
+            for operation in (
+                lambda: session.set_breakpoint(0),
+                lambda: session.set_temporary_breakpoint(-1),
+                lambda: session.set_conditional_breakpoint(1, "value\\nquit"),
+                lambda: session.evaluate("value\\nquit"),
+                lambda: session.pretty_print("  "),
+                lambda: session.jump("not-a-line"),
+                lambda: session.ignore_breakpoint(1, 0),
+            ):
+                with self.assertRaises(ValueError):
+                    operation()
+        finally:
+            session.close()
+
+
 if __name__ == "__main__":
     unittest.main()
