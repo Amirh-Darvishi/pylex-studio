@@ -96,8 +96,12 @@ class DebugSession:
                     line = line.strip()
                     if line == "The program finished and will be restarted" or line == "The program exited":
                         pending_completion = "finished"
-                    elif line == "Uncaught exception. Entering post mortem debugging":
+                    elif "Uncaught exception. Entering post mortem debugging" in line:
                         pending_completion = "error"
+                        if "(Pdb) " in line:
+                            self.completion_status = "error"
+                            self._completion_sent = True
+                            self.command("q")
                     elif pending_completion == "finished" and line.startswith("> "):
                         # A successful run returns to the original script frame.
                         self.completion_status = "finished"
