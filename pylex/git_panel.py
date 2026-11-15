@@ -34,9 +34,10 @@ class GitPanel(ttk.Frame):
         actions = ttk.Frame(self)
         actions.pack(fill="x", pady=(0, 4))
         for label, command in [
-            ("Stage", self.stage_selected), ("Unstage", self.unstage_selected),
+            ("Stage", self.stage_selected), ("Stage All", self.stage_all),
+            ("Unstage", self.unstage_selected), ("Unstage All", self.unstage_all),
             ("Discard", self.discard_selected), ("Diff", self.show_diff),
-            ("History", self.show_history),
+            ("Staged Diff", self.show_staged_diff), ("History", self.show_history),
         ]:
             ttk.Button(actions, text=label, command=command).pack(side="left", padx=(0, 3))
 
@@ -177,8 +178,16 @@ class GitPanel(ttk.Frame):
     def stage_selected(self):
         self._each_selected("Staging", lambda service, path: service.stage(path))
 
+    def stage_all(self):
+        self._task("Staging all", lambda service: service.stage_all(),
+                   lambda _result: self.refresh())
+
     def unstage_selected(self):
         self._each_selected("Unstaging", lambda service, path: service.unstage(path))
+
+    def unstage_all(self):
+        self._task("Unstaging all", lambda service: service.unstage_all(),
+                   lambda _result: self.refresh())
 
     def discard_selected(self):
         paths = self._selected_paths()
@@ -193,12 +202,14 @@ class GitPanel(ttk.Frame):
         self._each_selected("Discarding", lambda service, path: service.discard(path))
 
     def show_diff(self):
+        self._show_diff(staged=False)
+
+    def show_staged_diff(self):
+        self._show_diff(staged=True)
+
+    def _show_diff(self, staged):
         selected = self._selected_paths()
         path = selected[0] if selected else None
-        staged = False
-        if path and self.service:
-            item = next((c for c in self.service.status().changes if c.path == path), None)
-            staged = bool(item and item.staged and not item.unstaged)
         def done(diff):
             window = tk.Toplevel(self)
             window.title("Git Diff" + (f" — {path}" if path else ""))
