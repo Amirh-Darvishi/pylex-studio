@@ -368,6 +368,23 @@ class PyLexApp(tk.Tk):
                 )
                 body.pack(fill="both", expand=True)
                 state["windows"].append(popup)
+                hover_jobs = []
+
+                def cancel_popup_hover_jobs(event=None, owner=popup, jobs=hover_jobs):
+                    # Destroy events also fire for child widgets; only the popup
+                    # that owns these callbacks should cancel this callback set.
+                    if event is not None and event.widget is not owner:
+                        return
+                    for hover_data in jobs:
+                        job_id = hover_data.get("job")
+                        if job_id is not None:
+                            try:
+                                self.after_cancel(job_id)
+                            except tk.TclError:
+                                pass
+                            hover_data["job"] = None
+
+                popup.bind("<Destroy>", cancel_popup_hover_jobs, add="+")
 
                 def show_submenu(item_button, submenu_items):
                     cancel_timer("submenu_id")
@@ -443,6 +460,7 @@ class PyLexApp(tk.Tk):
                     # Hover feedback belongs to every command row inside the popup,
                     # not merely to the File/Edit category button in the toolbar.
                     hover_state = {"job": None}
+                    hover_jobs.append(hover_state)
 
                     def highlight_menu_row(_event=None, target=row, button_widget=item_button,
                                             shortcut_widget=shortcut_label, hover_data=hover_state):
@@ -465,30 +483,41 @@ class PyLexApp(tk.Tk):
                             )
 
                     def clear_menu_row_hover(_event=None, target=row, button_widget=item_button,
-                                             shortcut_widget=shortcut_label, hover_data=hover_state):
+                                             shortcut_widget=shortcut_label, hover_data=hover_state,
+                                             owner_popup=popup):
                         def settle():
                             hover_data["job"] = None
                             try:
+                                # A delayed Leave callback may outlive its popup.
+                                # Check both widgets before querying geometry or styling.
+                                if not owner_popup.winfo_exists() or not target.winfo_exists():
+                                    return
                                 px, py = self.winfo_pointerxy()
                                 inside = (
                                     target.winfo_rootx() <= px < target.winfo_rootx() + target.winfo_width()
                                     and target.winfo_rooty() <= py < target.winfo_rooty() + target.winfo_height()
                                 )
-                            except tk.TclError:
-                                inside = False
-                            if not inside:
+                                if inside:
+                                    return
                                 normal_bg = self.theme_palette["menu_bg"]
                                 target.configure(background=normal_bg)
                                 button_widget.configure(
                                     background=normal_bg,
                                     foreground=self.theme_palette["menu_fg"],
                                 )
-                                if shortcut_widget is not None:
+                                if shortcut_widget is not None and shortcut_widget.winfo_exists():
                                     shortcut_widget.configure(
                                         background=normal_bg,
                                         foreground=self.theme_palette["muted"],
                                     )
-                        hover_data["job"] = self.after(45, settle)
+                            except tk.TclError:
+                                # The popup or one of its row widgets was destroyed
+                                # while this idle callback was waiting to run.
+                                return
+                        try:
+                            hover_data["job"] = self.after(45, settle)
+                        except tk.TclError:
+                            hover_data["job"] = None
 
                     for hover_widget in (row, item_button, shortcut_label):
                         if hover_widget is not None:
