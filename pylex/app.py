@@ -21,7 +21,7 @@ from .core.project import Project
 from .core.file_types import file_type_for, read_text_file
 from .services.execution import ExecutionService
 from .debugger import DebugSession
-from .preferences import load_preferences, save_preferences
+from .preferences import DEFAULTS, load_preferences, save_preferences
 from .interpreters import create_virtual_environment, discover_interpreters, ensure_pip, find_project_environment, probe_interpreter
 from .terminal import TerminalPanel
 from .quality import QualityPanel
@@ -319,19 +319,31 @@ class PyLexApp(tk.Tk):
             default_shell=self.preferences.get("terminal_shell", ""),
             on_shell_change=self._save_terminal_shell,
         )
-        self.tabs.add(self.terminal_panel, text="›  Terminal")
+        self.tabs.add(
+            self.terminal_panel, text="Terminal",
+            image=self._icon("terminal", self.theme_palette.get("accent")),
+            compound="left",
+        )
         self.quality_panel = QualityPanel(
             lower, self._quality_context, self._quality_document,
             self._apply_formatted_source, self._navigate_quality_diagnostic,
             status_callback=lambda message: self.status.configure(text=message),
             project_format_guard=self._can_format_project,
         )
-        self.tabs.add(self.quality_panel, text="✧  Quality")
+        self.tabs.add(
+            self.quality_panel, text="Quality",
+            image=self._icon("check2-square", self.theme_palette.get("success")),
+            compound="left",
+        )
         self.git_panel = GitPanel(
             lower, lambda: self.project.root if self.project else None,
             status_callback=lambda message: self.status.configure(text=message),
         )
-        self.tabs.add(self.git_panel, text="⑂  Git")
+        self.tabs.add(
+            self.git_panel, text="Git",
+            image=self._icon("git", self.theme_palette.get("violet")),
+            compound="left",
+        )
 
         self.status = ttk.Label(
             self, text="Ready", style="PyLex.Status.TLabel"
@@ -363,11 +375,16 @@ class PyLexApp(tk.Tk):
         frame.rowconfigure(row, weight=1)
         frame.columnconfigure(0, weight=1)
         panel_icons = {
-            "Output": "●  Output",
-            "Lexical Analysis": "⌁  Lexical",
-            "Syntax Analysis": "✓  Syntax",
+            "Output": ("terminal", "accent"),
+            "Lexical Analysis": ("braces", "violet"),
+            "Syntax Analysis": ("check-circle", "success"),
         }
-        self.tabs.add(frame, text=panel_icons.get(title, title))
+        icon_name, color_key = panel_icons.get(title, ("file-earmark-text", "muted"))
+        self.tabs.add(
+            frame, text=title,
+            image=self._icon(icon_name, self.theme_palette.get(color_key)),
+            compound="left",
+        )
         return text
 
     def _terminal_context(self):
@@ -509,7 +526,11 @@ class PyLexApp(tk.Tk):
         self.dependency_tree.pack(fill="both", expand=True)
         self.dependency_tree.tag_configure("missing", foreground="#d9534f")
         self.dependency_tree.tag_configure("installed", foreground="#5b9b68")
-        self.tabs.add(frame, text="▦  Dependencies")
+        self.tabs.add(
+            frame, text="Dependencies",
+            image=self._icon("boxes", self.theme_palette.get("warning")),
+            compound="left",
+        )
 
     def _interpreter_for_project(self, project=None):
         """Resolve project override, local .venv, global setting, or current Python."""
@@ -779,7 +800,11 @@ class PyLexApp(tk.Tk):
         self.error_tree.tag_configure("info", foreground="#4f8cff")
         self.error_tree.bind("<<TreeviewSelect>>", self._navigate_to_selected_error)
         self.error_tree.bind("<Double-1>", self._navigate_to_selected_error)
-        self.tabs.add(frame, text="⚠  Problems")
+        self.tabs.add(
+            frame, text="Problems",
+            image=self._icon("exclamation-triangle", self.theme_palette.get("danger")),
+            compound="left",
+        )
 
     def _show(self, panel, content):
         panel.configure(state="normal")
@@ -1866,15 +1891,38 @@ class PyLexApp(tk.Tk):
         workspace_page = ttk.Frame(notebook, padding=16)
         execution_page = ttk.Frame(notebook, padding=16)
         help_page = ttk.Frame(notebook, padding=16)
+        languages_page = ttk.Frame(notebook, padding=16)
         pages = (
             (appearance, "Appearance"), (editor_page, "Editor"),
             (workspace_page, "Workspace"), (execution_page, "Execution"),
-            (help_page, "Help"),
+            (languages_page, "Languages"), (help_page, "Help"),
         )
         for page, label in pages:
             notebook.add(page, text=label)
         if initial_tab == "help":
             notebook.select(help_page)
+
+        ttk.Label(
+            languages_page, text="Language roadmap",
+            style="PyLex.DialogTitle.TLabel",
+        ).pack(anchor="w", pady=(0, 8))
+        ttk.Label(
+            languages_page,
+            text="The workspace already recognizes common web file types. Full syntax highlighting, "
+                 "language-aware editing and analysis will be enabled incrementally in a later release.",
+            style="PyLex.Muted.TLabel", wraplength=560,
+        ).pack(anchor="w", pady=(0, 14))
+        for name, status, color_key, description in (
+            ("Python", "Available now", "success", "Editing, highlighting, analysis, execution and debugging"),
+            ("JavaScript", "Planned", "warning", "Dedicated lexer, completion and diagnostics"),
+            ("HTML", "Planned", "warning", "Markup highlighting and document-aware editing"),
+            ("CSS", "Planned", "warning", "Stylesheet highlighting and language-aware tooling"),
+        ):
+            row = ttk.Frame(languages_page, padding=(10, 8))
+            row.pack(fill="x", pady=3)
+            ttk.Label(row, text=name, style="PyLex.Field.TLabel", width=16).pack(side="left")
+            ttk.Label(row, text=status, foreground=self.theme_palette[color_key], width=14).pack(side="left")
+            ttk.Label(row, text=description, style="PyLex.Muted.TLabel").pack(side="left", padx=(8, 0))
 
         theme_var = tk.StringVar(value=self.preferences["theme"])
         ttk.Label(appearance, text="Color theme", style="PyLex.Field.TLabel").grid(
@@ -2003,6 +2051,21 @@ class PyLexApp(tk.Tk):
         buttons = ttk.Frame(shell)
         buttons.pack(fill="x", pady=(12, 0))
 
+        def reset_defaults():
+            theme_var.set(DEFAULTS["theme"])
+            ui_font_var.set(
+                DEFAULTS["ui_font_family"]
+                if DEFAULTS["ui_font_family"] in ui_fonts else ui_fonts[0]
+            )
+            ui_size_var.set(DEFAULTS["ui_font_size"])
+            code_font_var.set(DEFAULTS["font_family"])
+            code_size_var.set(DEFAULTS["font_size"])
+            explorer_var.set(DEFAULTS["show_project_explorer"])
+            timeout_var.set(
+                "Unlimited" if DEFAULTS["timeout_seconds"] is None
+                else f"{DEFAULTS['timeout_seconds']} seconds"
+            )
+
         def apply():
             try:
                 code_size = max(8, min(32, int(code_size_var.get())))
@@ -2041,6 +2104,7 @@ class PyLexApp(tk.Tk):
 
         ttk.Button(buttons, text="Apply", command=apply, style="PyLex.Primary.TButton").pack(side="right", padx=(6, 0))
         ttk.Button(buttons, text="Cancel", command=dialog.destroy).pack(side="right")
+        ttk.Button(buttons, text="Reset to Defaults", command=reset_defaults).pack(side="left")
 
     def show_about(self):
         """Show product identity and version outside the main title area."""
