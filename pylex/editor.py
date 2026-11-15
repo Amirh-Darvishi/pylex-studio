@@ -1,4 +1,6 @@
 """Tkinter code editor with Pygments highlighting and diagnostic navigation."""
+import builtins
+import keyword
 import tkinter as tk
 from tkinter import font as tkfont
 
@@ -19,6 +21,9 @@ class CodeEditor(tk.Frame):
         self.editor_font = tkfont.Font(family="Consolas", size=self.font_size)
         self._highlight_job = None
         self._diagnostic_location = None
+        self._completion_window = None
+        self._completion_list = None
+        self._breakpoints = set()
 
         self.gutter = tk.Text(
             self, width=5, padx=5, takefocus=0, state="disabled",
@@ -43,6 +48,8 @@ class CodeEditor(tk.Frame):
         self.text.bind("<ButtonRelease-1>", self._cursor_changed)
         self.text.bind("<MouseWheel>", self._cursor_changed, add="+")
         self.text.bind("<Tab>", self._tab)
+        self.text.bind("<KeyPress>", self._auto_pair, add="+")
+        self.text.bind("<Control-space>", self.show_completions)
         self.text.bind("<Control-a>", self._select_all)
         self._configure_tags()
         self.text.edit_modified(False)
@@ -103,12 +110,119 @@ class CodeEditor(tk.Frame):
         self.text.tag_add("sel", "1.0", "end-1c")
         return "break"
 
+    def _auto_pair(self, event):
+        """Insert matching brackets and quotes, or skip an existing closer."""
+        char = event.char
+        pairs = {"(": ")", "[": "]", "{": "}", '"': '"', "'": "'"}
+        if char in {")", "]", "}"} or char in {"'", '"'}:
+            if self.text.get("insert") == char:
+                self.text.mark_set("insert", "insert+1c")
+                return "break"
+            if char not in pairs:
+                return None
+        if char not in pairs:
+            return None
+        if char in {"'", '"'} and self.text.get("insert-1c", "insert") == "\\":
+            return None
+
+        try:
+            selected = self.text.get("sel.first", "sel.last")
+            start = self.text.index("sel.first")
+            self.text.delete("sel.first", "sel.last")
+        except tk.TclError:
+            selected = ""
+            start = self.text.index("insert")
+
+        self.text.insert(start, char + selected + pairs[char])
+        # Place the caret immediately after the opening character, before
+        # the selected text (if any) and its closing delimiter.
+        self.text.mark_set("insert", f"{start}+1c")
+        return "break"
+
+    def show_completions(self, event=None):
+        """Show lightweight keyword and built-in completion suggestions."""
+        prefix_start = self.text.index("insert wordstart")
+        prefix = self.text.get(prefix_start, "insert")
+        if not prefix:
+            return "break"
+        candidates = sorted(set(keyword.kwlist) | set(dir(builtins)))
+        matches = [item for item in candidates if item.startswith(prefix) and item != prefix]
+        if not matches:
+            self._hide_completions()
+            return "break"
+
+        self._hide_completions()
+        self._completion_start = prefix_start
+        self._completion_end = self.text.index("insert")
+        self._completion_window = tk.Toplevel(self)
+        self._completion_window.wm_overrideredirect(True)
+        self._completion_list = tk.Listbox(
+            self._completion_window, height=min(8, len(matches)), exportselection=False,
+        )
+        self._completion_list.pack()
+        for item in matches[:100]:
+            self._completion_list.insert("end", item)
+        bbox = self.text.bbox("insert")
+        if bbox:
+            x, y, _, height = bbox
+            geometry = "+{}+{}".format(
+                self.text.winfo_rootx() + x,
+                self.text.winfo_rooty() + y + height,
+            )
+            self._completion_window.geometry(geometry)
+        self._completion_list.selection_set(0)
+        self._completion_list.bind("<Return>", self._apply_completion)
+        self._completion_list.bind("<Double-Button-1>", self._apply_completion)
+        self._completion_list.bind("<Escape>", self._cancel_completions)
+        self._completion_list.bind("<Up>", self._completion_move)
+        self._completion_list.bind("<Down>", self._completion_move)
+        self._completion_list.focus_set()
+        return "break"
+
+    def _completion_move(self, event):
+        """Keep keyboard navigation inside the completion list."""
+        if self._completion_list is not None:
+            size = self._completion_list.size()
+            if size:
+                current = self._completion_list.curselection()
+                index = current[0] if current else 0
+                index = max(0, min(size - 1, index + (1 if event.keysym == "Down" else -1)))
+                self._completion_list.selection_clear(0, "end")
+                self._completion_list.selection_set(index)
+                self._completion_list.activate(index)
+                self._completion_list.see(index)
+        return "break"
+
+    def _cancel_completions(self, event=None):
+        self._hide_completions()
+        self.text.focus_set()
+        return "break"
+
+    def _apply_completion(self, event=None):
+        if self._completion_list is None:
+            return "break"
+        selection = self._completion_list.curselection()
+        if selection:
+            value = self._completion_list.get(selection[0])
+            self.text.delete(self._completion_start, self._completion_end)
+            self.text.insert(self._completion_start, value)
+            self.text.mark_set("insert", f"{self._completion_start}+{len(value)}c")
+        self._hide_completions()
+        self.text.focus_set()
+        return "break"
+
+    def _hide_completions(self):
+        if self._completion_window is not None:
+            self._completion_window.destroy()
+        self._completion_window = None
+        self._completion_list = None
+
     def refresh_lines(self):
         count = max(1, int(self.text.index("end-1c").split(".")[0]))
         current = int(self.text.index("insert").split(".")[0])
         self.gutter.configure(state="normal")
         self.gutter.delete("1.0", "end")
-        self.gutter.insert("1.0", "\n".join(str(i) for i in range(1, count + 1)))
+        self.gutter.insert("1.0", "\n".join(("● " if i in self._breakpoints else "  ") + str(i) for i in range(1, count + 1)))
         self.gutter.tag_remove("gutter_current", "1.0", "end")
         self.gutter.tag_remove("gutter_error", "1.0", "end")
         self.gutter.tag_add("gutter_current", f"{current}.0", f"{current}.end")
@@ -117,6 +231,11 @@ class CodeEditor(tk.Frame):
             if 1 <= line <= count:
                 self.gutter.tag_add("gutter_error", f"{line}.0", f"{line}.end")
         self.gutter.configure(state="disabled")
+
+    def set_breakpoints(self, lines):
+        """Display breakpoint markers beside the corresponding line numbers."""
+        self._breakpoints = {int(line) for line in lines if int(line) > 0}
+        self.refresh_lines()
 
     def update_current_line(self, event=None):
         self.text.tag_remove("current_line", "1.0", "end")
@@ -228,5 +347,10 @@ class CodeEditor(tk.Frame):
         self.refresh_gutter_marks()
 
     def set_font_size(self, size):
-        self.font_size = max(7, min(40, size))
+        self.font_size = max(7, min(40, int(size)))
         self.editor_font.configure(size=self.font_size)
+
+    def set_font_family(self, family):
+        family = str(family).strip()
+        if family:
+            self.editor_font.configure(family=family)
