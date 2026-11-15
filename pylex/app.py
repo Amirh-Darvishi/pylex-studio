@@ -810,6 +810,16 @@ class PyLexApp(tk.Tk):
                 compound="top",
             )
             button.pack(fill="x", pady=4, ipadx=1, ipady=7)
+            button.bind(
+                "<Leave>",
+                lambda _event, target=button: target.state(["!active", "!selected"]),
+                add="+",
+            )
+            button.bind(
+                "<FocusOut>",
+                lambda _event, target=button: target.state(["!active", "!selected"]),
+                add="+",
+            )
             self.activity_buttons[view] = (button, icon_name, color_key)
         ttk.Separator(activity).pack(fill="x", pady=(10, 6))
         account_button = ttk.Button(
