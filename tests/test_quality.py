@@ -1,4 +1,5 @@
 """Tests for quality-tool command construction and output parsing."""
+
 import json
 import unittest
 
@@ -17,14 +18,16 @@ class QualityToolTests(unittest.TestCase):
             tool_argv("python", "unknown-tool", [])
 
     def test_ruff_json_diagnostics_are_normalized(self):
-        payload = [{
-            "filename": "sample.py",
-            "code": "F401",
-            "message": "Unused import",
-            "location": {"row": 3, "column": 1},
-            "end_location": {"row": 3, "column": 12},
-            "fix": {"message": "Remove import"},
-        }]
+        payload = [
+            {
+                "filename": "sample.py",
+                "code": "F401",
+                "message": "Unused import",
+                "location": {"row": 3, "column": 1},
+                "end_location": {"row": 3, "column": 12},
+                "fix": {"message": "Remove import"},
+            }
+        ]
         result = parse_ruff_diagnostics(json.dumps(payload))
         self.assertEqual(result[0]["path"], "sample.py")
         self.assertEqual(result[0]["line"], 3)
