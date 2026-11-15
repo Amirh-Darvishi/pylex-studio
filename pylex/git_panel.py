@@ -116,7 +116,9 @@ class GitPanel(ttk.Frame):
     def _set_widget_state(widget, state):
         try:
             if isinstance(widget, ttk.Combobox):
-                widget.configure(state="disabled" if state == "disabled" else "readonly")
+                widget.configure(
+                    state="disabled" if state == "disabled" else "readonly"
+                )
             elif isinstance(widget, (ttk.Button, ttk.Entry)):
                 widget.configure(state=state)
         except tk.TclError:
