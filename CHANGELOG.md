@@ -19,8 +19,10 @@
 - Added an original PyLex Studio vector logo at `assets/pylex-logo.svg` and reused its visual mark in the app header and About window.
 - Moved Recent Workspaces out of Explorer into the File toolbar menu, with open, copy-path, remove and clear actions.
 - Added configurable, persistent status-bar indicators with an inline right-click menu for visibility, indentation, encoding and line-ending settings; no separate configuration dialog is required.
-- Expanded context-aware right-click menus with editor line operations, selection-aware clipboard actions, Git staging/diff/discard operations, test and diagnostic actions, and theme-matched menus across the editor, Explorer, tabs, Activity Bar and tool panels.
-- Added immediate hover highlighting to every categorized toolbar menu and quick-action button.
+- Replaced native-looking context menus with a shared, theme-aware popup system featuring clear spacing, high-contrast hover states, disabled-item styling, cascading submenus, and consistent behavior across the editor, Explorer, tabs, Activity Bar, Status Bar, terminal, Git, diagnostics and tests.
+- Expanded Workspace right-click actions with folder-aware create/open/rename/delete operations, relative-path copying, file-manager reveal, terminal launch at the selected directory, workspace refresh and close actions.
+- Added an action-rich Recent Workspaces submenu with open, reveal, terminal, copy-path and remove actions.
+- Added immediate row-level hover highlighting to every command inside categorized Toolbar dropdowns, including shortcut labels and submenu entries.
 
 ### Design goals
 - Keep file-type presentation extensible for future JavaScript, CSS, and HTML editing support.
