@@ -24,6 +24,7 @@ class CodeEditor(tk.Frame):
         self.on_change = on_change
         self.on_cursor_change = on_cursor_change
         self.font_size = 12
+        self.indent_string = "    "
         self.editor_font = tkfont.Font(family="Consolas", size=self.font_size)
         self._highlight_job = None
         self._diagnostic_location = None
@@ -179,13 +180,15 @@ class CodeEditor(tk.Frame):
         self.gutter.yview_moveto(first)
 
     def _tab(self, event=None):
-        self.text.insert("insert", "    ")
+        self.text.insert("insert", self.indent_string)
         return "break"
 
     def _smart_newline(self, event=None):
         """Continue indentation and add one level after a Python suite header."""
         prefix = self.text.get("insert linestart", "insert")
         indentation = indentation_for_newline(prefix)
+        if prefix.rstrip().endswith(":") and indentation.endswith("    "):
+            indentation = indentation[:-4] + self.indent_string
         self.text.insert("insert", "\n" + indentation)
         # Keep the insertion point visible and move the gutter in lockstep.
         self.text.see("insert")
