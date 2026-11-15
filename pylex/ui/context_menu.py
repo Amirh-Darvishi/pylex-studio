@@ -18,6 +18,8 @@ class ContextMenu:
         self._submenu = None
         self._parent_menu = None
         self._closed = False
+        self._row_widgets = []
+        self._active_row_index = -1
 
     def add_command(self, *, label, command=None, state="normal", accelerator="", **_kwargs):
         self.items.append({
@@ -119,6 +121,8 @@ class ContextMenu:
         body = tk.Frame(shell, background=surface, padx=4, pady=5)
         body.pack(fill="both", expand=True)
 
+        self._row_widgets = []
+        self._active_row_index = -1
         for item in self.items:
             kind = item["kind"]
             if kind == "separator":
@@ -159,6 +163,8 @@ class ContextMenu:
                     padx=10,
                 ).pack(side="right")
 
+            row_index = len(self._row_widgets)
+            self._row_widgets.append((row, text_label, enabled, item))
             hover_job = {"id": None}
 
             def set_row_hover(target, target_label, active, color, normal_fg=fg):
@@ -181,6 +187,7 @@ class ContextMenu:
                     except (tk.TclError, AttributeError):
                         pass
                     hover_data["id"] = None
+                self._active_row_index = row_index
                 set_row_hover(target, target_label, active, self._color("elevated", "#303B49"), normal_fg)
 
             def unhover(_event, target=row, target_label=text_label, active=enabled,
@@ -207,12 +214,9 @@ class ContextMenu:
                 continue
             if kind == "cascade":
                 child_menu = item["menu"]
-                for widget in (row, text_label):
-                    widget.bind(
-                        "<Enter>",
-                        lambda event, r=row, child=child_menu: self._open_submenu(r, child),
-                        add="+",
-                    )
+                for widget in (row, *row.winfo_children()):
+                    widget.bind("<Enter>", lambda event, r=row, child=child_menu: self._open_submenu(r, child), add="+")
+                    widget.bind("<Button-1>", lambda event, r=row, child=child_menu: self._open_submenu(r, child), add="+")
             elif kind == "check":
                 def toggle(entry=item):
                     entry["variable"].set(not bool(entry["variable"].get()))
@@ -220,7 +224,7 @@ class ContextMenu:
                     if callback:
                         callback()
                     self._dismiss()
-                for widget in (row, text_label):
+                for widget in (row, *row.winfo_children()):
                     widget.bind("<Button-1>", lambda event, fn=toggle: fn(), add="+")
             elif kind == "radio":
                 def choose(entry=item):
@@ -229,14 +233,82 @@ class ContextMenu:
                     if callback:
                         callback()
                     self._dismiss()
-                for widget in (row, text_label):
+                for widget in (row, *row.winfo_children()):
                     widget.bind("<Button-1>", lambda event, fn=choose: fn(), add="+")
             else:
                 callback = lambda entry=item: self._invoke(entry)
-                for widget in (row, text_label):
+                for widget in (row, *row.winfo_children()):
                     widget.bind("<Button-1>", lambda event, fn=callback: fn(), add="+")
         self.window.update_idletasks()
         self.window.bind("<Escape>", lambda _event: self._root_menu()._dismiss(), add="+")
+        self.window.bind("<Down>", lambda _event: self._move_selection(1), add="+")
+        self.window.bind("<Up>", lambda _event: self._move_selection(-1), add="+")
+        self.window.bind("<Return>", self._activate_selection, add="+")
+        self.window.bind("<KP_Enter>", self._activate_selection, add="+")
+        self.window.bind("<Right>", self._open_selected_submenu, add="+")
+        self.window.bind("<Left>", self._close_to_parent, add="+")
+
+    def _move_selection(self, direction):
+        if not self._row_widgets:
+            return "break"
+        count = len(self._row_widgets)
+        index = self._active_row_index
+        for _ in range(count):
+            index = (index + direction) % count
+            row, label, enabled, item = self._row_widgets[index]
+            if enabled:
+                self._active_row_index = index
+                for current, current_label, current_enabled, _entry in self._row_widgets:
+                    color = self._color("elevated", "#303B49") if current is row else self._color("menu_bg", "#202936")
+                    current.configure(background=color)
+                    for child_widget in current.winfo_children():
+                        child_widget.configure(background=color)
+                        if child_widget is current_label:
+                            child_widget.configure(
+                                foreground=self._color("accent", "#8FB7D8") if current is row
+                                else (self._color("menu_fg", "#D8DEE8") if current_enabled else self._color("muted", "#8290A2"))
+                            )
+                break
+        return "break"
+
+    def _activate_selection(self, _event=None):
+        if 0 <= self._active_row_index < len(self._row_widgets):
+            row, _label, enabled, item = self._row_widgets[self._active_row_index]
+            if enabled:
+                if item["kind"] == "cascade":
+                    self._open_submenu(row, item["menu"])
+                elif item["kind"] == "check":
+                    item["variable"].set(not bool(item["variable"].get()))
+                    callback = item.get("command")
+                    if callback:
+                        callback()
+                    self._root_menu()._dismiss()
+                elif item["kind"] == "radio":
+                    item["variable"].set(item["value"])
+                    callback = item.get("command")
+                    if callback:
+                        callback()
+                    self._root_menu()._dismiss()
+                else:
+                    self._invoke(item)
+        return "break"
+
+    def _open_selected_submenu(self, _event=None):
+        if 0 <= self._active_row_index < len(self._row_widgets):
+            row, _label, enabled, item = self._row_widgets[self._active_row_index]
+            if enabled and item["kind"] == "cascade":
+                self._open_submenu(row, item["menu"])
+        return "break"
+
+    def _close_to_parent(self, _event=None):
+        if self._parent_menu is not None:
+            parent = self._parent_menu
+            self._dismiss()
+            if parent.window is not None:
+                parent.window.focus_force()
+        else:
+            self._root_menu()._dismiss()
+        return "break"
 
     def tk_popup(self, x, y, *_args):
         self._closed = False
