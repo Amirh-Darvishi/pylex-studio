@@ -202,33 +202,80 @@ class QualityPanel(ttk.Frame):
         self.output.bind("<Button-3>", self._show_output_context_menu, add="+")
         self.notebook.add(output_frame, text="Tool Output")
 
+    def _context_menu(self):
+        palette = getattr(self.winfo_toplevel(), "theme_palette", {})
+        return tk.Menu(
+            self, tearoff=False,
+            background=palette.get("menu_bg", "#252D38"),
+            foreground=palette.get("menu_fg", "#D8DEE8"),
+            activebackground=palette.get("elevated", "#303B49"),
+            activeforeground=palette.get("accent", "#8FB7D8"),
+            disabledforeground=palette.get("muted", "#9AA7B7"),
+            borderwidth=1, relief="solid",
+        )
+
     def _show_tree_context_menu(self, tree, event, tests=False):
         row = tree.identify_row(event.y)
+        column = tree.identify_column(event.x)
         if row:
-            tree.selection_set(row)
-        menu = tk.Menu(self, tearoff=False)
+            if row not in tree.selection():
+                tree.selection_set(row)
+            tree.focus(row)
+        menu = self._context_menu()
         if row:
-            values = tree.item(row, 'values')
-            menu.add_command(label='Copy Row', command=lambda: self._copy_context_text(' | '.join(map(str, values))))
+            values = tree.item(row, "values")
+            menu.add_command(
+                label="Copy Row",
+                command=lambda: self._copy_context_text(" | ".join(map(str, values))),
+            )
+            if column and column != "#0":
+                index = int(column[1:]) - 1
+                if 0 <= index < len(values):
+                    menu.add_command(
+                        label="Copy Cell",
+                        command=lambda value=values[index]: self._copy_context_text(value),
+                    )
+            menu.add_separator()
             if tests:
-                menu.add_command(label='Run Selected Test', command=self.run_selected_test)
+                menu.add_command(label="Run Selected Test", command=self.run_selected_test)
             else:
-                menu.add_command(label='Open Diagnostic', command=self._open_diagnostic)
+                menu.add_command(label="Open Diagnostic", command=self._open_diagnostic)
+                menu.add_command(label="Copy Diagnostic Message",
+                                 command=lambda: self._copy_context_text(values[-1] if values else ""))
         if tests:
-            menu.add_command(label='Run All Tests', command=self.run_all_tests)
-        menu.tk_popup(event.x_root, event.y_root)
-        return 'break'
+            menu.add_command(label="Discover Tests", command=self.discover_tests)
+            menu.add_command(label="Run All Tests", command=self.run_all_tests)
+        else:
+            menu.add_command(label="Select All Diagnostics",
+                             command=lambda: tree.selection_set(tree.get_children("")))
+        try:
+            menu.tk_popup(event.x_root, event.y_root)
+        finally:
+            menu.grab_release()
+        return "break"
 
     def _copy_context_text(self, value):
         self.clipboard_clear()
         self.clipboard_append(str(value))
 
     def _show_output_context_menu(self, event):
-        menu = tk.Menu(self, tearoff=False)
-        menu.add_command(label='Copy', command=lambda: self.output.event_generate('<<Copy>>'))
-        menu.add_command(label='Select All', command=lambda: self.output.tag_add('sel', '1.0', 'end-1c'))
-        menu.tk_popup(event.x_root, event.y_root)
-        return 'break'
+        menu = self._context_menu()
+        try:
+            selected = bool(self.output.tag_ranges("sel"))
+        except tk.TclError:
+            selected = False
+        menu.add_command(label="Copy Selection",
+                         command=lambda: self.output.event_generate("<<Copy>>"),
+                         state="normal" if selected else "disabled")
+        menu.add_command(label="Select All",
+                         command=lambda: self.output.tag_add("sel", "1.0", "end-1c"))
+        menu.add_separator()
+        menu.add_command(label="Clear Tool Output", command=self._clear_output)
+        try:
+            menu.tk_popup(event.x_root, event.y_root)
+        finally:
+            menu.grab_release()
+        return "break"
 
     def _scroll_output_horizontally(self, event):
         """Scroll tool output horizontally while Shift and the wheel are used."""
