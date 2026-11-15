@@ -243,12 +243,10 @@ class PyLexApp(tk.Tk):
         """Return the current workspace, environment, and selected interpreter."""
         document = self._active_document()
         path = document.get("path") if document else self.current_path
-        project = self.project
-        if project is None and path:
-            try:
-                project = Project.from_file(path)
-            except (OSError, ValueError):
-                project = None
+        try:
+            project = self._project_for_document(document)
+        except (OSError, ValueError):
+            project = self.project
         cwd = project.working_directory_for(path) if project else (
             Path(path).expanduser().resolve().parent if path else Path.cwd()
         )
