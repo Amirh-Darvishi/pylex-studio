@@ -10,6 +10,7 @@ All notable changes to PyLex Studio are documented here.
 - Global and per-workspace interpreter selection with persistent preferences.
 - Automatic detection of project .venv, venv, and env environments.
 - Background creation of project .venv with protection against overwriting non-empty directories.
+- Added pip availability reporting and an asynchronous ensurepip repair action.
 - Run, Debug, dependency inspection, and pip commands routed through the selected interpreter.
 - Added interpreter discovery, validation, venv creation, package-manager, preference, and execution-routing tests.
 

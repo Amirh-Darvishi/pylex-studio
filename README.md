@@ -18,6 +18,7 @@ A lightweight Python desktop editor with independent lexical and syntax analysis
 - Discover and validate installed Python interpreters, including Windows Python launcher installations
 - Select a global or per-workspace Python interpreter and automatically detect project virtual environments
 - Create a project .venv without overwriting existing files
+- Check pip availability and repair/bootstrap pip in the selected interpreter
 - Run, debug, inspect dependencies, and generate pip commands with the exact selected interpreter
 - Preflight dependency checks before execution, plus runtime missing-module diagnostics
 - Open and save multiple files in independent editor tabs
