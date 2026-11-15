@@ -65,9 +65,11 @@ def _normalise_executable(value: os.PathLike | str) -> str:
     path = Path(executable)
     if not path.is_file():
         raise FileNotFoundError(f"Python interpreter is not a file: {path}")
-    # Resolve Windows 8.3 short names (for example, USERNA~1) so the
-    # selected interpreter path remains stable in the UI and preferences.
-    return os.path.realpath(os.path.abspath(path))
+    # Resolve Windows 8.3 short names (for example, USERNA~1), but do
+    # not resolve POSIX symlinks: venv/bin/python is often a symlink to the
+    # base interpreter, and resolving it would make the venv look non-venv.
+    absolute = os.path.abspath(path)
+    return os.path.realpath(absolute) if os.name == "nt" else absolute
 
 
 def probe_interpreter(executable: os.PathLike | str, timeout: float = 6.0) -> InterpreterInfo:
@@ -166,10 +168,9 @@ def virtual_environment_python(environment_path: os.PathLike | str) -> Path:
     """Return the canonical platform-specific Python executable inside a venv."""
     root = Path(environment_path).expanduser()
     executable = root / ("Scripts/python.exe" if os.name == "nt" else "bin/python")
-    # Windows may expose temporary directories through an 8.3 alias in one
-    # code path and the long name in another. Canonicalize this helper's
-    # result so it matches the path retained by probe_interpreter().
-    return Path(os.path.realpath(os.path.abspath(executable)))
+    # Canonicalize Windows 8.3 paths, while preserving POSIX venv symlinks.
+    path = os.path.abspath(executable)
+    return Path(os.path.realpath(path) if os.name == "nt" else path)
 
 
 def create_virtual_environment(
