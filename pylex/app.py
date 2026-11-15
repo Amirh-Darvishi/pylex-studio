@@ -1194,8 +1194,13 @@ class PyLexApp(tk.Tk):
             dialog.destroy()
         actions = ttk.Frame(body)
         actions.pack(fill="x")
-        ttk.Button(actions, text="Restore Defaults",
-                   command=lambda: [var.set(True) for var in variables.values()]).pack(side="left")
+        def restore_defaults():
+            for variable in variables.values():
+                variable.set(True)
+            indent.set(DEFAULTS["status_bar_indent"])
+            encoding.set(DEFAULTS["status_bar_encoding"])
+            eol.set(DEFAULTS["status_bar_eol"])
+        ttk.Button(actions, text="Restore Defaults", command=restore_defaults).pack(side="left")
         ttk.Button(actions, text="Save", command=save, style="PyLex.Primary.TButton").pack(side="right")
 
     def _configure_status_item(self, _item):
