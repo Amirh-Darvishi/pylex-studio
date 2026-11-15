@@ -7,8 +7,10 @@ from pathlib import Path
 
 DEFAULTS = {
     "theme": "dark",
-    "font_family": "Consolas",
+    "font_family": "JetBrains Mono",
     "font_size": 12,
+    "ui_font_family": "Segoe UI",
+    "ui_font_size": 9,
     "show_project_explorer": True,
     "last_workspace": "",
     "recent_workspaces": [],
@@ -29,8 +31,17 @@ def _normalise(values):
         result.update({key: values[key] for key in DEFAULTS if key in values})
     if result["theme"] not in {"dark", "light"}:
         result["theme"] = DEFAULTS["theme"]
-    if result["font_family"] not in {"Consolas", "Cascadia Code", "Courier New", "Lucida Console"}:
+    if result["font_family"] not in {
+        "JetBrains Mono", "Cascadia Code", "Fira Code",
+        "Consolas", "Cascadia Mono", "Courier New", "Lucida Console",
+    }:
         result["font_family"] = DEFAULTS["font_family"]
+    if result["ui_font_family"] not in {"Segoe UI", "Inter", "Arial", "Tahoma", "TkDefaultFont"}:
+        result["ui_font_family"] = DEFAULTS["ui_font_family"]
+    try:
+        result["ui_font_size"] = max(8, min(14, int(result["ui_font_size"])))
+    except (TypeError, ValueError):
+        result["ui_font_size"] = DEFAULTS["ui_font_size"]
     try:
         result["font_size"] = max(7, min(40, int(result["font_size"])))
     except (TypeError, ValueError):
