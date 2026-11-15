@@ -34,10 +34,8 @@ class PyLexApp(tk.Tk):
 
     def __init__(self):
         super().__init__()
-        try:
-            self.attributes("-alpha", 0.965)
-        except tk.TclError:
-            pass
+        # Keep the IDE fully opaque: top-level alpha blending softens text,
+        # icons and thin borders on Windows, especially on high-DPI displays.
         self._icon_cache = {}
         self._toolbar_icon_bindings = []
         self._tool_tab_icon_bindings = []
@@ -416,7 +414,7 @@ class PyLexApp(tk.Tk):
         )
         self.stop_button.pack(side="left", padx=(0, 8), ipady=2)
         self._toolbar_icon_bindings.extend([
-            (self.run_button, "play-fill", "success"),
+            (self.run_button, "play-fill", "run"),
             (self.stop_button, "stop-fill", "danger"),
         ])
         self.theme_button = ttk.Button(

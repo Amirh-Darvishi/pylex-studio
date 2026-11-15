@@ -15,6 +15,8 @@ THEMES = {
         "accent": "#62A5FF",
         "accent_hover": "#3D89F5",
         "violet": "#B39BFF",
+        "run": "#795BFF",
+        "run_hover": "#6546E8",
         "danger": "#F07187",
         "danger_hover": "#D95770",
         "success": "#38D9A9",
@@ -57,6 +59,8 @@ THEMES = {
         "accent": "#286FE5",
         "accent_hover": "#1D5BC4",
         "violet": "#7656CF",
+        "run": "#6847D8",
+        "run_hover": "#5435BE",
         "danger": "#D84C62",
         "danger_hover": "#B93B50",
         "success": "#178A68",
@@ -231,18 +235,20 @@ class ThemeManager:
         self.style.configure(
             "PyLex.Run.TButton",
             font=(ui_font_family, ui_font_size + 1, "bold"),
-            padding=(16, 8),
-            background=palette["accent"],
+            padding=(18, 9),
+            background=palette["run"],
             foreground="#ffffff",
             borderwidth=0,
             relief="flat",
+            focusthickness=0,
+            focuscolor=palette["run"],
         )
         self.style.map(
             "PyLex.Run.TButton",
             background=[
                 ("disabled", palette["panel_bg"]),
-                ("pressed", palette["accent_hover"]),
-                ("active", palette["accent_hover"]),
+                ("pressed", palette["run_hover"]),
+                ("active", palette["run_hover"]),
             ],
             foreground=[("disabled", palette["muted"]), ("!disabled", "#ffffff")],
         )
