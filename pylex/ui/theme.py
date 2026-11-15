@@ -5,7 +5,7 @@ import ttkbootstrap as ttkb
 
 THEMES = {
     "dark": {
-        "bootstrap_theme": "darkly",
+        "bootstrap_theme": "vapor-dark",
         "window_bg": "#111827",
         "editor_bg": "#111827",
         "editor_fg": "#e6edf7",
@@ -45,7 +45,7 @@ THEMES = {
         "file_unknown": "#8794a8",
     },
     "light": {
-        "bootstrap_theme": "flatly",
+        "bootstrap_theme": "minty-light",
         "window_bg": "#f3f6fb",
         "editor_bg": "#ffffff",
         "editor_fg": "#202938",
