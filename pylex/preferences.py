@@ -1,4 +1,5 @@
 """Load and validate persistent PyLex Studio preferences."""
+
 import json
 import os
 import tempfile
@@ -37,14 +38,27 @@ def _normalise(values):
     if result["theme"] not in {"dark", "light"}:
         result["theme"] = DEFAULTS["theme"]
     if result["font_family"] not in {
-        "JetBrains Mono", "Cascadia Code", "Fira Code",
-        "Consolas", "Cascadia Mono", "Courier New", "Lucida Console",
-        "DejaVu Sans Mono", "Liberation Mono", "TkFixedFont",
+        "JetBrains Mono",
+        "Cascadia Code",
+        "Fira Code",
+        "Consolas",
+        "Cascadia Mono",
+        "Courier New",
+        "Lucida Console",
+        "DejaVu Sans Mono",
+        "Liberation Mono",
+        "TkFixedFont",
     }:
         result["font_family"] = DEFAULTS["font_family"]
     if result["ui_font_family"] not in {
-        "Segoe UI", "Inter", "Arial", "Tahoma", "Noto Sans", "Ubuntu",
-        "DejaVu Sans", "TkDefaultFont",
+        "Segoe UI",
+        "Inter",
+        "Arial",
+        "Tahoma",
+        "Noto Sans",
+        "Ubuntu",
+        "DejaVu Sans",
+        "TkDefaultFont",
     }:
         result["ui_font_family"] = DEFAULTS["ui_font_family"]
     try:
@@ -60,10 +74,13 @@ def _normalise(values):
     allowed_status_items = {"position", "indent", "encoding", "eol", "language", "mode"}
     if not isinstance(status_items, list):
         status_items = list(DEFAULTS["status_bar_items"])
-    result["status_bar_items"] = list(dict.fromkeys(
-        item for item in status_items
-        if isinstance(item, str) and item in allowed_status_items
-    ))
+    result["status_bar_items"] = list(
+        dict.fromkeys(
+            item
+            for item in status_items
+            if isinstance(item, str) and item in allowed_status_items
+        )
+    )
     for key, allowed in (
         ("status_bar_indent", {"Spaces: 2", "Spaces: 4", "Spaces: 8", "Tabs"}),
         ("status_bar_encoding", {"UTF-8", "UTF-8 with BOM", "ASCII"}),
@@ -115,8 +132,10 @@ def _normalise(values):
     result["project_interpreters"] = {
         str(root): str(executable)
         for root, executable in mappings.items()
-        if isinstance(root, str) and root.strip()
-        and isinstance(executable, str) and executable.strip()
+        if isinstance(root, str)
+        and root.strip()
+        and isinstance(executable, str)
+        and executable.strip()
     }
     return result
 
