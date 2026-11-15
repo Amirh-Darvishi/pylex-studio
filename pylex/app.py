@@ -1186,7 +1186,20 @@ class PyLexApp(tk.Tk):
         self.documents[editor] = {
             "frame": frame, "path": Path(path) if path else None, "dirty": False,
         }
-        self.editor_tabs.add(frame, text=self._tab_label(self.documents[editor]))
+        document = self.documents[editor]
+        if document["path"]:
+            file_info = file_type_for(document["path"])
+            tab_icon = self._file_icon_name(file_info.kind)
+            tab_color = self.theme_palette.get(
+                f"file_{file_info.kind}", self.theme_palette.get("editor_fg")
+            )
+        else:
+            tab_icon = "file-earmark-plus"
+            tab_color = self.theme_palette.get("accent")
+        self.editor_tabs.add(
+            frame, text=self._tab_label(document),
+            image=self._icon(tab_icon, tab_color), compound="left",
+        )
         self.editor_tabs.select(frame)
         self.editor = editor
         editor.set_font_family(self.preferences["font_family"])
@@ -2359,6 +2372,24 @@ class PyLexApp(tk.Tk):
             try:
                 self.tabs.tab(
                     child, image=self._icon(icon_name, palette.get(color_key)),
+                    compound="left",
+                )
+            except tk.TclError:
+                pass
+        for document in getattr(self, "documents", {}).values():
+            path = document["path"]
+            if path:
+                file_info = file_type_for(path)
+                icon_name = self._file_icon_name(file_info.kind)
+                icon_color = palette.get(
+                    f"file_{file_info.kind}", palette.get("editor_fg")
+                )
+            else:
+                icon_name = "file-earmark-plus"
+                icon_color = palette.get("accent")
+            try:
+                self.editor_tabs.tab(
+                    document["frame"], image=self._icon(icon_name, icon_color),
                     compound="left",
                 )
             except tk.TclError:
