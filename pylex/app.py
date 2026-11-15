@@ -104,6 +104,9 @@ class PyLexApp(tk.Tk):
         tools_menu.add_command(label="Jump to Line", command=self.debug_jump)
         tools_menu.add_command(label="Evaluate Expression...", command=self.debug_evaluate)
         tools_menu.add_command(label="Conditional Breakpoint...", command=self.debug_conditional_breakpoint)
+        tools_menu.add_command(label="Enable Breakpoint...", command=lambda: self.debug_manage_breakpoint("enable"))
+        tools_menu.add_command(label="Disable Breakpoint...", command=lambda: self.debug_manage_breakpoint("disable"))
+        tools_menu.add_command(label="Ignore Breakpoint Hits...", command=lambda: self.debug_manage_breakpoint("ignore"))
         tools_menu.add_command(label="Clear All Breakpoints", command=self.debug_clear_breakpoints)
         tools_menu.add_command(label="Stop Debugging", command=self.stop_debugging)
         menu.add_cascade(label="Tools", menu=tools_menu)
@@ -1375,6 +1378,37 @@ class PyLexApp(tk.Tk):
             self.breakpoints.setdefault(self.editor, set()).add(line)
             self.editor.set_breakpoints(self.breakpoints[self.editor])
             self.status.configure(text=f"Conditional breakpoint requested at line {line}.")
+        except ValueError as exc:
+            messagebox.showerror("Debugger", str(exc))
+
+    def debug_manage_breakpoint(self, action):
+        session = self._active_debug_session()
+        if session is None:
+            return
+        number = simpledialog.askinteger(
+            "Debugger — Breakpoint",
+            "Breakpoint number (shown by pdb's breakpoint list):",
+            parent=self, minvalue=1,
+        )
+        if number is None:
+            return
+        try:
+            if action == "enable":
+                session.enable_breakpoint(number)
+                message = f"Enabled breakpoint {number}."
+            elif action == "disable":
+                session.disable_breakpoint(number)
+                message = f"Disabled breakpoint {number}."
+            else:
+                count = simpledialog.askinteger(
+                    "Ignore Breakpoint Hits", "Number of hits to ignore:",
+                    parent=self, minvalue=1,
+                )
+                if count is None:
+                    return
+                session.ignore_breakpoint(number, count)
+                message = f"Breakpoint {number} will ignore the next {count} hit(s)."
+            self.status.configure(text=message)
         except ValueError as exc:
             messagebox.showerror("Debugger", str(exc))
 
