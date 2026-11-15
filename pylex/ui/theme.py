@@ -6,31 +6,51 @@ import ttkbootstrap as ttkb
 THEMES = {
     "dark": {
         "bootstrap_theme": "darkly",
-        "window_bg": "#171b24",
-        "editor_bg": "#1d232e",
-        "editor_fg": "#e6eaf2",
-        "selection_bg": "#344d73",
-        "menu_bg": "#202735",
-        "menu_fg": "#e6eaf2",
+        "window_bg": "#111827",
+        "editor_bg": "#111827",
+        "editor_fg": "#e6edf7",
+        "selection_bg": "#293b5b",
+        "menu_bg": "#1b2433",
+        "menu_fg": "#e6edf7",
         "accent": "#4f8cff",
         "accent_hover": "#3978e8",
-        "danger": "#d95763",
-        "muted": "#9aa7ba",
-        "surface": "#202735",
+        "violet": "#a78bfa",
+        "danger": "#ef6b73",
+        "success": "#4cc38a",
+        "warning": "#e6b45a",
+        "muted": "#91a0b7",
+        "surface": "#1b2433",
+        "panel_bg": "#161f2d",
+        "border": "#2b3648",
+        "file_python": "#62b0ff",
+        "file_web": "#e6bd68",
+        "file_markup": "#e88c72",
+        "file_style": "#b59aff",
+        "file_data": "#71c7a5",
     },
     "light": {
         "bootstrap_theme": "flatly",
         "window_bg": "#f3f6fb",
         "editor_bg": "#ffffff",
         "editor_fg": "#202938",
-        "selection_bg": "#cfe0ff",
+        "selection_bg": "#d7e5ff",
         "menu_bg": "#ffffff",
         "menu_fg": "#202938",
         "accent": "#2868c7",
         "accent_hover": "#1e55a8",
+        "violet": "#7655c8",
         "danger": "#c94350",
+        "success": "#21845a",
+        "warning": "#a66a12",
         "muted": "#68778d",
         "surface": "#ffffff",
+        "panel_bg": "#edf2f9",
+        "border": "#d9e1ed",
+        "file_python": "#236fba",
+        "file_web": "#9a6b00",
+        "file_markup": "#bd573e",
+        "file_style": "#7655c8",
+        "file_data": "#267b60",
     },
 }
 
@@ -47,11 +67,18 @@ class ThemeManager:
         self.root = root
         self.style = ttkb.Style(theme="darkly")
 
-    def apply(self, dark=True):
+    def apply(self, dark=True, ui_font_family="Segoe UI", ui_font_size=9):
         """Apply a complete theme and return its palette for classic Tk widgets."""
         theme_name = "dark" if dark else "light"
         palette = get_theme(theme_name)
         self.style.theme_use(palette["bootstrap_theme"])
+        ui_font = (ui_font_family, ui_font_size)
+        self.style.configure(".", font=ui_font)
+        self.style.configure("TLabel", font=ui_font)
+        self.style.configure("TButton", font=ui_font)
+        self.style.configure("TEntry", font=ui_font)
+        self.style.configure("TCombobox", font=ui_font)
+        self.style.configure("TCheckbutton", font=ui_font)
 
         self.style.configure(
             "PyLex.Toolbar.TFrame",
@@ -61,29 +88,29 @@ class ThemeManager:
             "PyLex.Brand.TLabel",
             background=palette["surface"],
             foreground=palette["editor_fg"],
-            font=("Segoe UI", 12, "bold"),
+            font=(ui_font_family, ui_font_size + 3, "bold"),
             padding=(0, 2),
         )
         self.style.configure(
             "PyLex.Group.TLabel",
             background=palette["surface"],
             foreground=palette["muted"],
-            font=("Segoe UI", 7, "bold"),
+            font=(ui_font_family, max(7, ui_font_size - 2), "bold"),
         )
         self.style.configure(
             "PyLex.Section.TLabel",
-            font=("Segoe UI", 9, "bold"),
+            font=(ui_font_family, ui_font_size, "bold"),
             padding=(2, 5),
         )
         self.style.configure(
             "PyLex.Toolbar.TButton",
-            font=("Segoe UI", 9),
+            font=ui_font,
             padding=(10, 6),
             borderwidth=0,
         )
         self.style.configure(
             "PyLex.Primary.TButton",
-            font=("Segoe UI", 9, "bold"),
+            font=(ui_font_family, ui_font_size, "bold"),
             padding=(12, 6),
             background=palette["accent"],
             foreground="#ffffff",
@@ -103,13 +130,31 @@ class ThemeManager:
             borderwidth=0,
         )
         self.style.configure(
+            "PyLex.Muted.TLabel",
+            foreground=palette["muted"],
+            font=(ui_font_family, max(8, ui_font_size - 1)),
+        )
+        self.style.configure(
+            "PyLex.Field.TLabel",
+            font=(ui_font_family, ui_font_size, "bold"),
+        )
+        self.style.configure(
+            "PyLex.DialogTitle.TLabel",
+            font=(ui_font_family, ui_font_size + 6, "bold"),
+        )
+        self.style.configure(
+            "PyLex.AboutTitle.TLabel",
+            font=(ui_font_family, ui_font_size + 9, "bold"),
+            foreground=palette["accent"],
+        )
+        self.style.configure(
             "PyLex.Status.TLabel",
-            font=("Segoe UI", 8),
+            font=(ui_font_family, max(8, ui_font_size - 1)),
             padding=(10, 5),
         )
         self.style.configure(
             "Treeview",
-            rowheight=25,
+            rowheight=max(25, ui_font_size * 3),
             font=("Segoe UI", 9),
             background=palette["surface"],
             foreground=palette["editor_fg"],
