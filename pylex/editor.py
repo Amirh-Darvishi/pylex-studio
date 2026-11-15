@@ -306,6 +306,12 @@ class CodeEditor(tk.Frame):
             self.text.tag_raise("matching_bracket")
             self.text.tag_raise("sel")
 
+    def _safe_edit_history(self, action):
+        try:
+            self.text.edit_undo() if action == "undo" else self.text.edit_redo()
+        except tk.TclError:
+            pass
+
     def _show_context_menu(self, event=None):
         """Show editor actions that match the current text selection and caret."""
         menu = tk.Menu(self, tearoff=False)
@@ -313,8 +319,8 @@ class CodeEditor(tk.Frame):
             has_selection = bool(self.text.tag_ranges("sel"))
         except tk.TclError:
             has_selection = False
-        menu.add_command(label="Undo", command=lambda: self.text.edit_undo())
-        menu.add_command(label="Redo", command=lambda: self.text.edit_redo())
+        menu.add_command(label="Undo", command=lambda: self._safe_edit_history("undo"))
+        menu.add_command(label="Redo", command=lambda: self._safe_edit_history("redo"))
         menu.add_separator()
         menu.add_command(label="Cut", command=lambda: self.text.event_generate("<<Cut>>"), state="normal" if has_selection else "disabled")
         menu.add_command(label="Copy", command=lambda: self.text.event_generate("<<Copy>>"), state="normal" if has_selection else "disabled")
