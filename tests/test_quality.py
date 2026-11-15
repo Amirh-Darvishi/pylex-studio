@@ -39,10 +39,11 @@ class QualityToolTests(unittest.TestCase):
 
     def test_pytest_collection_parser_keeps_node_ids_and_deduplicates(self):
         output = (
-            "tests/test_demo.py::test_one\n"
-            "tests/test_demo.py::Suite::test_two\n"
-            "tests/test_demo.py::test_one\n"
-            "\n3 tests collected in 0.02s\n"
+            "tests/test_demo.py::test_one\\n"
+            "tests/test_demo.py::Suite::test_two\\n"
+            "tests/test_demo.py::test_one\\n"
+            "tests/test_demo.py::test_parameterized[value with spaces]\\n"
+            "\\n4 tests collected in 0.02s\\n"
         )
         self.assertEqual(
             parse_pytest_nodeids(output),
