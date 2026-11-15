@@ -222,7 +222,6 @@ class GitService:
         message = str(message).strip()
         if not message:
             raise GitError("Enter a commit message before committing.")
-        self._run("diff", "--cached", "--quiet", check=False)
         if self._run("diff", "--cached", "--name-only").stdout.strip() == "":
             raise GitError("There are no staged changes to commit.")
         return self._run("commit", "-m", message).stdout
