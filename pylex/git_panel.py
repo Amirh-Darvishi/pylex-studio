@@ -350,31 +350,64 @@ class GitPanel(ttk.Frame):
                 values=(commit.short_hash, commit.date, commit.author, commit.subject),
             )
 
+    def _context_menu(self):
+        palette = getattr(self.winfo_toplevel(), "theme_palette", {})
+        return tk.Menu(
+            self, tearoff=False,
+            background=palette.get("menu_bg", "#252D38"),
+            foreground=palette.get("menu_fg", "#D8DEE8"),
+            activebackground=palette.get("elevated", "#303B49"),
+            activeforeground=palette.get("accent", "#8FB7D8"),
+            disabledforeground=palette.get("muted", "#9AA7B7"),
+            borderwidth=1, relief="solid",
+        )
+
     def _show_tree_context_menu(self, event):
         row = self.tree.identify_row(event.y)
         if row:
-            self.tree.selection_set(row)
-        menu = tk.Menu(self, tearoff=False)
-        menu.add_command(label='Refresh Changes', command=self.refresh)
+            if row not in self.tree.selection():
+                self.tree.selection_set(row)
+            self.tree.focus(row)
+        menu = self._context_menu()
         if row:
-            values = self.tree.item(row, 'values')
-            menu.add_command(label='Copy File Path', command=lambda: self._copy_context_text(values[-1]))
-            menu.add_command(label='Show Diff', command=self.show_diff)
-        menu.tk_popup(event.x_root, event.y_root)
-        return 'break'
+            values = self.tree.item(row, "values")
+            path = values[-1] if values else ""
+            menu.add_command(label="Stage Selected", command=self.stage_selected)
+            menu.add_command(label="Unstage Selected", command=self.unstage_selected)
+            menu.add_command(label="Discard Selected Changes…", command=self.discard_selected)
+            menu.add_separator()
+            menu.add_command(label="Show Diff", command=self.show_diff)
+            menu.add_command(label="Show Staged Diff", command=self.show_staged_diff)
+            menu.add_command(label="Copy File Path", command=lambda: self._copy_context_text(path))
+        menu.add_separator()
+        menu.add_command(label="Stage All", command=self.stage_all)
+        menu.add_command(label="Unstage All", command=self.unstage_all)
+        menu.add_command(label="Refresh Changes", command=self.refresh)
+        try:
+            menu.tk_popup(event.x_root, event.y_root)
+        finally:
+            menu.grab_release()
+        return "break"
 
     def _copy_context_text(self, value):
         self.clipboard_clear()
         self.clipboard_append(str(value))
 
     def _show_entry_context_menu(self, widget, event):
-        menu = tk.Menu(self, tearoff=False)
-        menu.add_command(label='Cut', command=lambda: widget.event_generate('<<Cut>>'))
-        menu.add_command(label='Copy', command=lambda: widget.event_generate('<<Copy>>'))
-        menu.add_command(label='Paste', command=lambda: widget.event_generate('<<Paste>>'))
-        menu.add_command(label='Select All', command=lambda: widget.select_range(0, 'end'))
-        menu.tk_popup(event.x_root, event.y_root)
-        return 'break'
+        menu = self._context_menu()
+        selected = bool(widget.selection_present())
+        menu.add_command(label="Cut", command=lambda: widget.event_generate("<<Cut>>"),
+                         state="normal" if selected else "disabled")
+        menu.add_command(label="Copy", command=lambda: widget.event_generate("<<Copy>>"),
+                         state="normal" if selected else "disabled")
+        menu.add_command(label="Paste", command=lambda: widget.event_generate("<<Paste>>"))
+        menu.add_command(label="Select All", command=lambda: widget.select_range(0, "end"))
+        menu.add_command(label="Clear Message", command=lambda: widget.delete(0, "end"))
+        try:
+            menu.tk_popup(event.x_root, event.y_root)
+        finally:
+            menu.grab_release()
+        return "break"
 
     def close(self):
         if self._poll_id is not None:
