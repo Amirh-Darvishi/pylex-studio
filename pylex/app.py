@@ -4005,6 +4005,17 @@ class PyLexApp(tk.Tk):
         if hasattr(self, "run_button"):
             self.run_button.configure(image=self._icon("play-fill", palette["accent"]))
             self.stop_button.configure(image=self._icon("stop-fill", palette["danger"]))
+        if hasattr(self, "command_palette_frame"):
+            self.command_palette_frame.configure(
+                background=palette["surface"],
+                highlightbackground=palette["border"],
+                highlightcolor=palette["accent"],
+            )
+            self.command_palette_label.configure(
+                background=palette["surface"],
+                foreground=palette["muted"],
+                font=(ui_family, ui_size),
+            )
         if hasattr(self, "theme_button"):
             self.theme_button.configure(
                 text="Light theme" if self.dark else "Dark theme",
