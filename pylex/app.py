@@ -2000,7 +2000,7 @@ class PyLexApp(tk.Tk):
             name for name in (
                 "JetBrains Mono", "Cascadia Code", "Fira Code",
                 "Consolas", "Cascadia Mono", "DejaVu Sans Mono",
-                "Liberation Mono", "Courier New", "TkFixedFont",
+                "Liberation Mono", "Courier New", "Lucida Console", "TkFixedFont",
             ) if name in available_fonts
         ]
         if not code_fonts:
