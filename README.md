@@ -1,6 +1,6 @@
 # PyLex Studio
 
-**Current development target: 1.6.0 — Advanced Debugger** (in development)
+**Latest release: 1.6.0 — Advanced Debugger**
 
 A lightweight Python desktop editor with independent lexical and syntax analysis.
 
