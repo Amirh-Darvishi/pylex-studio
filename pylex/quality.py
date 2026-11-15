@@ -13,6 +13,8 @@ import tkinter as tk
 from pathlib import Path
 from tkinter import messagebox, ttk
 
+from .ui.context_menu import ContextMenu
+
 
 def tool_argv(interpreter, module, arguments=()):
     """Build a shell-free command for a tool in the selected Python environment."""
