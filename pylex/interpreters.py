@@ -65,7 +65,9 @@ def _normalise_executable(value: os.PathLike | str) -> str:
     path = Path(executable)
     if not path.is_file():
         raise FileNotFoundError(f"Python interpreter is not a file: {path}")
-    return os.path.abspath(path)
+    # Resolve Windows 8.3 short names (for example, USERNA~1) so the
+    # selected interpreter path remains stable in the UI and preferences.
+    return os.path.realpath(os.path.abspath(path))
 
 
 def probe_interpreter(executable: os.PathLike | str, timeout: float = 6.0) -> InterpreterInfo:
@@ -91,7 +93,7 @@ def probe_interpreter(executable: os.PathLike | str, timeout: float = 6.0) -> In
         raise ValueError(f"Interpreter returned invalid metadata: {resolved}") from exc
     # Use the executable reported by Python, not a launcher alias or symlink.
     return InterpreterInfo(
-        executable=os.path.abspath(info.executable),
+        executable=os.path.realpath(os.path.abspath(info.executable)),
         version=info.version, implementation=info.implementation,
         prefix=info.prefix, base_prefix=info.base_prefix,
         is_venv=info.is_venv, architecture=info.architecture,
