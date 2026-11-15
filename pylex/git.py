@@ -1,4 +1,5 @@
 """Safe, shell-free Git operations for a PyLex Studio workspace."""
+
 from __future__ import annotations
 
 import os
@@ -14,6 +15,7 @@ class GitError(RuntimeError):
 @dataclass(frozen=True)
 class GitChange:
     """One path reported by Git status."""
+
     path: str
     index_status: str
     worktree_status: str
@@ -34,6 +36,7 @@ class GitChange:
 @dataclass(frozen=True)
 class GitStatus:
     """Snapshot of the current branch and working-tree state."""
+
     branch: str
     upstream: str | None
     ahead: int
@@ -48,6 +51,7 @@ class GitStatus:
 @dataclass(frozen=True)
 class GitCommit:
     """Compact commit-history entry."""
+
     short_hash: str
     full_hash: str
     author: str
@@ -75,11 +79,15 @@ class GitService:
 
     def _run(self, *args, check=True, timeout=None):
         env = dict(os.environ)
-        env.update({
-            "GIT_TERMINAL_PROMPT": "0",
-            "GCM_INTERACTIVE": "Never",
-            "GIT_OPTIONAL_LOCKS": "0" if args[:2] == ("status", "--porcelain=v1") else "1",
-        })
+        env.update(
+            {
+                "GIT_TERMINAL_PROMPT": "0",
+                "GCM_INTERACTIVE": "Never",
+                "GIT_OPTIONAL_LOCKS": (
+                    "0" if args[:2] == ("status", "--porcelain=v1") else "1"
+                ),
+            }
+        )
         try:
             result = subprocess.run(
                 ["git", *map(str, args)],
@@ -96,28 +104,42 @@ class GitService:
                 check=False,
             )
         except FileNotFoundError as exc:
-            raise GitError("Git executable was not found. Install Git and ensure it is on PATH.") from exc
+            raise GitError(
+                "Git executable was not found. Install Git and ensure it is on PATH."
+            ) from exc
         except subprocess.TimeoutExpired as exc:
-            raise GitError(f"Git command timed out after {exc.timeout} seconds.") from exc
+            raise GitError(
+                f"Git command timed out after {exc.timeout} seconds."
+            ) from exc
         if check and result.returncode:
-            detail = result.stderr.strip() or result.stdout.strip() or "Unknown Git error."
+            detail = (
+                result.stderr.strip() or result.stdout.strip() or "Unknown Git error."
+            )
             raise GitError(detail)
         return result
 
     def _pathspec(self, path):
         candidate = Path(path)
-        absolute = Path(os.path.abspath(str(candidate if candidate.is_absolute() else self.root / candidate)))
+        absolute = Path(
+            os.path.abspath(
+                str(candidate if candidate.is_absolute() else self.root / candidate)
+            )
+        )
         try:
             relative = absolute.relative_to(self.root)
             absolute.parent.resolve().relative_to(self.root)
         except ValueError as exc:
-            raise GitError("Git operations are restricted to paths inside the workspace.") from exc
+            raise GitError(
+                "Git operations are restricted to paths inside the workspace."
+            ) from exc
         if str(relative) in {"", "."}:
             raise GitError("A file path is required for this operation.")
         return relative.as_posix()
 
     def status(self):
-        result = self._run("status", "--porcelain=v1", "--branch", "--untracked-files=all")
+        result = self._run(
+            "status", "--porcelain=v1", "--branch", "--untracked-files=all"
+        )
         lines = result.stdout.splitlines()
         branch, upstream, ahead, behind = "HEAD", None, 0, 0
         changes = []
@@ -163,7 +185,9 @@ class GitService:
 
     def unstage(self, path):
         relative = self._pathspec(path)
-        state = next((item for item in self.status().changes if item.path == relative), None)
+        state = next(
+            (item for item in self.status().changes if item.path == relative), None
+        )
         if state is None or state.index_status == " ":
             raise GitError("The selected file has no staged changes.")
         if state.status == "??":
@@ -175,15 +199,21 @@ class GitService:
 
     def discard(self, path):
         relative = self._pathspec(path)
-        state = next((item for item in self.status().changes if item.path == relative), None)
+        state = next(
+            (item for item in self.status().changes if item.path == relative), None
+        )
         if state is None:
             return ""
         if state.index_status != " ":
-            raise GitError("This file has staged changes. Unstage it before discarding worktree edits.")
+            raise GitError(
+                "This file has staged changes. Unstage it before discarding worktree edits."
+            )
         if state.status == "??":
             target = self.root / relative
             if target.is_dir() and not target.is_symlink():
-                raise GitError("Discarding untracked directories is disabled for safety.")
+                raise GitError(
+                    "Discarding untracked directories is disabled for safety."
+                )
             target.unlink(missing_ok=True)
             return ""
         return self._run("restore", "--worktree", "--", relative).stdout
@@ -198,13 +228,20 @@ class GitService:
         return self._run("commit", "-m", message).stdout
 
     def branches(self):
-        output = self._run("branch", "--format=%(HEAD)%09%(refname:short)%09%(upstream:short)").stdout
+        output = self._run(
+            "branch", "--format=%(HEAD)%09%(refname:short)%09%(upstream:short)"
+        ).stdout
         result = []
         for line in output.splitlines():
             parts = line.split("\t")
             if len(parts) >= 2:
-                result.append({"current": parts[0] == "*", "name": parts[1],
-                               "upstream": parts[2] if len(parts) > 2 else ""})
+                result.append(
+                    {
+                        "current": parts[0] == "*",
+                        "name": parts[1],
+                        "upstream": parts[2] if len(parts) > 2 else "",
+                    }
+                )
         return result
 
     @staticmethod
@@ -214,8 +251,12 @@ class GitService:
             raise GitError("Enter a valid branch name.")
         result = subprocess.run(
             ["git", "check-ref-format", "--branch", value],
-            stdin=subprocess.DEVNULL, stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE, text=True, shell=False, check=False,
+            stdin=subprocess.DEVNULL,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+            shell=False,
+            check=False,
         )
         if result.returncode:
             raise GitError("Git rejected this branch name.")
@@ -237,7 +278,9 @@ class GitService:
     def log(self, limit=100):
         count = max(1, min(500, int(limit)))
         fmt = "%H%x1f%h%x1f%an%x1f%ad%x1f%s"
-        output = self._run("log", f"-{count}", f"--pretty=format:{fmt}", "--date=short").stdout
+        output = self._run(
+            "log", f"-{count}", f"--pretty=format:{fmt}", "--date=short"
+        ).stdout
         entries = []
         for line in output.splitlines():
             parts = line.split("\x1f", 4)
@@ -255,10 +298,14 @@ class GitService:
         return found
 
     def fetch(self, remote="origin"):
-        return self._run("fetch", "--prune", remote, timeout=max(self.timeout, 120)).stdout
+        return self._run(
+            "fetch", "--prune", remote, timeout=max(self.timeout, 120)
+        ).stdout
 
     def pull(self, remote="origin"):
-        return self._run("pull", "--ff-only", remote, timeout=max(self.timeout, 120)).stdout
+        return self._run(
+            "pull", "--ff-only", remote, timeout=max(self.timeout, 120)
+        ).stdout
 
     def push(self, remote="origin", set_upstream=False):
         status = self.status()
