@@ -53,8 +53,10 @@ def _normalise(values):
     for item in recent:
         if not isinstance(item, str) or not item.strip():
             continue
-        normalized = str(Path(item).expanduser())
-        key = os.path.normcase(str(Path(normalized).resolve()))
+        # Preserve the user's path spelling for a faithful preferences
+        # round-trip; normalize only the comparison key for deduplication.
+        normalized = os.path.expanduser(item.strip())
+        key = os.path.normcase(os.path.abspath(normalized))
         if key not in seen:
             seen.add(key)
             cleaned.append(normalized)
