@@ -93,8 +93,7 @@ def parse_pytest_nodeids(output):
         # ID (including parameter IDs containing spaces) and tolerate the
         # bullet prefixes used by some pytest plugins.
         candidate = line.lstrip("*- ").strip()
-        if ".py::" in candidate:
-            candidate = candidate.split(" [", 1)[0]
+        # Do not split on spaces: parameterized node IDs may contain them.
         if "::" in candidate and candidate not in seen:
             seen.add(candidate)
             found.append(candidate)
