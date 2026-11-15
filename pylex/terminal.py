@@ -223,10 +223,11 @@ class TerminalPanel(ttk.Frame):
         if self.on_shell_change:
             self.on_shell_change(self.shell_var.get())
 
-    def create_session(self, shell=None):
+    def create_session(self, shell=None, cwd_override=None):
         shell = shell or self.shell_var.get()
         try:
             cwd, env, python_executable = self.context_provider()
+            cwd = Path(cwd_override).expanduser().resolve() if cwd_override else cwd
             env = terminal_environment(env, python_executable)
             process = TerminalProcess.start(shell, cwd=cwd, env=env)
         except (OSError, ValueError, RuntimeError) as exc:
