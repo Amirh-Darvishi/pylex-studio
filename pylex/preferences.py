@@ -34,10 +34,12 @@ def _normalise(values):
     if result["font_family"] not in {
         "JetBrains Mono", "Cascadia Code", "Fira Code",
         "Consolas", "Cascadia Mono", "Courier New", "Lucida Console",
+        "DejaVu Sans Mono", "Liberation Mono", "TkFixedFont",
     }:
         result["font_family"] = DEFAULTS["font_family"]
     if result["ui_font_family"] not in {
-        "Segoe UI", "Inter", "Arial", "Tahoma", "TkDefaultFont",
+        "Segoe UI", "Inter", "Arial", "Tahoma", "Noto Sans", "Ubuntu",
+        "DejaVu Sans", "TkDefaultFont",
     }:
         result["ui_font_family"] = DEFAULTS["ui_font_family"]
     try:
