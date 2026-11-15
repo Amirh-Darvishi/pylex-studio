@@ -837,6 +837,8 @@ class PyLexApp(tk.Tk):
                 self.toggle_project_explorer()
             self.project_tree.focus_set()
             self.status.configure(text="Explorer ready — choose a recent workspace or open a folder.")
+            self.project_tree.focus_set()
+            self.status.configure(text="Explorer ready — choose a recent workspace or open a folder.")
         elif view == "search":
             self.open_quick_file()
         elif view == "source":
@@ -1181,6 +1183,24 @@ class PyLexApp(tk.Tk):
         self._persist_preferences()
         self._apply_status_bar_visibility()
         self._update_editor_status()
+
+    def _show_tree_data_context_menu(self, tree, event):
+        row = tree.identify_row(event.y)
+        column = tree.identify_column(event.x)
+        if row:
+            tree.selection_set(row)
+            tree.focus(row)
+        menu = tk.Menu(self, tearoff=False)
+        if row:
+            values = tree.item(row, 'values')
+            menu.add_command(label='Copy Row', command=lambda: self._copy_to_clipboard('  |  '.join(map(str, values))))
+            if column and column != '#0':
+                index = int(column[1:]) - 1
+                if index < len(values):
+                    menu.add_command(label='Copy Cell', command=lambda: self._copy_to_clipboard(values[index]))
+            menu.add_command(label='Select All', command=lambda: tree.selection_set(tree.get_children('')))
+        menu.tk_popup(event.x_root, event.y_root)
+        return 'break'
 
     def _text_context_menu(self, widget, event):
         menu = tk.Menu(self, tearoff=False)
