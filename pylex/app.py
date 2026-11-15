@@ -2270,8 +2270,8 @@ class PyLexApp(tk.Tk):
         dialog = tk.Toplevel(self)
         dialog.title("PyLex Studio — Settings")
         dialog.transient(self)
-        dialog.geometry("760x560")
-        dialog.minsize(640, 460)
+        dialog.geometry("960x700")
+        dialog.minsize(820, 600)
         dialog.resizable(True, True)
 
         shell = ttk.Frame(dialog, padding=16)
@@ -2293,10 +2293,15 @@ class PyLexApp(tk.Tk):
         execution_page = ttk.Frame(notebook, padding=16)
         help_page = ttk.Frame(notebook, padding=16)
         languages_page = ttk.Frame(notebook, padding=16)
+        productivity_page = ttk.Frame(notebook, padding=16)
+        extensions_page = ttk.Frame(notebook, padding=16)
+        security_page = ttk.Frame(notebook, padding=16)
         pages = (
             (appearance, "Appearance"), (editor_page, "Editor"),
             (workspace_page, "Workspace"), (execution_page, "Execution"),
-            (languages_page, "Languages"), (help_page, "Help"),
+            (productivity_page, "Productivity"), (languages_page, "Languages"),
+            (extensions_page, "Extensions"), (security_page, "Privacy & Security"),
+            (help_page, "Help"),
         )
         for page, label in pages:
             notebook.add(page, text=label)
@@ -2324,6 +2329,67 @@ class PyLexApp(tk.Tk):
             ttk.Label(row, text=name, style="PyLex.Field.TLabel", width=16).pack(side="left")
             ttk.Label(row, text=status, foreground=self.theme_palette[color_key], width=14).pack(side="left")
             ttk.Label(row, text=description, style="PyLex.Muted.TLabel").pack(side="left", padx=(8, 0))
+
+        ttk.Label(
+            productivity_page, text="Keyboard-first workflow",
+            style="PyLex.DialogTitle.TLabel",
+        ).pack(anchor="w", pady=(0, 8))
+        shortcut_rows = (
+            ("Command Palette", "Ctrl+Shift+P", "Search available commands"),
+            ("Quick Open", "Ctrl+P", "Find a workspace file by name"),
+            ("Run Current File", "F5", "Execute the active Python file"),
+            ("Stop Execution", "Shift+F5", "Stop the active run"),
+            ("Start Debugging", "Ctrl+F5", "Start a debugger session"),
+            ("Toggle Breakpoint", "F9", "Set or remove a breakpoint"),
+            ("Step Over / Into", "F10 / F11", "Move through the current debug session"),
+            ("Analyze All", "F6", "Run lexical and syntax analysis"),
+            ("Settings", "Ctrl+,", "Open application preferences"),
+        )
+        for command, shortcut, description in shortcut_rows:
+            row = ttk.Frame(productivity_page, padding=(10, 8))
+            row.pack(fill="x", pady=2)
+            ttk.Label(row, text=command, style="PyLex.Field.TLabel", width=24).pack(side="left")
+            ttk.Label(row, text=shortcut, foreground=self.theme_palette["accent"], width=20).pack(side="left")
+            ttk.Label(row, text=description, style="PyLex.Muted.TLabel").pack(side="left", padx=(8, 0))
+
+        ttk.Label(
+            extensions_page, text="Extensibility roadmap",
+            style="PyLex.DialogTitle.TLabel",
+        ).pack(anchor="w", pady=(0, 8))
+        ttk.Label(
+            extensions_page,
+            text="These are planned product capabilities, not active integrations. "
+                 "They will be introduced only with compatibility checks, clear permissions and tests.",
+            style="PyLex.Muted.TLabel", wraplength=720,
+        ).pack(anchor="w", pady=(0, 12))
+        for name, state, detail in (
+            ("Language packs", "Planned", "JavaScript, HTML and CSS language services"),
+            ("Extension marketplace", "Planned", "Signed or trusted extensions with permission review"),
+            ("Language servers", "Planned", "LSP-based completion, navigation and diagnostics"),
+            ("Themes and icon packs", "Planned", "Validated third-party visual themes and icon sets"),
+            ("Project templates", "Planned", "Reusable starter projects and configurable scaffolding"),
+            ("Plugin API", "Planned", "Documented extension points with versioned compatibility"),
+        ):
+            row = ttk.Frame(extensions_page, padding=(10, 8))
+            row.pack(fill="x", pady=3)
+            ttk.Label(row, text=name, style="PyLex.Field.TLabel", width=24).pack(side="left")
+            ttk.Label(row, text=state, foreground=self.theme_palette["warning"], width=13).pack(side="left")
+            ttk.Label(row, text=detail, style="PyLex.Muted.TLabel").pack(side="left", padx=(8, 0))
+
+        ttk.Label(
+            security_page, text="Security and privacy",
+            style="PyLex.DialogTitle.TLabel",
+        ).pack(anchor="w", pady=(0, 8))
+        for heading, detail in (
+            ("Local-first preferences", "Account display name and application preferences are stored locally."),
+            ("Code execution", "Programs run with your operating-system permissions. PyLex Studio is not a security sandbox."),
+            ("External integrations", "Cloud sync, telemetry and GitHub sign-in are not enabled by the current account screen."),
+            ("Future extension permissions", "Planned extensions must declare capabilities and request user consent before accessing protected workflows."),
+        ):
+            card = ttk.Frame(security_page, padding=10)
+            card.pack(fill="x", pady=4)
+            ttk.Label(card, text=heading, style="PyLex.Field.TLabel").pack(anchor="w")
+            ttk.Label(card, text=detail, style="PyLex.Muted.TLabel", wraplength=720).pack(anchor="w", pady=(4, 0))
 
         theme_var = tk.StringVar(value=self.preferences["theme"])
         ttk.Label(appearance, text="Color theme", style="PyLex.Field.TLabel").grid(
@@ -2728,6 +2794,17 @@ class PyLexApp(tk.Tk):
             ui_font_size=self.preferences.get("ui_font_size", 9),
         )
         self.theme_palette = palette
+        # Keep native Tk controls and dialogs aligned with the selected interface font.
+        ui_family = self._resolved_ui_font()
+        ui_size = self.preferences.get("ui_font_size", 9)
+        for font_name in (
+            "TkDefaultFont", "TkMenuFont", "TkHeadingFont", "TkCaptionFont",
+            "TkSmallCaptionFont", "TkIconFont", "TkTooltipFont",
+        ):
+            try:
+                tkfont.nametofont(font_name).configure(family=ui_family, size=ui_size)
+            except tk.TclError:
+                pass
         self._icon_cache.clear()
         self.configure(bg=palette["window_bg"])
         for editor in self.documents:
