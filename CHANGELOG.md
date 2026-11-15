@@ -2,7 +2,7 @@
 
 All notable changes to PyLex Studio are documented here.
 
-## [1.9.0] - Unreleased
+## [1.9.0] - 2026-11-15
 
 ### Added
 - Added a Git source-control panel for repository status, staged and unstaged changes, file diffs, and commit history.
