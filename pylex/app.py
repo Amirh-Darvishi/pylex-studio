@@ -450,6 +450,7 @@ class PyLexApp(tk.Tk):
             button.bind("<Enter>", open_on_hover, add="+")
             button.bind("<Leave>", lambda _event: cancel_timer("open_id"), add="+")
             button.bind("<Button-1>", click_menu, add="+")
+            button.bind("<Button-3>", click_menu, add="+")
             return button
 
         add_menu("File", "folder2-open", "accent", [
