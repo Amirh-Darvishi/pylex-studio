@@ -827,6 +827,29 @@ class PyLexApp(tk.Tk):
         ttk.Button(footer, text="Close", command=dialog.destroy).pack(side="right")
         profile_entry.focus_set()
 
+    def _show_activity_context_menu(self, view, event):
+        menu = tk.Menu(self, tearoff=False)
+        if view == 'explorer':
+            menu.add_command(label='Open Explorer', command=lambda: self._activity_action('explorer'))
+            menu.add_command(label='Open Workspace…', command=self.open_project_folder)
+            menu.add_command(label='Refresh Workspace', command=self.refresh_workspace)
+            menu.add_command(label='Clear Recent Workspaces', command=self.clear_recent_workspaces)
+        elif view == 'search':
+            menu.add_command(label='Quick Open File…', command=self.open_quick_file)
+            menu.add_command(label='Command Palette…', command=self.open_command_palette)
+        elif view == 'source':
+            menu.add_command(label='Open Git Tools', command=self.open_git_tools)
+            menu.add_command(label='Open Git Repository…', command=self.open_project_folder)
+        elif view == 'debug':
+            menu.add_command(label='Start Debugging', command=self.start_debugging)
+            menu.add_command(label='Continue', command=self.debug_continue)
+            menu.add_command(label='Stop Debugging', command=self.stop_debugging)
+        elif view == 'extensions':
+            menu.add_command(label='Open Quality Tools', command=self.open_quality_tools)
+            menu.add_command(label='Scan Dependencies', command=self.scan_dependencies)
+        menu.tk_popup(event.x_root, event.y_root)
+        return 'break'
+
     def _activity_action(self, view):
         """Route Activity Bar actions to existing workspace tools."""
         # Keep activity feedback transient: do not persist a selected state.
@@ -937,6 +960,7 @@ class PyLexApp(tk.Tk):
                 compound="top",
             )
             button.pack(fill="x", pady=4, ipadx=1, ipady=7)
+            button.bind("<Button-3>", lambda event, name=view: self._show_activity_context_menu(name, event), add="+")
             button.bind(
                 "<Leave>",
                 lambda _event, target=button: target.state(["!active", "!selected"]),
