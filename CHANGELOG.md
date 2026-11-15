@@ -1,6 +1,15 @@
 # Changelog
 
-## [2.0.2] - Unreleased
+## [2.0.2] - 2026-11-15
+
+### Fixed
+- Restored interactive standard input in the Output panel, including prompts that do not end with a newline.
+- Routed terminal execution through the active editor file, workspace working directory, and selected Python interpreter.
+- Fixed debugger completion and cleanup for successful runs and uncaught exceptions across supported Python versions.
+
+### Improved
+- Added regression coverage for input streaming, terminal execution context, debugger lifecycle, and cross-platform path handling.
+- Kept terminal shell sessions separate from the Output and debugger process workflows.
 
 ### Execution, terminal, and debugger reliability
 - Added interactive standard-input support to Output for saved and unsaved Python programs.
