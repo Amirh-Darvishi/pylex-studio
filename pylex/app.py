@@ -234,6 +234,7 @@ class PyLexApp(tk.Tk):
         def add_menu(title, icon_name, color_key, commands):
             menu = tk.Menu(menu_row, tearoff=False)
             self._menus.append(menu)
+            menu_tree = [menu]
 
             def populate(target, items):
                 for item in items:
@@ -242,6 +243,7 @@ class PyLexApp(tk.Tk):
                     elif item[0] == "submenu":
                         submenu = tk.Menu(target, tearoff=False)
                         self._menus.append(submenu)
+                        menu_tree.append(submenu)
                         populate(submenu, item[2])
                         target.add_cascade(label=item[1], menu=submenu)
                     else:
@@ -257,10 +259,10 @@ class PyLexApp(tk.Tk):
                 image=self._icon(icon_name, self.theme_palette.get(color_key)),
                 compound="left",
             )
-            button.pack(side="left", padx=(0, 3), ipady=1)
+            button.pack(side="left", padx=(0, 3), ipady=2)
             button.configure(takefocus=False)
             self._toolbar_icon_bindings.append((button, icon_name, color_key))
-            pending = {"id": None}
+            pending = {"id": None, "monitor_id": None}
 
             def cancel_pending():
                 if pending["id"] is not None:
@@ -270,6 +272,47 @@ class PyLexApp(tk.Tk):
                         pass
                     pending["id"] = None
 
+            def pointer_inside_menu_area():
+                px, py = button.winfo_pointerxy()
+                bx, by = button.winfo_rootx(), button.winfo_rooty()
+                if bx <= px < bx + button.winfo_width() and by <= py < by + button.winfo_height():
+                    return True
+                for candidate in menu_tree:
+                    try:
+                        if candidate.winfo_ismapped():
+                            mx, my = candidate.winfo_rootx(), candidate.winfo_rooty()
+                            if mx <= px < mx + candidate.winfo_width() and my <= py < my + candidate.winfo_height():
+                                return True
+                    except tk.TclError:
+                        continue
+                return False
+
+            def stop_pointer_monitor():
+                monitor_id = pending.get("monitor_id")
+                if monitor_id is not None:
+                    try:
+                        button.after_cancel(monitor_id)
+                    except tk.TclError:
+                        pass
+                    pending["monitor_id"] = None
+
+            def monitor_pointer():
+                pending["monitor_id"] = None
+                try:
+                    if not menu.winfo_ismapped():
+                        return
+                    if pointer_inside_menu_area():
+                        pending["monitor_id"] = button.after(90, monitor_pointer)
+                    else:
+                        menu.unpost()
+                        stop_pointer_monitor()
+                except tk.TclError:
+                    stop_pointer_monitor()
+
+            def start_pointer_monitor():
+                stop_pointer_monitor()
+                pending["monitor_id"] = button.after(90, monitor_pointer)
+
             def post_menu():
                 pending["id"] = None
                 if button.winfo_exists():
@@ -277,6 +320,7 @@ class PyLexApp(tk.Tk):
                         button.winfo_rootx(),
                         button.winfo_rooty() + button.winfo_height(),
                     )
+                    start_pointer_monitor()
 
             def open_on_hover(_event=None):
                 cancel_pending()
@@ -284,39 +328,10 @@ class PyLexApp(tk.Tk):
 
             button.bind("<Enter>", open_on_hover, add="+")
             button.bind("<Leave>", lambda _event: cancel_pending(), add="+")
-            def dismiss_if_outside():
-                pending["dismiss_id"] = None
-                try:
-                    px, py = button.winfo_pointerxy()
-                    bx, by = button.winfo_rootx(), button.winfo_rooty()
-                    in_button = bx <= px < bx + button.winfo_width() and by <= py < by + button.winfo_height()
-                    mx, my = menu.winfo_rootx(), menu.winfo_rooty()
-                    in_menu = menu.winfo_ismapped() and mx <= px < mx + menu.winfo_width() and my <= py < my + menu.winfo_height()
-                    if not in_button and not in_menu:
-                        menu.unpost()
-                except tk.TclError:
-                    pass
-
-            def schedule_dismiss(_event=None):
-                current = pending.get("dismiss_id")
-                if current is not None:
-                    try:
-                        button.after_cancel(current)
-                    except tk.TclError:
-                        pass
-                pending["dismiss_id"] = button.after(260, dismiss_if_outside)
-
-            pending["dismiss_id"] = None
-            button.bind("<Leave>", schedule_dismiss, add="+")
-            menu.bind("<Leave>", schedule_dismiss, add="+")
-            menu.bind("<Enter>", lambda _event: (
-                button.after_cancel(pending["dismiss_id"]) if pending.get("dismiss_id") is not None else None,
-                pending.update({"dismiss_id": None}),
-            ), add="+")
-            button.bind("<Button-1>", lambda _event: (
-                menu.post(button.winfo_rootx(), button.winfo_rooty() + button.winfo_height()),
-                "break",
-            ), add="+")
+            button.bind("<Button-1>", lambda _event: (post_menu(), "break"), add="+")
+            menu.bind("<Unmap>", lambda _event: stop_pointer_monitor(), add="+")
+            for candidate in menu_tree[1:]:
+                candidate.bind("<Unmap>", lambda _event: None, add="+")
             return button
 
         add_menu("File", "folder2-open", "accent", [
@@ -390,7 +405,7 @@ class PyLexApp(tk.Tk):
         # The custom categorized menu row replaces the duplicate native menu bar.
         self.config(menu="")
 
-        action_row = ttk.Frame(self, style="PyLex.Toolbar.TFrame", padding=(14, 7))
+        action_row = ttk.Frame(self, style="PyLex.Toolbar.TFrame", padding=(14, 10))
         action_row.pack(fill="x", side="top")
         brand = ttk.Frame(action_row, style="PyLex.Toolbar.TFrame")
         brand.pack(side="left", padx=(0, 18))
@@ -428,7 +443,7 @@ class PyLexApp(tk.Tk):
                     image=self._icon(icon_name, self.theme_palette.get(color_key)),
                     compound="left",
                 )
-                button.pack(side="left", padx=1)
+                button.pack(side="left", padx=1, ipady=2)
                 button.configure(takefocus=False)
                 self._toolbar_icon_bindings.append((button, icon_name, color_key))
 
