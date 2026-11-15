@@ -895,18 +895,22 @@ class PyLexApp(tk.Tk):
         self.editor_status = ttk.Frame(status_row, style="PyLex.Toolbar.TFrame")
         self.editor_status.pack(side="right")
         self._editor_status_items = {}
+        self._editor_status_separators = []
         for index, key in enumerate(("position", "indent", "encoding", "eol", "language", "mode")):
             if index:
-                ttk.Separator(
-                    self.editor_status, orient="vertical",
-                ).pack(side="left", fill="y", padx=2, pady=3)
+                separator = ttk.Separator(self.editor_status, orient="vertical")
+                separator.pack(side="left", fill="y", padx=2, pady=3)
+                self._editor_status_separators.append(separator)
             label = ttk.Label(
                 self.editor_status, text="", style="PyLex.Status.TLabel",
                 padding=(7, 3), anchor="center",
             )
             label.pack(side="left")
             self._editor_status_items[key] = label
+            label.bind("<Button-1>", lambda _event, item=key: self._configure_status_item(item), add="+")
+            label.bind("<Button-3>", self._show_status_context_menu, add="+")
         ttk.Separator(self, orient="horizontal").pack(fill="x", side="bottom")
+        self._apply_status_bar_visibility()
         self.status_row = status_row
         status_row.bind("<Button-3>", self._show_status_context_menu, add="+")
         self._update_editor_status()
@@ -1092,8 +1096,105 @@ class PyLexApp(tk.Tk):
                 "language": language,
                 "mode": "INS",
             }
+        values["indent"] = self.preferences.get("status_bar_indent", values["indent"])
+        values["encoding"] = self.preferences.get("status_bar_encoding", "UTF-8")
+        eol_mode = self.preferences.get("status_bar_eol", "Auto")
+        if eol_mode != "Auto":
+            values["eol"] = eol_mode
         for key, value in values.items():
             self._editor_status_items[key].configure(text=value)
+
+    def _apply_status_bar_visibility(self):
+        visible = set(self.preferences.get("status_bar_items", DEFAULTS["status_bar_items"]))
+        previous = None
+        for key, label in self._editor_status_items.items():
+            if key in visible:
+                if not label.winfo_manager():
+                    label.pack(side="left")
+                if previous is not None and not self._editor_status_separators[list(self._editor_status_items).index(key)-1].winfo_manager():
+                    self._editor_status_separators[list(self._editor_status_items).index(key)-1].pack(side="left", fill="y", padx=2, pady=3)
+                previous = key
+            else:
+                label.pack_forget()
+        for index, separator in enumerate(self._editor_status_separators):
+            keys = list(self._editor_status_items)
+            if keys[index] not in visible or keys[index+1] not in visible:
+                separator.pack_forget()
+
+    def _configure_status_bar(self):
+        dialog = tk.Toplevel(self)
+        dialog.title("Configure Status Bar")
+        dialog.transient(self)
+        dialog.resizable(False, False)
+        body = ttk.Frame(dialog, padding=18)
+        body.pack(fill="both", expand=True)
+        ttk.Label(body, text="Visible status items", style="PyLex.DialogTitle.TLabel").pack(anchor="w", pady=(0, 10))
+        options = (("position", "Cursor position (Ln / Col)"), ("indent", "Indentation"),
+                   ("encoding", "Encoding"), ("eol", "Line ending"),
+                   ("language", "Language mode"), ("mode", "Insert / overwrite mode"))
+        current = set(self.preferences.get("status_bar_items", DEFAULTS["status_bar_items"]))
+        variables = {}
+        for key, label in options:
+            variables[key] = tk.BooleanVar(value=key in current)
+            ttk.Checkbutton(body, text=label, variable=variables[key]).pack(anchor="w", pady=2)
+        ttk.Separator(body).pack(fill="x", pady=10)
+        ttk.Label(body, text="Indentation").pack(anchor="w")
+        indent = tk.StringVar(value=self.preferences.get("status_bar_indent", "Spaces: 4"))
+        ttk.Combobox(body, textvariable=indent, state="readonly", width=22,
+                     values=("Spaces: 2", "Spaces: 4", "Spaces: 8", "Tabs")).pack(anchor="w", pady=(3, 8))
+        ttk.Label(body, text="Encoding").pack(anchor="w")
+        encoding = tk.StringVar(value=self.preferences.get("status_bar_encoding", "UTF-8"))
+        ttk.Combobox(body, textvariable=encoding, state="readonly", width=22,
+                     values=("UTF-8", "UTF-8 with BOM", "ASCII")).pack(anchor="w", pady=(3, 8))
+        ttk.Label(body, text="Line ending").pack(anchor="w")
+        eol = tk.StringVar(value=self.preferences.get("status_bar_eol", "Auto"))
+        ttk.Combobox(body, textvariable=eol, state="readonly", width=22,
+                     values=("Auto", "LF", "CRLF")).pack(anchor="w", pady=(3, 12))
+        def save():
+            self.preferences["status_bar_items"] = [key for key, var in variables.items() if var.get()]
+            self.preferences["status_bar_indent"] = indent.get()
+            self.preferences["status_bar_encoding"] = encoding.get()
+            self.preferences["status_bar_eol"] = eol.get()
+            self._persist_preferences()
+            self._apply_status_bar_visibility()
+            self._update_editor_status()
+            dialog.destroy()
+        actions = ttk.Frame(body)
+        actions.pack(fill="x")
+        ttk.Button(actions, text="Restore Defaults",
+                   command=lambda: [var.set(True) for var in variables.values()]).pack(side="left")
+        ttk.Button(actions, text="Save", command=save, style="PyLex.Primary.TButton").pack(side="right")
+
+    def _configure_status_item(self, _item):
+        self._configure_status_bar()
+
+    def _show_status_context_menu(self, event):
+        menu = tk.Menu(self, tearoff=False)
+        menu.add_command(label="Configure Status Bar…", command=self._configure_status_bar)
+        menu.add_command(label="Reset Status Bar", command=self._reset_status_bar)
+        menu.tk_popup(event.x_root, event.y_root)
+        return "break"
+
+    def _reset_status_bar(self):
+        for key in ("status_bar_items", "status_bar_indent", "status_bar_encoding", "status_bar_eol"):
+            self.preferences[key] = list(DEFAULTS[key]) if key == "status_bar_items" else DEFAULTS[key]
+        self._persist_preferences()
+        self._apply_status_bar_visibility()
+        self._update_editor_status()
+
+    def _text_context_menu(self, widget, event):
+        menu = tk.Menu(self, tearoff=False)
+        try:
+            selected = bool(widget.tag_ranges("sel"))
+        except (tk.TclError, AttributeError):
+            selected = False
+        menu.add_command(label="Copy", command=lambda: widget.event_generate("<<Copy>>"),
+                         state="normal" if selected else "disabled")
+        menu.add_command(label="Select All", command=lambda: widget.tag_add("sel", "1.0", "end-1c"))
+        menu.add_separator()
+        menu.add_command(label="Clear", command=lambda: widget.delete("1.0", "end"))
+        menu.tk_popup(event.x_root, event.y_root)
+        return "break"
 
     def _text_panel(self, title):
         frame = ttk.Frame(self.tabs)
@@ -1110,6 +1211,7 @@ class PyLexApp(tk.Tk):
         text.tag_configure("stderr", foreground="#d9534f")
         text.tag_configure("stdout", foreground="#5b9b68")
         text.tag_configure("system", foreground="#4b83c3")
+        text.bind("<Button-3>", lambda event, widget=text: self._text_context_menu(widget, event), add="+")
         # Text widgets retain native wheel/keyboard scrolling without visible bars.
         text.bind(
             "<Shift-MouseWheel>",
