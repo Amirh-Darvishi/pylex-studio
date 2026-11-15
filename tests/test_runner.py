@@ -33,6 +33,23 @@ class RunnerTests(unittest.TestCase):
         self.assertFalse(handle.done)
         self.assertEqual(handle.wait(5).status, "finished")
 
+    def test_interactive_stdin_is_forwarded_to_running_program(self):
+        handle = start_source(
+            "name = input('Name: ')\\nprint('hello', name)",
+            timeout=5,
+        )
+        deadline = time.monotonic() + 2
+        output = []
+        while time.monotonic() < deadline:
+            output.extend(handle.read_available())
+            if any("Name:" in chunk for channel, chunk in output if channel == "stdout"):
+                break
+            time.sleep(0.02)
+        self.assertTrue(handle.send_input("PyLex"))
+        result = handle.wait(5)
+        self.assertEqual(result.status, "finished")
+        self.assertIn("hello PyLex", result.stdout)
+
     def test_missing_library_is_captured_as_runtime_error(self):
         result = start_source("import pylex_test_missing_package_abc123").wait(5)
         self.assertNotEqual(result.exit_code, 0)
