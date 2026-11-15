@@ -2191,6 +2191,7 @@ class PyLexApp(tk.Tk):
         if not name or Path(name).name != name or name in {'.', '..'}:
             return
         destination = path.with_name(name)
+        was_directory = path.is_dir()
         try:
             path.rename(destination)
         except OSError as exc:
@@ -2198,7 +2199,7 @@ class PyLexApp(tk.Tk):
             return
         for editor, document in self.documents.items():
             opened = document.get("path")
-            if opened and (opened == path or path.is_dir() and path in opened.parents):
+            if opened and (opened == path or was_directory and path in opened.parents):
                 document["path"] = destination / opened.relative_to(path) if opened != path else destination
                 self.editor_tabs.tab(document["frame"], text=self._tab_label(document))
         self._sync_active_document()
