@@ -230,12 +230,22 @@ class PyLexApp(tk.Tk):
         def add_menu(title, icon_name, color_key, commands):
             menu = tk.Menu(bar, tearoff=False)
             self._menus.append(menu)
-            for item in commands:
-                if item is None:
-                    menu.add_separator()
-                else:
-                    label, action, *shortcut = item
-                    menu.add_command(label=label, command=action, accelerator=shortcut[0] if shortcut else "")
+            def populate(target, items):
+                for item in items:
+                    if item is None:
+                        target.add_separator()
+                    elif item[0] == "submenu":
+                        submenu = tk.Menu(target, tearoff=False)
+                        self._menus.append(submenu)
+                        populate(submenu, item[2])
+                        target.add_cascade(label=item[1], menu=submenu)
+                    else:
+                        label, action, *shortcut = item
+                        target.add_command(
+                            label=label, command=action,
+                            accelerator=shortcut[0] if shortcut else "",
+                        )
+            populate(menu, commands)
             button = ttk.Menubutton(
                 bar, text=title, menu=menu, style="PyLex.Menu.TMenubutton",
                 image=self._icon(icon_name, self.theme_palette.get(color_key)),
@@ -266,16 +276,28 @@ class PyLexApp(tk.Tk):
             ("Stop Execution    Shift+F5", self.stop_execution),
         ])
         add_menu("Debug", "bug-fill", "violet", [
-            ("Start Debugging    Ctrl+F5", self.start_debugging),
-            ("Continue    Ctrl+F10", self.debug_continue),
-            ("Step Over    F10", self.debug_next), ("Step Into    F11", self.debug_step),
-            None, ("Toggle Breakpoint    F9", self.toggle_breakpoint),
-            ("Temporary Breakpoint", self.debug_temporary_breakpoint),
-            ("Conditional Breakpoint...", self.debug_conditional_breakpoint),
-            None, ("Inspect Variables", self.debug_variables), ("Show Call Stack", self.debug_stack),
-            ("Function Arguments", self.debug_arguments), ("Evaluate Expression...", self.debug_evaluate),
-            ("Run Until Line...", self.debug_until), ("Run Until Return", self.debug_return),
-            ("Stop Debugging", self.stop_debugging),
+            ("submenu", "Session", [
+                ("Start Debugging    Ctrl+F5", self.start_debugging),
+                ("Continue    Ctrl+F10", self.debug_continue),
+                ("Stop Debugging", self.stop_debugging),
+            ]),
+            ("submenu", "Stepping", [
+                ("Step Over    F10", self.debug_next),
+                ("Step Into    F11", self.debug_step),
+                ("Run Until Line...", self.debug_until),
+                ("Run Until Return", self.debug_return),
+            ]),
+            ("submenu", "Breakpoints", [
+                ("Toggle Breakpoint    F9", self.toggle_breakpoint),
+                ("Temporary Breakpoint", self.debug_temporary_breakpoint),
+                ("Conditional Breakpoint...", self.debug_conditional_breakpoint),
+            ]),
+            ("submenu", "Inspect", [
+                ("Inspect Variables", self.debug_variables),
+                ("Show Call Stack", self.debug_stack),
+                ("Function Arguments", self.debug_arguments),
+                ("Evaluate Expression...", self.debug_evaluate),
+            ]),
         ])
         add_menu("Code", "braces", "accent", [
             ("Analyze All    F6", self.analyze_all), ("Lexical Analysis", self.analyze_lexical),
