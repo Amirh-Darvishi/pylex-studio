@@ -129,7 +129,7 @@ class ThemeManager:
         )
         self.style.configure(
             "PyLex.Danger.TButton",
-            font=("Segoe UI", 9),
+            font=ui_font,
             padding=(10, 6),
             background=palette["danger"],
             foreground="#ffffff",
@@ -168,7 +168,7 @@ class ThemeManager:
         )
         self.style.configure(
             "Treeview.Heading",
-            font=("Segoe UI", 9, "bold"),
+            font=(ui_font_family, ui_font_size, "bold"),
         )
         self.style.configure(
             "TNotebook.Tab",
@@ -177,6 +177,7 @@ class ThemeManager:
         )
         self.style.configure(
             "TPanedwindow",
-            sashwidth=5,
+            sashwidth=7,
+            sashrelief="flat",
         )
         return palette
