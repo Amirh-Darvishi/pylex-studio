@@ -315,9 +315,49 @@ class CodeEditor(tk.Frame):
         except tk.TclError:
             pass
 
+    def _copy_current_line(self):
+        line = self.text.index("insert").split(".")[0]
+        value = self.text.get(f"{line}.0", f"{line}.end")
+        self.clipboard_clear()
+        self.clipboard_append(value)
+
+    def _select_current_line(self):
+        line = self.text.index("insert").split(".")[0]
+        self.text.tag_remove("sel", "1.0", "end")
+        self.text.tag_add("sel", f"{line}.0", f"{line}.end")
+        self.text.mark_set("insert", f"{line}.end")
+        self.text.see("insert")
+
+    def _delete_current_line(self):
+        line = self.text.index("insert").split(".")[0]
+        self.text.delete(f"{line}.0", f"{line + 1}.0")
+        self.text.mark_set("insert", f"{max(1, int(line))}.0")
+        self.refresh_lines()
+        self._cursor_changed()
+
     def _show_context_menu(self, event=None):
-        """Show editor actions that match the current text selection and caret."""
-        menu = tk.Menu(self, tearoff=False)
+        """Show context-aware editing, navigation and code actions at the pointer."""
+        if event is not None:
+            try:
+                clicked = self.text.index(f"@{event.x},{event.y}")
+                if not (self.text.tag_ranges("sel") and
+                        self.text.compare(clicked, ">=", "sel.first") and
+                        self.text.compare(clicked, "<=", "sel.last")):
+                    self.text.tag_remove("sel", "1.0", "end")
+                    self.text.mark_set("insert", clicked)
+            except tk.TclError:
+                pass
+        root = self.winfo_toplevel()
+        palette = getattr(root, "theme_palette", {})
+        menu = tk.Menu(
+            self, tearoff=False,
+            background=palette.get("menu_bg", "#252D38"),
+            foreground=palette.get("menu_fg", "#D8DEE8"),
+            activebackground=palette.get("elevated", "#303B49"),
+            activeforeground=palette.get("accent", "#8FB7D8"),
+            disabledforeground=palette.get("muted", "#9AA7B7"),
+            borderwidth=1, relief="solid",
+        )
         try:
             has_selection = bool(self.text.tag_ranges("sel"))
         except tk.TclError:
@@ -326,15 +366,20 @@ class CodeEditor(tk.Frame):
         menu.add_command(label="Redo", command=lambda: self._safe_edit_history("redo"))
         menu.add_separator()
         menu.add_command(label="Cut", command=lambda: self.text.event_generate("<<Cut>>"), state="normal" if has_selection else "disabled")
-        menu.add_command(label="Copy", command=lambda: self.text.event_generate("<<Copy>>"), state="normal" if has_selection else "disabled")
+        menu.add_command(label="Copy Selection", command=lambda: self.text.event_generate("<<Copy>>"), state="normal" if has_selection else "disabled")
+        menu.add_command(label="Copy Line", command=self._copy_current_line)
         menu.add_command(label="Paste", command=lambda: self.text.event_generate("<<Paste>>"))
         menu.add_command(label="Select All", command=self._select_all)
         menu.add_separator()
         menu.add_command(label="Duplicate Line / Selection", command=self._duplicate_line)
-        menu.add_command(label="Toggle Line Comment", command=self._toggle_comment)
-        menu.add_command(label="Go to Line…", command=self._go_to_line)
+        menu.add_command(label="Delete Line", command=self._delete_current_line)
+        menu.add_command(label="Move Line Up    Alt+Up", command=lambda: self._move_line(-1))
+        menu.add_command(label="Move Line Down    Alt+Down", command=lambda: self._move_line(1))
+        menu.add_command(label="Select Current Line", command=self._select_current_line)
+        menu.add_command(label="Toggle Line Comment    Ctrl+/", command=self._toggle_comment)
         menu.add_separator()
-        menu.add_command(label="Show Completions", command=self.show_completions)
+        menu.add_command(label="Go to Line…    Ctrl+G", command=self._go_to_line)
+        menu.add_command(label="Show Completions    Ctrl+Space", command=self.show_completions)
         menu.add_command(label="Format / Analyze", command=lambda: self.text.event_generate("<<PyLexAnalyze>>"))
         try:
             menu.tk_popup(event.x_root, event.y_root)
