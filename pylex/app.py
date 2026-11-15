@@ -104,6 +104,7 @@ class PyLexApp(tk.Tk):
         tools_menu.add_command(label="Jump to Line", command=self.debug_jump)
         tools_menu.add_command(label="Evaluate Expression...", command=self.debug_evaluate)
         tools_menu.add_command(label="Conditional Breakpoint...", command=self.debug_conditional_breakpoint)
+        tools_menu.add_command(label="Temporary Breakpoint", command=self.debug_temporary_breakpoint)
         tools_menu.add_command(label="Enable Breakpoint...", command=lambda: self.debug_manage_breakpoint("enable"))
         tools_menu.add_command(label="Disable Breakpoint...", command=lambda: self.debug_manage_breakpoint("disable"))
         tools_menu.add_command(label="Ignore Breakpoint Hits...", command=lambda: self.debug_manage_breakpoint("ignore"))
@@ -143,7 +144,7 @@ class PyLexApp(tk.Tk):
             ("Save", self.save_file), ("▶ Run", self.run_code), ("■ Force Stop", self.stop_execution),
             ("Debug", self.start_debugging), ("Continue", self.debug_continue),
             ("Step", self.debug_step), ("Next", self.debug_next),
-            ("Breakpoint", self.toggle_breakpoint), ("Variables", self.debug_variables),
+            ("Breakpoint", self.toggle_breakpoint), ("Temp BP", self.debug_temporary_breakpoint), ("Variables", self.debug_variables),
             ("Stack", self.debug_stack),
             ("Arguments", self.debug_arguments),
             ("Until", self.debug_until),
@@ -1358,6 +1359,17 @@ class PyLexApp(tk.Tk):
         try:
             session.pretty_print(expression)
             self.status.configure(text="Expression evaluation requested; see Output.")
+        except ValueError as exc:
+            messagebox.showerror("Debugger", str(exc))
+
+    def debug_temporary_breakpoint(self):
+        session = self._active_debug_session()
+        if session is None:
+            return
+        line = int(self.editor.text.index("insert").split(".")[0])
+        try:
+            session.set_temporary_breakpoint(line)
+            self.status.configure(text=f"Temporary breakpoint requested at line {line}.")
         except ValueError as exc:
             messagebox.showerror("Debugger", str(exc))
 
