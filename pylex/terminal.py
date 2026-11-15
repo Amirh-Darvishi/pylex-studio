@@ -56,7 +56,12 @@ def shell_command(shell):
 def python_file_command(shell, python_executable, file_path):
     """Build a safely quoted command that runs the active editor file."""
     executable = str(python_executable)
-    path = str(Path(file_path).expanduser().resolve())
+    raw_path = str(file_path)
+    windows_path = PureWindowsPath(raw_path)
+    if windows_path.is_absolute() and os.name != "nt":
+        path = raw_path
+    else:
+        path = str(Path(file_path).expanduser().resolve())
     if shell == "powershell":
         def quote(value):
             return "'" + value.replace("'", "''") + "'"
