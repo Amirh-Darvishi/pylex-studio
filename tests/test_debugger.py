@@ -28,7 +28,9 @@ class DebuggerTests(unittest.TestCase):
 
     def test_program_output_cannot_fake_the_pdb_completion_marker(self):
         session = DebugSession.start(
-            "print('The program finished and will be restarted')\n"
+            "import time\n"
+            "print('The program finished and will be restarted', flush=True)\n"
+            "time.sleep(0.3)\n"
             "print('still-running')\n"
         )
         output = ""
