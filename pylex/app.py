@@ -219,17 +219,16 @@ class PyLexApp(tk.Tk):
         }.get(kind, "file-earmark")
 
     def _toolbar(self):
-        """Build a refined command bar with hover-open, categorized tool menus."""
-        bar = ttk.Frame(self, style="PyLex.Toolbar.TFrame", padding=(14, 7))
-        bar.pack(fill="x")
-        brand = ttk.Frame(bar, style="PyLex.Toolbar.TFrame")
-        brand.pack(side="left", padx=(0, 22))
-        self._build_logo(brand, 34)
-        ttk.Label(brand, text="PyLex Studio", style="PyLex.Brand.TLabel").pack(side="left", padx=(8, 0))
+        """Build a two-tier command surface: categorized menus above the brand/action row."""
+        menu_row = ttk.Frame(self, style="PyLex.Toolbar.TFrame", padding=(12, 3))
+        menu_row.pack(fill="x", side="top")
+        menu_row.configure(height=38)
+        menu_row.pack_propagate(False)
 
         def add_menu(title, icon_name, color_key, commands):
-            menu = tk.Menu(bar, tearoff=False)
+            menu = tk.Menu(menu_row, tearoff=False)
             self._menus.append(menu)
+
             def populate(target, items):
                 for item in items:
                     if item is None:
@@ -245,31 +244,55 @@ class PyLexApp(tk.Tk):
                             label=label, command=action,
                             accelerator=shortcut[0] if shortcut else "",
                         )
+
             populate(menu, commands)
             button = ttk.Menubutton(
-                bar, text=title, menu=menu, style="PyLex.Menu.TMenubutton",
+                menu_row, text=title, menu=menu, style="PyLex.Menu.TMenubutton",
                 image=self._icon(icon_name, self.theme_palette.get(color_key)),
                 compound="left",
             )
-            button.pack(side="left", padx=(0, 5), ipady=2)
+            button.pack(side="left", padx=(0, 3), ipady=1)
             self._toolbar_icon_bindings.append((button, icon_name, color_key))
             pending = {"id": None}
+
             def open_on_hover(_event=None):
                 if pending["id"] is not None:
                     button.after_cancel(pending["id"])
                 pending["id"] = button.after(
-                    220, lambda: menu.post(button.winfo_rootx(), button.winfo_rooty() + button.winfo_height())
+                    180,
+                    lambda: menu.post(
+                        button.winfo_rootx(),
+                        button.winfo_rooty() + button.winfo_height(),
+                    ),
                 )
+
             button.bind("<Enter>", open_on_hover, add="+")
+            button.bind("<Leave>", lambda _event: (
+                button.after_cancel(pending["id"]) if pending["id"] is not None else None
+            ), add="+")
             button.bind("<Button-1>", lambda _event: (
-                menu.post(button.winfo_rootx(), button.winfo_rooty() + button.winfo_height()), "break"
+                menu.post(button.winfo_rootx(), button.winfo_rooty() + button.winfo_height()),
+                "break",
             ), add="+")
             return button
 
         add_menu("File", "folder2-open", "accent", [
             ("New File    Ctrl+N", self.new_file), ("Open File    Ctrl+O", self.open_file),
-            ("Open Workspace...", self.open_project_folder), ("Quick Open    Ctrl+P", self.open_quick_file),
-            None, ("Save    Ctrl+S", self.save_file), ("Save As...", self.save_as),
+            ("Open Workspace...", self.open_project_folder),
+            ("Quick Open    Ctrl+P", self.open_quick_file), None,
+            ("Save    Ctrl+S", self.save_file), ("Save As...", self.save_as),
+            ("Close Tab    Ctrl+W", self.close_tab), ("Close Workspace", self.close_workspace),
+        ])
+        add_menu("Edit", "pencil-square", "muted", [
+            ("Find / Replace    Ctrl+H", self.find_replace),
+            ("Toggle Line Comment    Ctrl+/", lambda: self.editor._toggle_comment()),
+            ("Duplicate Line    Ctrl+D", lambda: self.editor._duplicate_line()),
+            ("Go to Line    Ctrl+G", lambda: self.editor._go_to_line()),
+        ])
+        add_menu("Navigate", "search", "accent", [
+            ("Quick Open File    Ctrl+P", self.open_quick_file),
+            ("Command Palette    Ctrl+Shift+P", self.open_command_palette),
+            ("Go to Line    Ctrl+G", lambda: self.editor._go_to_line()),
         ])
         add_menu("Run", "play-fill", "success", [
             ("Run Current File    F5", self.run_code),
@@ -282,19 +305,21 @@ class PyLexApp(tk.Tk):
                 ("Stop Debugging", self.stop_debugging),
             ]),
             ("submenu", "Stepping", [
-                ("Step Over    F10", self.debug_next),
-                ("Step Into    F11", self.debug_step),
-                ("Run Until Line...", self.debug_until),
-                ("Run Until Return", self.debug_return),
+                ("Step Over    F10", self.debug_next), ("Step Into    F11", self.debug_step),
+                ("Run Until Line...", self.debug_until), ("Run Until Return", self.debug_return),
+                ("Jump to Line...", self.debug_jump),
             ]),
             ("submenu", "Breakpoints", [
                 ("Toggle Breakpoint    F9", self.toggle_breakpoint),
                 ("Temporary Breakpoint", self.debug_temporary_breakpoint),
                 ("Conditional Breakpoint...", self.debug_conditional_breakpoint),
+                ("Enable Breakpoint...", lambda: self.debug_manage_breakpoint("enable")),
+                ("Disable Breakpoint...", lambda: self.debug_manage_breakpoint("disable")),
+                ("Ignore Breakpoint Hits...", lambda: self.debug_manage_breakpoint("ignore")),
+                ("Clear All Breakpoints", self.debug_clear_breakpoints),
             ]),
             ("submenu", "Inspect", [
-                ("Inspect Variables", self.debug_variables),
-                ("Show Call Stack", self.debug_stack),
+                ("Inspect Variables", self.debug_variables), ("Show Call Stack", self.debug_stack),
                 ("Function Arguments", self.debug_arguments),
                 ("Evaluate Expression...", self.debug_evaluate),
             ]),
@@ -302,35 +327,86 @@ class PyLexApp(tk.Tk):
         add_menu("Code", "braces", "accent", [
             ("Analyze All    F6", self.analyze_all), ("Lexical Analysis", self.analyze_lexical),
             ("Syntax Analysis", self.analyze_syntax), None,
-            ("Formatter, Linter & Tests", self.open_quality_tools), ("Clear Results", self.clear_results),
+            ("Formatter, Linter & Tests", self.open_quality_tools), ("Dependencies", self.scan_dependencies),
+            ("Clear Results", self.clear_results),
         ])
         add_menu("Tools", "sliders", "muted", [
             ("Integrated Terminal", self.open_terminal), ("Git Source Control", self.open_git_tools),
-            ("Python Interpreter...", self.manage_interpreter), ("Dependencies", self.scan_dependencies),
+            ("Python Interpreter...", self.manage_interpreter),
         ])
-        self.run_button = ttk.Button(
-            bar, text="Run", command=self.run_code, style="PyLex.Primary.TButton",
-            image=self._icon("play-fill", self.theme_palette.get("success")), compound="left",
+        add_menu("View", "layout-sidebar", "muted", [
+            ("Toggle Project Explorer", self.toggle_project_explorer),
+            ("Preferences...", self.open_preferences), ("Switch Theme", self.toggle_theme),
+        ])
+        add_menu("Help", "question-circle", "muted", [
+            ("Quick Start & Help...", self.show_help),
+            ("Command Palette...", self.open_command_palette),
+            ("About PyLex Studio...", self.show_about),
+        ])
+
+        # The custom categorized menu row replaces the duplicate native menu bar.
+        self.config(menu="")
+
+        action_row = ttk.Frame(self, style="PyLex.Toolbar.TFrame", padding=(14, 7))
+        action_row.pack(fill="x", side="top")
+        brand = ttk.Frame(action_row, style="PyLex.Toolbar.TFrame")
+        brand.pack(side="left", padx=(0, 18))
+        self._build_logo(brand, 36)
+        ttk.Label(
+            brand, text="PyLex Studio", style="PyLex.Brand.TLabel"
+        ).pack(side="left", padx=(9, 0))
+
+        actions = (
+            ("New", "file-earmark-plus", self.new_file, "accent"),
+            ("Open", "folder2-open", self.open_file, "muted"),
+            ("Save", "floppy", self.save_file, "muted"),
+            ("Terminal", "terminal", self.open_terminal, "violet"),
+            ("Quality", "check2-square", self.open_quality_tools, "success"),
+            ("Git", "git", self.open_git_tools, "violet"),
+            ("Debug", "bug-fill", self.start_debugging, "warning"),
         )
-        self.run_button.pack(side="left", padx=(8, 4))
+        for label, icon_name, command, color_key in actions:
+            button = ttk.Button(
+                action_row, text=label, command=command,
+                style="PyLex.Toolbar.TButton",
+                image=self._icon(icon_name, self.theme_palette.get(color_key)),
+                compound="left",
+            )
+            button.pack(side="left", padx=2)
+            self._toolbar_icon_bindings.append((button, icon_name, color_key))
+
+        spacer = ttk.Frame(action_row, style="PyLex.Toolbar.TFrame")
+        spacer.pack(side="left", fill="x", expand=True)
+        self.run_button = ttk.Button(
+            action_row, text="Run", command=self.run_code,
+            style="PyLex.Primary.TButton",
+            image=self._icon("play-fill", self.theme_palette.get("success")),
+            compound="left", width=9,
+        )
+        self.run_button.pack(side="left", padx=(6, 4))
         self.stop_button = ttk.Button(
-            bar, text="Stop", command=self.stop_execution, style="PyLex.Danger.TButton",
-            image=self._icon("stop-fill", self.theme_palette.get("danger")), compound="left",
+            action_row, text="Stop", command=self.stop_execution,
+            style="PyLex.Danger.TButton",
+            image=self._icon("stop-fill", self.theme_palette.get("danger")),
+            compound="left", width=9,
         )
         self.stop_button.pack(side="left", padx=(0, 6))
         self._toolbar_icon_bindings.extend([
             (self.run_button, "play-fill", "success"),
             (self.stop_button, "stop-fill", "danger"),
         ])
-        spacer = ttk.Frame(bar, style="PyLex.Toolbar.TFrame")
-        spacer.pack(side="left", fill="x", expand=True)
         self.theme_button = ttk.Button(
-            bar, text="Theme", command=self.toggle_theme, style="PyLex.Toolbar.TButton",
-            image=self._icon("sun" if self.dark else "moon-stars", self.theme_palette.get("warning")),
-            compound="left",
+            action_row, text="Theme", command=self.toggle_theme,
+            style="PyLex.Toolbar.TButton",
+            image=self._icon(
+                "sun" if self.dark else "moon-stars",
+                self.theme_palette.get("warning"),
+            ), compound="left",
         )
         self.theme_button.pack(side="right", padx=(4, 0))
-        self._toolbar_icon_bindings.append((self.theme_button, "sun" if self.dark else "moon-stars", "warning"))
+        self._toolbar_icon_bindings.append((
+            self.theme_button, "sun" if self.dark else "moon-stars", "warning"
+        ))
 
     def _build_logo(self, parent, size=40):
         """Draw the original PyLex emblem with native vector canvas primitives."""
@@ -350,43 +426,127 @@ class PyLexApp(tk.Tk):
         return canvas
 
     def show_account(self):
-        """Show the local account center without implying a cloud login exists."""
+        """Open a spacious account center with honest local and planned service states."""
         dialog = tk.Toplevel(self)
-        dialog.title("PyLex Studio — Account")
+        dialog.title("PyLex Studio — Account Center")
         dialog.transient(self)
-        dialog.geometry("440x380")
-        dialog.minsize(380, 320)
-        body = ttk.Frame(dialog, padding=22)
-        body.pack(fill="both", expand=True)
-        self._build_logo(body, 64)
-        ttk.Label(body, text="Account", style="PyLex.DialogTitle.TLabel").pack(anchor="w", pady=(14, 4))
-        ttk.Label(body, text="Local profile", style="PyLex.Field.TLabel").pack(anchor="w", pady=(12, 3))
+        dialog.geometry("900x680")
+        dialog.minsize(760, 580)
+        dialog.resizable(True, True)
+
+        shell = ttk.Frame(dialog, padding=24)
+        shell.pack(fill="both", expand=True)
+        header = ttk.Frame(shell)
+        header.pack(fill="x", pady=(0, 18))
+        self._build_logo(header, 58)
+        heading = ttk.Frame(header)
+        heading.pack(side="left", padx=(14, 0), fill="x", expand=True)
+        ttk.Label(heading, text="Account Center", style="PyLex.DialogTitle.TLabel").pack(anchor="w")
         ttk.Label(
-            body,
-            text="Your profile name is stored locally. Online sign-in and cross-device sync are not enabled yet.",
-            style="PyLex.Muted.TLabel", wraplength=370, justify="left",
-        ).pack(anchor="w", pady=(0, 10))
-        profile_name = tk.StringVar(value=self.preferences.get("account_display_name", "Developer"))
-        ttk.Label(body, text="Display name").pack(anchor="w")
-        profile_entry = ttk.Entry(body, textvariable=profile_name)
-        profile_entry.pack(fill="x", pady=(3, 8))
+            heading,
+            text="Manage your local identity, workspace profile and future connected services.",
+            style="PyLex.Muted.TLabel",
+        ).pack(anchor="w", pady=(4, 0))
+
+        notebook = ttk.Notebook(shell)
+        notebook.pack(fill="both", expand=True)
+        profile_page = ttk.Frame(notebook, padding=20)
+        services_page = ttk.Frame(notebook, padding=20)
+        workspace_page = ttk.Frame(notebook, padding=20)
+        notebook.add(profile_page, text="Profile")
+        notebook.add(services_page, text="Connected Services")
+        notebook.add(workspace_page, text="Workspace")
+
+        profile_name = tk.StringVar(
+            value=self.preferences.get("account_display_name", "Developer")
+        )
+        ttk.Label(profile_page, text="Local profile", style="PyLex.Field.TLabel").pack(anchor="w")
+        ttk.Label(
+            profile_page,
+            text="Your display name is saved on this computer and is not uploaded to a server.",
+            style="PyLex.Muted.TLabel", wraplength=680,
+        ).pack(anchor="w", pady=(5, 18))
+        ttk.Label(profile_page, text="Display name").pack(anchor="w")
+        profile_entry = ttk.Entry(profile_page, textvariable=profile_name, width=48)
+        profile_entry.pack(anchor="w", fill="x", pady=(5, 14))
+
         def save_profile():
             self.preferences["account_display_name"] = profile_name.get().strip()[:48] or "Developer"
             self._persist_preferences()
             self.status.configure(text="Local profile updated.")
             dialog.destroy()
-        ttk.Button(body, text="Save Profile", command=save_profile, style="PyLex.Primary.TButton").pack(anchor="e", pady=(0, 10))
-        ttk.Label(body, text="Account services", style="PyLex.Field.TLabel").pack(anchor="w", pady=(4, 5))
-        for label, status, color in (
-            ("Local profile", "Available", "success"),
-            ("Cloud synchronization", "Coming later", "warning"),
-            ("GitHub account connection", "Planned", "muted"),
+
+        ttk.Button(
+            profile_page, text="Save Profile", command=save_profile,
+            style="PyLex.Primary.TButton",
+        ).pack(anchor="w")
+        ttk.Label(
+            profile_page, text="Privacy", style="PyLex.Field.TLabel"
+        ).pack(anchor="w", pady=(28, 6))
+        ttk.Label(
+            profile_page,
+            text="PyLex Studio currently keeps this profile in your local preferences file. "
+                 "No account registration, telemetry upload or cloud synchronization is performed by this screen.",
+            style="PyLex.Muted.TLabel", wraplength=680, justify="left",
+        ).pack(anchor="w")
+
+        ttk.Label(
+            services_page, text="Service availability",
+            style="PyLex.DialogTitle.TLabel",
+        ).pack(anchor="w", pady=(0, 12))
+        service_items = (
+            ("Local profile", "Available", "success",
+             "Edit the display name stored in your local preferences."),
+            ("Git source control", "Available", "success",
+             "Use local Git repositories without linking an online account."),
+            ("GitHub sign-in", "Planned", "muted",
+             "A future opt-in integration for repository and pull-request workflows."),
+            ("Cloud synchronization", "Planned", "warning",
+             "A future opt-in service for synchronizing settings across devices."),
+            ("Extensions marketplace", "Roadmap", "muted",
+             "A future trusted extension catalog with permission and compatibility checks."),
+        )
+        for name, status, color_key, description in service_items:
+            card = ttk.Frame(services_page, padding=12)
+            card.pack(fill="x", pady=5)
+            top = ttk.Frame(card)
+            top.pack(fill="x")
+            ttk.Label(top, text=name, style="PyLex.Field.TLabel").pack(side="left")
+            ttk.Label(
+                top, text=status, foreground=self.theme_palette[color_key]
+            ).pack(side="right")
+            ttk.Label(
+                card, text=description, style="PyLex.Muted.TLabel",
+                wraplength=680, justify="left",
+            ).pack(anchor="w", pady=(5, 0))
+
+        root = str(self.project_root) if self.project_root else "No workspace is currently open."
+        document_count = len(self.documents)
+        ttk.Label(
+            workspace_page, text="Current workspace",
+            style="PyLex.DialogTitle.TLabel",
+        ).pack(anchor="w", pady=(0, 12))
+        ttk.Label(workspace_page, text=root, wraplength=680).pack(anchor="w", pady=(0, 16))
+        metrics = ttk.Frame(workspace_page)
+        metrics.pack(fill="x")
+        for label, value in (
+            ("Open documents", str(document_count)),
+            ("Workspace", "Open" if self.project_root else "Not open"),
+            ("Profile", "Local"),
         ):
-            row = ttk.Frame(body)
-            row.pack(fill="x", pady=3)
-            ttk.Label(row, text=label).pack(side="left")
-            ttk.Label(row, text=status, foreground=self.theme_palette[color]).pack(side="right")
-        ttk.Button(body, text="Close", command=dialog.destroy).pack(anchor="e", pady=(18, 0))
+            tile = ttk.Frame(metrics, padding=14)
+            tile.pack(side="left", fill="both", expand=True, padx=(0, 8))
+            ttk.Label(tile, text=value, style="PyLex.DialogTitle.TLabel").pack(anchor="w")
+            ttk.Label(tile, text=label, style="PyLex.Muted.TLabel").pack(anchor="w", pady=(4, 0))
+
+        footer = ttk.Frame(shell)
+        footer.pack(fill="x", pady=(14, 0))
+        ttk.Label(
+            footer, text="Online services remain disabled until explicitly implemented and configured.",
+            style="PyLex.Muted.TLabel",
+        ).pack(side="left", fill="x", expand=True)
+        ttk.Button(footer, text="Close", command=dialog.destroy).pack(side="right")
+        profile_entry.focus_set()
 
     def _activity_action(self, view):
         """Route Activity Bar actions to existing workspace tools."""
