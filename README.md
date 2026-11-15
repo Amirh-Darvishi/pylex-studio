@@ -59,7 +59,7 @@ PyLex Studio 2.0.0 focuses on a polished, Python-first desktop IDE. The file-typ
 
 - Python 3.10+
 - Tkinter (usually included with standard Python installations)
-- ttkbootstrap (modern themed interface)
+- ttkbootstrap 2.x (modern themed interface and bundled Bootstrap Icons)
 - Pygments
 
 ## Installation
