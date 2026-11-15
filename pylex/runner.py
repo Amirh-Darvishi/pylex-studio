@@ -106,7 +106,7 @@ class ExecutionHandle:
         if self.done or self.process.stdin is None:
             return False
         value = str(value)
-        if "\\x00" in value:
+        if "\x00" in value:
             raise ValueError("Program input cannot contain a NUL character.")
         with self._input_lock:
             if self.done or self.process.poll() is not None:
