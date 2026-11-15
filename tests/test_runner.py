@@ -2,10 +2,12 @@
 import os
 import subprocess
 import sys
+import tempfile
+from pathlib import Path
 import time
 import unittest
 
-from pylex.runner import run_source, start_source
+from pylex.runner import run_source, start_file, start_source
 
 
 class RunnerTests(unittest.TestCase):
@@ -50,6 +52,24 @@ class RunnerTests(unittest.TestCase):
         result = handle.wait(5)
         self.assertEqual(result.status, "finished")
         self.assertIn("Hello Ada", result.stdout)
+
+    def test_saved_file_execution_accepts_interactive_input(self):
+        with tempfile.TemporaryDirectory() as directory:
+            script = Path(directory) / "interactive.py"
+            script.write_text("value = input('File input: ')\\nprint('Saved', value)\\n", encoding="utf-8")
+            handle = start_file(script, cwd=directory, timeout=5)
+            output = ""
+            deadline = time.monotonic() + 3
+            while time.monotonic() < deadline and "File input: " not in output:
+                output += "".join(
+                    value for channel, value in handle.read_available()
+                    if channel == "stdout"
+                )
+                time.sleep(0.01)
+            self.assertIn("File input: ", output)
+            self.assertTrue(handle.send_input("works"))
+            result = handle.wait(5)
+            self.assertIn("Saved works", result.stdout)
 
     def test_empty_input_line_is_supported(self):
         handle = start_source(
