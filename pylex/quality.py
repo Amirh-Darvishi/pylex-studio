@@ -205,15 +205,12 @@ class QualityPanel(ttk.Frame):
         self.notebook.add(output_frame, text="Tool Output")
 
     def _context_menu(self):
-        palette = getattr(self.winfo_toplevel(), "theme_palette", {})
-        return tk.Menu(
-            self, tearoff=False,
-            background=palette.get("menu_bg", "#252D38"),
-            foreground=palette.get("menu_fg", "#D8DEE8"),
-            activebackground=palette.get("elevated", "#303B49"),
-            activeforeground=palette.get("accent", "#8FB7D8"),
-            disabledforeground=palette.get("muted", "#9AA7B7"),
-            borderwidth=1, relief="solid",
+        root = self.winfo_toplevel()
+        preferences = getattr(root, "preferences", {})
+        font_family = root._resolved_ui_font() if hasattr(root, "_resolved_ui_font") else "Segoe UI"
+        return ContextMenu(
+            self, palette=getattr(root, "theme_palette", {}),
+            font_family=font_family, font_size=preferences.get("ui_font_size", 9),
         )
 
     def _show_tree_context_menu(self, tree, event, tests=False):
