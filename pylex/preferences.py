@@ -8,6 +8,7 @@ DEFAULTS = {
     "font_family": "Consolas",
     "font_size": 12,
     "show_project_explorer": True,
+    "last_workspace": "",
     "timeout_seconds": 10,
 }
 
@@ -33,6 +34,8 @@ def load_preferences():
     except (TypeError, ValueError):
         values["font_size"] = DEFAULTS["font_size"]
     values["show_project_explorer"] = bool(values["show_project_explorer"])
+    if not isinstance(values["last_workspace"], str):
+        values["last_workspace"] = ""
     timeout = values["timeout_seconds"]
     if timeout is not None:
         try:

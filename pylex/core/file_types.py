@@ -36,6 +36,7 @@ _ICON_GROUPS = {
     "text": ("📄", "Text file"),
     "binary": ("📦", "Binary file"),
     "unknown": ("📄", "Unknown file type"),
+    "binary": ("⚙", "Compiled or binary file"),
 }
 
 _EXTENSION_GROUPS = {
@@ -46,7 +47,8 @@ _EXTENSION_GROUPS = {
     "data": {".json", ".jsonc", ".jsonl", ".yaml", ".yml", ".toml", ".ini", ".cfg", ".csv", ".tsv"},
     "config": {".conf", ".properties", ".env", ".editorconfig", ".gitignore", ".gitattributes"},
     "shell": {".sh", ".bash", ".zsh", ".ps1", ".bat", ".cmd"},
-    "compiled": {".c", ".h", ".cpp", ".hpp", ".cc", ".cxx", ".java", ".class", ".cs", ".go", ".rs", ".rb", ".php", ".swift", ".kt"},
+    "compiled": {".c", ".h", ".cpp", ".hpp", ".cc", ".cxx", ".java", ".cs", ".go", ".rs", ".rb", ".php", ".swift", ".kt"},
+    "binary": {".class", ".pyc", ".pyo", ".so", ".dll", ".exe", ".bin", ".o", ".obj", ".a", ".lib", ".dylib"},
     "image": {".png", ".jpg", ".jpeg", ".gif", ".bmp", ".webp", ".ico", ".tif", ".tiff", ".heic", ".avif"},
     "audio": {".mp3", ".wav", ".ogg", ".flac", ".aac", ".m4a", ".wma"},
     "video": {".mp4", ".mkv", ".mov", ".avi", ".webm", ".wmv", ".m4v"},

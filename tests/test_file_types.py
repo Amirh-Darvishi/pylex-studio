@@ -24,6 +24,8 @@ class FileTypeTests(unittest.TestCase):
             "manual.pdf": "pdf",
             "bundle.zip": "archive",
             "store.sqlite": "database",
+            "module.pyc": "binary",
+            "native.dll": "binary",
         }
         for filename, kind in expected.items():
             with self.subTest(filename=filename):

@@ -46,6 +46,7 @@ class PyLexApp(tk.Tk):
         self._menu()
         self._toolbar()
         self._workspace()
+        self._restore_last_workspace()
         self._theme()
         self.protocol("WM_DELETE_WINDOW", self.close)
         self._title()
@@ -361,9 +362,26 @@ class PyLexApp(tk.Tk):
             messagebox.showerror("Workspace Error", str(exc))
             return
         self.project_root = self.project.root
+        self.preferences["last_workspace"] = str(self.project_root)
+        self._persist_preferences()
         self._populate_project_tree()
         self.workspace_path_label.configure(text=str(self.project_root))
         self.status.configure(text=f"Workspace opened: {self.project_root}")
+
+    def _restore_last_workspace(self):
+        """Restore the most recently used workspace when it still exists."""
+        previous = self.preferences.get("last_workspace", "")
+        if not previous:
+            return
+        try:
+            self.project = Project.open(previous)
+        except (OSError, ValueError):
+            self.preferences["last_workspace"] = ""
+            self._persist_preferences()
+            return
+        self.project_root = self.project.root
+        self.workspace_path_label.configure(text=str(self.project_root))
+        self._populate_project_tree()
 
     def refresh_workspace(self):
         """Refresh the workspace tree from disk."""
@@ -411,6 +429,8 @@ class PyLexApp(tk.Tk):
                 messagebox.showerror("Workspace Error", str(exc))
                 return
             self.project_root = self.project.root
+            self.preferences["last_workspace"] = str(self.project_root)
+            self._persist_preferences()
             self.workspace_path_label.configure(text=str(self.project_root))
             self._populate_project_tree()
             self.status.configure(text=f"Workspace opened: {self.project_root}")
