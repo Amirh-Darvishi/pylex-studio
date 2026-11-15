@@ -358,8 +358,12 @@ class PyLexApp(tk.Tk):
 
                     row = tk.Frame(body, background=self.theme_palette["menu_bg"])
                     row.pack(fill="x")
+                    item_action = (
+                        (lambda callback=command: (destroy_popups(), callback()))
+                        if command is not None else None
+                    )
                     item_button = tk.Button(
-                        row, text=display, anchor="w", command=command,
+                        row, text=display, anchor="w", command=item_action,
                         relief="flat", borderwidth=0, highlightthickness=0,
                         takefocus=False, padx=11, pady=6,
                         background=self.theme_palette["menu_bg"],
