@@ -149,8 +149,10 @@ class DebugSession:
         return self.command(f"cl {self._positive_number(line, 'Line number')}")
 
     def clear_all_breakpoints(self):
-        """Remove all breakpoints from the active pdb session."""
-        return self.command("cl")
+        """Remove all breakpoints, confirming pdb's interactive prompt."""
+        if not self.command("cl"):
+            return False
+        return self.command("y")
 
     def enable_breakpoint(self, number):
         return self.command(f"enable {self._positive_number(number, 'Breakpoint number')}")
