@@ -270,6 +270,10 @@ class TerminalPanel(ttk.Frame):
         self.notebook.select(frame)
         output.configure(state="normal")
         output.insert("end", f"[{label}] {cwd}\n", "system")
+        active_file = env.get("PYLEX_ACTIVE_FILE")
+        if active_file:
+            output.insert("end", f"Active editor file: {active_file}\n", "system")
+            output.insert("end", "Use $env:PYLEX_ACTIVE_FILE in PowerShell or $PYLEX_ACTIVE_FILE in Bash to reference it.\n", "system")
         output.configure(state="disabled")
         entry.focus_set()
         self.status.configure(text=f"Running — {cwd}")
