@@ -1,5 +1,6 @@
 """Run Python source in an isolated process group with streaming output and cancellation."""
 from dataclasses import dataclass
+import codecs
 import os
 from pathlib import Path
 import queue
