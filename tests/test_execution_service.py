@@ -66,7 +66,6 @@ class ExecutionServiceTests(unittest.TestCase):
             self.assertNotEqual(handle.script_path, script.resolve())
             self.assertEqual(handle.wait(5).stdout.strip(), "buffer")
 
-
     def test_saved_file_process_inherits_workspace_directory_and_import_path(self):
         with tempfile.TemporaryDirectory() as folder:
             root = Path(folder)
@@ -74,10 +73,10 @@ class ExecutionServiceTests(unittest.TestCase):
             nested.mkdir()
             script = nested / "main.py"
             source = (
-                "import os\\n"
-                "from pathlib import Path\\n"
-                "print(Path.cwd())\\n"
-                "print(os.environ['PYTHONPATH'].split(os.pathsep)[0])\\n"
+                "import os\n"
+                "from pathlib import Path\n"
+                "print(Path.cwd())\n"
+                "print(os.environ['PYTHONPATH'].split(os.pathsep)[0])\n"
             )
             script.write_text(source, encoding="utf-8")
 
