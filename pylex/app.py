@@ -2350,13 +2350,19 @@ class PyLexApp(tk.Tk):
         if document["path"] is None:
             return self.save_as()
         try:
-            document["path"].write_text(self.editor.get_content(), encoding="utf-8")
+            source = self.editor.get_content().replace("\r\n", "\n").replace("\r", "\n")
+            eol = self.preferences.get("status_bar_eol", "Auto")
+            if eol == "CRLF":
+                source = source.replace("\n", "\r\n")
+            encoding = self.preferences.get("status_bar_encoding", "UTF-8")
+            codec = {"UTF-8": "utf-8", "UTF-8 with BOM": "utf-8-sig", "ASCII": "ascii"}.get(encoding, "utf-8")
+            document["path"].write_text(source, encoding=codec, newline="")
             document["dirty"] = False
             self.editor_tabs.tab(document["frame"], text=self._tab_label(document))
             self._sync_active_document()
             self.status.configure(text="File saved.")
             return True
-        except OSError as exc:
+        except (OSError, UnicodeError) as exc:
             messagebox.showerror("Save Error", str(exc))
             return False
 
