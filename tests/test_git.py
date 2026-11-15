@@ -47,9 +47,26 @@ class GitServiceTests(unittest.TestCase):
         self.assertEqual(self.git.log(1)[0].subject, "update tracked file")
 
     def test_create_and_switch_branch(self):
+        original = self.git.status().branch
         self.git.create_branch("feature/git-ui")
         self.assertEqual(self.git.status().branch, "feature/git-ui")
-        self.git.switch_branch("master" if "master" in [b["name"] for b in self.git.branches()] else "main")
+        branches = self.git.branches()
+        self.assertIn(original, [item["name"] for item in branches])
+        self.assertTrue(any(item["current"] and item["name"] == "feature/git-ui" for item in branches))
+        self.git.switch_branch(original)
+
+    def test_stage_all_and_unstage_all(self):
+        (self.root / "tracked.txt").write_text("changed\\n", encoding="utf-8")
+        (self.root / "new.txt").write_text("new\\n", encoding="utf-8")
+        self.git.stage_all()
+        self.assertTrue(all(item.staged for item in self.git.status().changes))
+        self.git.unstage_all()
+        self.assertFalse(any(item.staged for item in self.git.status().changes))
+
+    def test_unstage_rejects_untracked_file(self):
+        (self.root / "new.txt").write_text("new\\n", encoding="utf-8")
+        with self.assertRaisesRegex(GitError, "Untracked"):
+            self.git.unstage("new.txt")
 
     def test_reject_path_outside_workspace(self):
         with self.assertRaises(GitError):
