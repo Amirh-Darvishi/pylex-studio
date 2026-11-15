@@ -1,14 +1,14 @@
 # PyLex Studio
 
-**Latest stable release: 2.1.0 — Modular commands and stronger quality gates**
+**Latest stable release: 2.2.0 — Modular Application Architecture**
 
-[View the 2.1.0 release notes](https://github.com/Amirh-Darvishi/pylex-studio/releases/tag/v2.1.0)
+[View the 2.2.0 release notes](https://github.com/Amirh-Darvishi/pylex-studio/releases/tag/v2.2.0)
 
 A lightweight Python desktop editor with independent lexical and syntax analysis.
 
-## 2.1.0 release
+## 2.2.0 release
 
-PyLex Studio 2.1.0 separates command discovery from Tkinter presentation. Application actions are registered with stable command IDs, searched through a UI-independent registry, and displayed by a dedicated Command Palette component. This keeps command behavior testable without starting a graphical session. The release also strengthens process-context regression coverage and enforces repository-wide Ruff and Black quality gates in CI.
+PyLex Studio 2.2.0 separates workspace, document, execution, and debugger lifecycle ownership into UI-independent controllers. The Tkinter application remains the composition root and presentation layer, while controllers own lifecycle state and delegate process creation to the existing execution service. Compatibility properties preserve the existing application state interface. The release adds isolated controller tests and retains the Windows/Ubuntu Python 3.10, 3.11, and 3.13 CI matrix with Ruff and Black quality gates.
 
 ## Language roadmap
 
