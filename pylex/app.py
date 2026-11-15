@@ -1152,7 +1152,7 @@ class PyLexApp(tk.Tk):
         candidates = (
             requested, "JetBrains Mono", "Cascadia Code", "Fira Code",
             "Consolas", "Cascadia Mono", "DejaVu Sans Mono",
-            "Liberation Mono", "Courier New", "TkFixedFont",
+            "Liberation Mono", "Courier New", "Lucida Console", "TkFixedFont",
         )
         return next((family for family in candidates if family in available), "TkFixedFont")
 
@@ -2105,7 +2105,7 @@ class PyLexApp(tk.Tk):
                 (name for name in (
                     "JetBrains Mono", "Cascadia Code", "Fira Code",
                     "Consolas", "Cascadia Mono", "DejaVu Sans Mono",
-                    "Liberation Mono", "Courier New", "TkFixedFont",
+                    "Liberation Mono", "Courier New", "Lucida Console", "TkFixedFont",
                 ) if name in code_fonts),
                 code_fonts[0],
             )
