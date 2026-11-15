@@ -24,7 +24,7 @@ from .services.execution import ExecutionService
 from .debugger import DebugSession
 from .preferences import DEFAULTS, load_preferences, save_preferences
 from .interpreters import create_virtual_environment, discover_interpreters, ensure_pip, find_project_environment, probe_interpreter
-from .terminal import TerminalPanel
+from .terminal import TerminalPanel, python_file_command
 from .quality import QualityPanel
 from .git_panel import GitPanel
 from .ui.theme import ThemeManager
@@ -1214,6 +1214,7 @@ class PyLexApp(tk.Tk):
             lower, self._terminal_context,
             default_shell=self.preferences.get("terminal_shell", ""),
             on_shell_change=self._save_terminal_shell,
+            on_run_file=self.run_active_file_in_terminal,
         )
         self._add_tool_tab(self.terminal_panel, "Terminal", "terminal", "accent")
         self.quality_panel = QualityPanel(
@@ -2907,6 +2908,40 @@ class PyLexApp(tk.Tk):
         )
         self.execution = None
         self._execution_poll = None
+
+    def run_active_file_in_terminal(self):
+        """Run the active, saved editor document in the integrated shell."""
+        document = self._active_document()
+        if document is None:
+            messagebox.showinfo("Run Active File", "Open a Python file first.")
+            return
+        if document["path"] is None or document["dirty"]:
+            if not self.save_file():
+                return
+            document = self._active_document()
+        path = document.get("path") if document else None
+        if path is None or not Path(path).is_file():
+            messagebox.showwarning(
+                "Run Active File", "Save the active file before running it in Terminal."
+            )
+            return
+        _cwd, _env, interpreter = self._terminal_context()
+        if not interpreter:
+            messagebox.showerror(
+                "Run Active File", "No Python interpreter is available for this workspace."
+            )
+            return
+        self.open_terminal()
+        frame = self.terminal_panel._current_frame()
+        view = self.terminal_panel.views.get(frame, {})
+        shell = view.get("shell", self.terminal_panel.shell_var.get())
+        try:
+            command = python_file_command(shell, interpreter, path)
+        except ValueError as exc:
+            messagebox.showerror("Run Active File", str(exc))
+            return
+        if not self.terminal_panel.run_command(command):
+            messagebox.showerror("Run Active File", "The terminal session is not ready.")
 
     def _send_output_input(self, _event=None):
         """Forward one line from Output to the active run or debug process."""
