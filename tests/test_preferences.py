@@ -25,6 +25,27 @@ class PreferencesTests(unittest.TestCase):
                 self.assertEqual(loaded["font_family"], "Cascadia Code")
                 self.assertEqual(loaded["font_size"], 16)
 
+    def test_recent_workspaces_are_persisted_and_deduplicated(self):
+        with tempfile.TemporaryDirectory() as folder:
+            with patch("pylex.preferences.Path.home", return_value=Path(folder)):
+                values = dict(DEFAULTS)
+                values["recent_workspaces"] = [
+                    "C:/Projects/Alpha", "C:/Projects/Alpha", "", None,
+                    "C:/Projects/Beta",
+                ]
+                save_preferences(values)
+                self.assertEqual(
+                    load_preferences()["recent_workspaces"],
+                    ["C:/Projects/Alpha", "C:/Projects/Beta"],
+                )
+
+    def test_invalid_recent_workspaces_are_normalized(self):
+        with tempfile.TemporaryDirectory() as folder:
+            with patch("pylex.preferences.Path.home", return_value=Path(folder)):
+                path = Path(folder) / ".pylex_studio.json"
+                path.write_text(json.dumps({"recent_workspaces": "not-a-list"}), encoding="utf-8")
+                self.assertEqual(load_preferences()["recent_workspaces"], [])
+
     def test_timeout_preference_round_trip_and_unlimited(self):
         with tempfile.TemporaryDirectory() as folder:
             with patch("pylex.preferences.Path.home", return_value=Path(folder)):

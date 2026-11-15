@@ -57,12 +57,16 @@ class PyLexApp(tk.Tk):
         for label, command in [
             ("New", self.new_file), ("Open...", self.open_file),
             ("Open Workspace...", self.open_project_folder),
+            ("Close Workspace", self.close_workspace),
             ("Save", self.save_file), ("Save As...", self.save_as),
             ("Close Tab", self.close_tab),
         ]:
             file_menu.add_command(label=label, command=command)
+        self.recent_workspace_menu = tk.Menu(file_menu, tearoff=False)
+        file_menu.add_cascade(label="Open Recent Workspace", menu=self.recent_workspace_menu)
         file_menu.add_separator()
         file_menu.add_command(label="Exit", command=self.close)
+        self._refresh_recent_workspace_menu()
         menu.add_cascade(label="File", menu=file_menu)
 
         edit_menu = tk.Menu(menu, tearoff=False)
@@ -99,6 +103,7 @@ class PyLexApp(tk.Tk):
         self.bind_all("<Control-s>", lambda event: self.save_file())
         self.bind_all("<Control-h>", lambda event: self.find_replace())
         self.bind_all("<Control-w>", lambda event: self.close_tab())
+        self.bind_all("<Control-Shift-W>", lambda event: self.close_workspace())
         self.bind_all("<F5>", lambda event: self.run_code())
         self.bind_all("<Shift-F5>", lambda event: self.stop_execution())
         self.bind_all("<F6>", lambda event: self.analyze_all())
@@ -109,6 +114,7 @@ class PyLexApp(tk.Tk):
         buttons = [
             ("New", self.new_file), ("Open", self.open_file),
             ("Open Workspace", self.open_project_folder),
+            ("Close Workspace", self.close_workspace),
             ("Save", self.save_file), ("▶ Run", self.run_code), ("■ Force Stop", self.stop_execution),
             ("Debug", self.start_debugging), ("Continue", self.debug_continue),
             ("Step", self.debug_step), ("Next", self.debug_next),
@@ -132,6 +138,7 @@ class PyLexApp(tk.Tk):
         explorer_header = ttk.Frame(self.explorer_frame, padding=(6, 5))
         explorer_header.pack(fill="x")
         ttk.Label(explorer_header, text="WORKSPACE").pack(side="left")
+        ttk.Button(explorer_header, text="Close", command=self.close_workspace).pack(side="right", padx=(4, 0))
         ttk.Button(explorer_header, text="Open Folder", command=self.open_project_folder).pack(side="right")
         ttk.Button(explorer_header, text="↻", width=3, command=self.refresh_workspace).pack(side="right", padx=(0, 4))
         self.workspace_path_label = ttk.Label(self.explorer_frame, text="No folder opened", padding=(7, 0, 7, 5))
@@ -351,22 +358,114 @@ class PyLexApp(tk.Tk):
             return Project.from_file(path)
         return self.project or Project.open(Path.cwd())
 
-    def open_project_folder(self):
-        """Open a directory as the active workspace."""
-        folder = filedialog.askdirectory(title="Open Workspace Folder")
-        if not folder:
+    def _confirm_all_dirty_documents(self):
+        """Resolve every modified tab before changing the active workspace."""
+        previous = self.editor
+        previous_tab = self.editor_tabs.select()
+        for editor, document in list(self.documents.items()):
+            if not document["dirty"]:
+                continue
+            self.editor_tabs.select(document["frame"])
+            self.editor = editor
+            self._sync_active_document()
+            if not self._confirm():
+                if previous in self.documents:
+                    self.editor_tabs.select(self.documents[previous]["frame"])
+                    self.editor = previous
+                    self._sync_active_document()
+                elif previous_tab:
+                    self.editor_tabs.select(previous_tab)
+                return False
+        if previous in self.documents:
+            self.editor_tabs.select(self.documents[previous]["frame"])
+            self.editor = previous
+            self._sync_active_document()
+        elif previous_tab:
+            self.editor_tabs.select(previous_tab)
+        return True
+
+    def _remember_workspace(self, path):
+        """Persist active workspace and maintain a bounded recent list."""
+        normalized = str(Path(path).expanduser().resolve())
+        recent = self.preferences.get("recent_workspaces", [])
+        recent = [item for item in recent if isinstance(item, str)
+                  and Path(item).expanduser() != Path(normalized)]
+        self.preferences["recent_workspaces"] = [normalized] + recent[:7]
+        self.preferences["last_workspace"] = normalized
+        self._persist_preferences()
+        self._refresh_recent_workspace_menu()
+
+    def _refresh_recent_workspace_menu(self):
+        menu = getattr(self, "recent_workspace_menu", None)
+        if menu is None:
             return
+        menu.delete(0, "end")
+        recent = self.preferences.get("recent_workspaces", [])
+        valid = [item for item in recent if isinstance(item, str) and Path(item).is_dir()]
+        if not valid:
+            menu.add_command(label="No recent workspaces", state="disabled")
+        else:
+            for item in valid:
+                menu.add_command(
+                    label=Path(item).name + " — " + item,
+                    command=lambda value=item: self._activate_workspace(value),
+                )
+        menu.add_separator()
+        menu.add_command(label="Clear Recent Workspaces", command=self.clear_recent_workspaces)
+
+    def clear_recent_workspaces(self):
+        """Clear workspace history without changing the current workspace."""
+        self.preferences["recent_workspaces"] = []
+        self._persist_preferences()
+        self._refresh_recent_workspace_menu()
+        self.status.configure(text="Recent workspace history cleared.")
+
+    def _activate_workspace(self, folder):
+        """Validate and activate a workspace after protecting unsaved documents."""
         try:
-            self.project = Project.open(folder)
+            candidate = Project.open(folder)
         except (OSError, ValueError) as exc:
             messagebox.showerror("Workspace Error", str(exc))
-            return
-        self.project_root = self.project.root
-        self.preferences["last_workspace"] = str(self.project_root)
-        self._persist_preferences()
+            return False
+        if self.project is not None and self.project.root == candidate.root:
+            self.status.configure(text=f"Workspace already open: {candidate.root}")
+            return True
+        if not self._confirm_all_dirty_documents():
+            self.status.configure(text="Workspace change cancelled.")
+            return False
+        self.project = candidate
+        self.project_root = candidate.root
+        self._remember_workspace(candidate.root)
         self._populate_project_tree()
-        self.workspace_path_label.configure(text=str(self.project_root))
-        self.status.configure(text=f"Workspace opened: {self.project_root}")
+        self.workspace_path_label.configure(text=str(candidate.root))
+        self.status.configure(text=f"Workspace opened: {candidate.root}")
+        return True
+
+    def open_project_folder(self):
+        """Choose and open a workspace without losing unsaved editor changes."""
+        options = {"title": "Open Workspace Folder"}
+        if self.project_root and self.project_root.is_dir():
+            options["initialdir"] = str(self.project_root)
+        folder = filedialog.askdirectory(**options)
+        if folder:
+            self._activate_workspace(folder)
+
+    def close_workspace(self):
+        """Close the active workspace while keeping editor tabs available."""
+        if self.project is None:
+            self.status.configure(text="No workspace is currently open.")
+            return
+        if not self._confirm_all_dirty_documents():
+            self.status.configure(text="Close workspace cancelled.")
+            return
+        closed = self.project.root
+        self.project = None
+        self.project_root = None
+        self.project_tree.delete(*self.project_tree.get_children())
+        self.workspace_path_label.configure(text="No folder opened — use Open Folder to start a workspace")
+        self.preferences["last_workspace"] = ""
+        self._persist_preferences()
+        self.status.configure(text=f"Workspace closed: {closed}. Open editor tabs were kept.")
 
     def _restore_last_workspace(self):
         """Restore the most recently used workspace when it still exists."""
@@ -380,6 +479,7 @@ class PyLexApp(tk.Tk):
             self._persist_preferences()
             return
         self.project_root = self.project.root
+        self._remember_workspace(self.project_root)
         self.workspace_path_label.configure(text=str(self.project_root))
         self._populate_project_tree()
 
@@ -423,17 +523,7 @@ class PyLexApp(tk.Tk):
         """Open a workspace file, editing text or delegating binary files to the OS."""
         path = Path(path).expanduser().resolve()
         if path.is_dir():
-            try:
-                self.project = Project.open(path)
-            except OSError as exc:
-                messagebox.showerror("Workspace Error", str(exc))
-                return
-            self.project_root = self.project.root
-            self.preferences["last_workspace"] = str(self.project_root)
-            self._persist_preferences()
-            self.workspace_path_label.configure(text=str(self.project_root))
-            self._populate_project_tree()
-            self.status.configure(text=f"Workspace opened: {self.project_root}")
+            self._activate_workspace(path)
             return
         if not path.is_file():
             messagebox.showerror("Open File", f"File does not exist: {path}")

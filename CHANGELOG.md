@@ -4,6 +4,12 @@ All notable changes to PyLex Studio are documented here.
 
 ## [1.3.0] - In development
 
+### Workspace workflow polish
+- Add explicit Close Workspace controls in the File menu, toolbar, and Workspace header.
+- Add a recent-workspaces menu with bounded history and a clear-history action.
+- Protect unsaved editor documents before opening or closing a workspace; keep editor tabs available when a workspace closes.
+- Add a workspace-switch shortcut and use the current workspace as the folder picker starting location.
+
 ### Added
 - Introduced a filesystem-backed Project model with normalized roots, containment checks, relative paths, and project-aware working directories.
 - Added a dedicated Workspace explorer with folder opening, visible root path, refresh, and nested directory navigation.
