@@ -17,7 +17,7 @@ class ThemeDefinitionTests(unittest.TestCase):
         required = {
             "window_bg", "editor_bg", "editor_fg", "selection_bg",
             "menu_bg", "menu_fg", "accent", "danger", "surface",
-            "violet", "success", "warning", "panel_bg", "border",
+            "violet", "success", "warning", "danger_hover", "panel_bg", "border",
             "current_line", "error_line", "bracket_bg",
             "file_python", "file_web", "file_markup", "file_style", "file_data",
         }
