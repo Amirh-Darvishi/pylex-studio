@@ -8,6 +8,7 @@ import tkinter as tk
 from tkinter import ttk, messagebox, simpledialog
 
 from .git import GitError, GitService
+from .ui.context_menu import ContextMenu
 
 
 class GitPanel(ttk.Frame):
