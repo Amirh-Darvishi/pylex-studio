@@ -15,6 +15,12 @@ class WorkspaceController:
     def project(self):
         return self._project
 
+    @project.setter
+    def project(self, value):
+        if value is not None and not isinstance(value, Project):
+            raise TypeError("project must be a Project instance or None.")
+        self._project = value
+
     def open(self, path):
         """Validate a workspace path and make its Project the active project."""
         project = path if isinstance(path, Project) else Project.open(path)
