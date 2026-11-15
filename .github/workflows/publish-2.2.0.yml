@@ -1,0 +1,44 @@
+name: Publish PyLex Studio 2.2.0
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - .github/workflows/publish-2.2.0.yml
+
+permissions:
+  contents: write
+
+jobs:
+  publish:
+    if: contains(github.event.head_commit.message, 'trigger 2.2.0 release')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Create GitHub release and tag
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v2.2.0
+          target_commitish: main
+          name: PyLex Studio 2.2.0 — Modular Application Architecture
+          generate_release_notes: true
+          body: |
+            ## PyLex Studio 2.2.0 — Modular Application Architecture
+
+            This release separates the main application lifecycle responsibilities into independent, UI-independent controllers while preserving the existing Tkinter interface and application compatibility.
+
+            ### What's new
+            - Added WorkspaceController for workspace lifecycle and project context.
+            - Added DocumentController for document registration, activation, lookup, and dirty state.
+            - Added ExecutionController for execution process lifecycle and active-handle ownership.
+            - Added DebuggerController for debugger session lifecycle and cleanup.
+            - Preserved PyLexApp compatibility properties while moving lifecycle ownership behind controller boundaries.
+            - Updated the Persian project guide and project structure documentation.
+
+            ### Quality and validation
+            - Added isolated controller tests and retained workflow integration coverage.
+            - Preserved the Windows and Ubuntu matrix for Python 3.10, 3.11, and 3.13.
+            - Ruff and Black quality gates are enabled.
+
+            ### Upgrade
+            Download the source archive from this release, install dependencies with `python -m pip install -r requirements.txt`, then launch with `python main.py`.
