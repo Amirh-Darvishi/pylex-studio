@@ -37,7 +37,7 @@ class RunnerTests(unittest.TestCase):
 
     def test_interactive_input_is_sent_and_prompt_streams_without_newline(self):
         handle = start_source(
-            "value = input('Name: ')\\nprint('Hello', value)\\n", timeout=5,
+            "value = input('Name: ')\nprint('Hello', value)\n", timeout=5,
         )
         output = ""
         deadline = time.monotonic() + 3
@@ -56,7 +56,7 @@ class RunnerTests(unittest.TestCase):
     def test_saved_file_execution_accepts_interactive_input(self):
         with tempfile.TemporaryDirectory() as directory:
             script = Path(directory) / "interactive.py"
-            script.write_text("value = input('File input: ')\\nprint('Saved', value)\\n", encoding="utf-8")
+            script.write_text("value = input('File input: ')\nprint('Saved', value)\n", encoding="utf-8")
             handle = start_file(script, cwd=directory, timeout=5)
             output = ""
             deadline = time.monotonic() + 3
@@ -73,7 +73,7 @@ class RunnerTests(unittest.TestCase):
 
     def test_empty_input_line_is_supported(self):
         handle = start_source(
-            "value = input('Blank: ')\\nprint('value=', repr(value))\\n", timeout=5,
+            "value = input('Blank: ')\nprint('value=', repr(value))\n", timeout=5,
         )
         output = ""
         deadline = time.monotonic() + 3
