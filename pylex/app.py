@@ -1974,10 +1974,10 @@ class PyLexApp(tk.Tk):
             style="PyLex.Muted.TLabel", wraplength=560,
         ).grid(row=2, column=0, sticky="w", pady=(8, 18))
 
+        available_fonts = sorted(tkfont.families(dialog), key=str.casefold)
         ui_font_var = tk.StringVar(value=self._resolved_ui_font(available_fonts))
         ui_size_var = tk.IntVar(value=self.preferences.get("ui_font_size", 9))
         ttk.Label(appearance, text="Interface font").grid(row=3, column=0, sticky="w", pady=(0, 5))
-        available_fonts = sorted(tkfont.families(dialog), key=str.casefold)
         ui_fonts = [
             name for name in (
                 "Segoe UI", "Inter", "Noto Sans", "Ubuntu",
