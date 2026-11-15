@@ -57,7 +57,7 @@ def _normalise_executable(value: os.PathLike | str) -> str:
     if not raw:
         raise ValueError("Python interpreter path is empty.")
     candidate = Path(raw).expanduser()
-    resolved = candidate.resolve() if candidate.exists() else None
+    resolved = Path(os.path.abspath(candidate)) if candidate.exists() else None
     executable = str(resolved) if resolved is not None else shutil.which(raw)
     if not executable:
         raise FileNotFoundError(f"Python interpreter was not found: {raw}")
@@ -90,7 +90,7 @@ def probe_interpreter(executable: os.PathLike | str, timeout: float = 6.0) -> In
         raise ValueError(f"Interpreter returned invalid metadata: {resolved}") from exc
     # Use the executable reported by Python, not a launcher alias or symlink.
     return InterpreterInfo(
-        executable=str(Path(info.executable).resolve()),
+        executable=os.path.abspath(info.executable),
         version=info.version, implementation=info.implementation,
         prefix=info.prefix, base_prefix=info.base_prefix,
         is_venv=info.is_venv, architecture=info.architecture,
@@ -136,7 +136,7 @@ def discover_interpreters(extra_paths: Iterable[str] = (), timeout: float = 6.0)
             info = probe_interpreter(candidate, timeout=timeout)
         except (OSError, ValueError, TimeoutError):
             continue
-        key = os.path.normcase(os.path.realpath(info.executable))
+        key = os.path.normcase(os.path.abspath(info.executable))
         if key not in seen:
             seen.add(key)
             results.append(info)
@@ -229,7 +229,7 @@ def run_pip(
     args = [str(item) for item in arguments]
     if not args:
         raise ValueError("A pip subcommand is required.")
-    if args[0] not in {"install", "list", "show", "check", "freeze", "uninstall"}:
+    if args[0] not in {"install", "list", "show", "check", "freeze", "uninstall", "--version"}:
         raise ValueError(f"Unsupported pip operation: {args[0]}")
     return subprocess.run(
         [info.executable, "-m", "pip", *args],
