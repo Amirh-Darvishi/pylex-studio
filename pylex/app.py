@@ -1135,6 +1135,16 @@ class PyLexApp(tk.Tk):
             return "break"
         self._open_path(path)
 
+    def _resolved_ui_font(self, available_fonts=None):
+        """Choose a polished installed interface font on each supported platform."""
+        available = set(available_fonts or tkfont.families(self))
+        requested = self.preferences.get("ui_font_family", DEFAULTS["ui_font_family"])
+        candidates = (
+            requested, "Segoe UI", "Inter", "Noto Sans", "Ubuntu",
+            "DejaVu Sans", "Arial", "Tahoma", "TkDefaultFont",
+        )
+        return next((family for family in candidates if family in available), "TkDefaultFont")
+
     def _resolved_code_font(self, available_fonts=None):
         """Choose the best installed coding font with reliable cross-platform fallbacks."""
         available = set(available_fonts or tkfont.families(self))
@@ -1964,7 +1974,7 @@ class PyLexApp(tk.Tk):
             style="PyLex.Muted.TLabel", wraplength=560,
         ).grid(row=2, column=0, sticky="w", pady=(8, 18))
 
-        ui_font_var = tk.StringVar(value=self.preferences.get("ui_font_family", "Segoe UI"))
+        ui_font_var = tk.StringVar(value=self._resolved_ui_font(available_fonts))
         ui_size_var = tk.IntVar(value=self.preferences.get("ui_font_size", 9))
         ttk.Label(appearance, text="Interface font").grid(row=3, column=0, sticky="w", pady=(0, 5))
         available_fonts = sorted(tkfont.families(dialog), key=str.casefold)
@@ -2209,7 +2219,7 @@ class PyLexApp(tk.Tk):
         dialog.minsize(440, 300)
         query = tk.StringVar()
         entry = ttk.Entry(dialog, textvariable=query, font=(
-            self.preferences.get("ui_font_family", "Segoe UI"), 11
+            self._resolved_ui_font(), 11
         ))
         entry.pack(fill="x", padx=12, pady=12)
         listing = tk.Listbox(
@@ -2346,7 +2356,7 @@ class PyLexApp(tk.Tk):
     def _theme(self):
         palette = self.theme_manager.apply(
             self.dark,
-            ui_font_family=self.preferences.get("ui_font_family", "Segoe UI"),
+            ui_font_family=self._resolved_ui_font(),
             ui_font_size=self.preferences.get("ui_font_size", 9),
         )
         self.theme_palette = palette
