@@ -93,6 +93,15 @@ class ContextMenu:
             menu = menu._parent_menu
         return menu
 
+    def _close_submenu(self):
+        """Close this menu's child cascade without dismissing its ancestors."""
+        child = self._submenu
+        if child is None:
+            return
+        self._submenu = None
+        child._parent_menu = None
+        child._dismiss()
+
     def _invoke(self, item):
         self._root_menu()._dismiss()
         callback = item.get("command")
@@ -216,7 +225,12 @@ class ContextMenu:
                         )
 
             def hover(_event, target=row, target_label=text_label, active=enabled,
-                      hover_data=hover_job, normal_fg=fg, index=row_index):
+                      hover_data=hover_job, normal_fg=fg, index=row_index, entry=item):
+                # Moving onto a sibling command/check/radio row closes the
+                # previous cascade. Cascade rows keep their child navigation
+                # and _open_submenu() replaces it when the next one is hovered.
+                if entry.get("kind") != "cascade":
+                    self._close_submenu()
                 if hover_data["id"] is not None:
                     try:
                         self.window.after_cancel(hover_data["id"])
