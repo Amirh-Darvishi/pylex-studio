@@ -99,9 +99,7 @@ class DebugSession:
                         self.completion_status = "finished"
                         self._completion_sent = True
                         self.command("q")
-                    elif "(Pdb)" in line and line.endswith(
-                        "Uncaught exception. Entering post mortem debugging"
-                    ):
+                    elif line == "Uncaught exception. Entering post mortem debugging":
                         self.completion_status = "error"
                         self._completion_sent = True
                         self.command("q")
