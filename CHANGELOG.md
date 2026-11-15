@@ -2,7 +2,24 @@
 
 All notable changes to PyLex Studio are documented here.
 
-## [1.3.0] - In development
+## [1.4.0] - In development
+
+### Added
+- Verified Python interpreter discovery from the active runtime, common PATH entries, and Windows Python launcher registrations.
+- Interpreter metadata inspection: implementation, version, architecture, executable, prefix, pip availability, and PEP 405 virtual-environment detection.
+- Global and per-workspace interpreter selection with persistent preferences.
+- Automatic detection of project .venv, venv, and env environments.
+- Background creation of project .venv with protection against overwriting non-empty directories.
+- Added pip availability reporting and an asynchronous ensurepip repair action.
+- Run, Debug, dependency inspection, and pip commands routed through the selected interpreter.
+- Added interpreter discovery, validation, venv creation, package-manager, preference, and execution-routing tests.
+
+### Improved
+- Dependency inspection queries the selected interpreter rather than assuming the interpreter running the editor.
+- Preserved virtual-environment executable paths even when the platform uses symlinks.
+- Added recent-workspace persistence to the preference schema.
+
+## [1.3.0] - 2026-11-15
 
 ### Added
 - Introduced a filesystem-backed Project model with normalized roots, containment checks, relative paths, and project-aware working directories.

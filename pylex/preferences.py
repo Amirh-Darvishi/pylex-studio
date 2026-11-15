@@ -1,5 +1,6 @@
-"""Load and save lightweight user-interface preferences."""
+"""Load and validate persistent PyLex Studio preferences."""
 import json
+import os
 from pathlib import Path
 
 
@@ -9,7 +10,10 @@ DEFAULTS = {
     "font_size": 12,
     "show_project_explorer": True,
     "last_workspace": "",
+    "recent_workspaces": [],
     "timeout_seconds": 10,
+    "interpreter_path": "",
+    "project_interpreters": {},
 }
 
 
@@ -17,26 +21,22 @@ def preferences_path():
     return Path.home() / ".pylex_studio.json"
 
 
-def load_preferences():
-    values = dict(DEFAULTS)
+def _normalise(values):
+    result = dict(DEFAULTS)
+    if isinstance(values, dict):
+        result.update({key: values[key] for key in DEFAULTS if key in values})
+    if result["theme"] not in {"dark", "light"}:
+        result["theme"] = DEFAULTS["theme"]
+    if result["font_family"] not in {"Consolas", "Cascadia Code", "Courier New", "Lucida Console"}:
+        result["font_family"] = DEFAULTS["font_family"]
     try:
-        stored = json.loads(preferences_path().read_text(encoding="utf-8"))
-        if isinstance(stored, dict):
-            values.update({key: stored[key] for key in DEFAULTS if key in stored})
-    except (OSError, UnicodeError, json.JSONDecodeError):
-        pass
-    if values["theme"] not in {"dark", "light"}:
-        values["theme"] = DEFAULTS["theme"]
-    if values["font_family"] not in {"Consolas", "Cascadia Code", "Courier New", "Lucida Console"}:
-        values["font_family"] = DEFAULTS["font_family"]
-    try:
-        values["font_size"] = max(7, min(40, int(values["font_size"])))
+        result["font_size"] = max(7, min(40, int(result["font_size"])))
     except (TypeError, ValueError):
-        values["font_size"] = DEFAULTS["font_size"]
-    values["show_project_explorer"] = bool(values["show_project_explorer"])
-    if not isinstance(values["last_workspace"], str):
-        values["last_workspace"] = ""
-    timeout = values["timeout_seconds"]
+        result["font_size"] = DEFAULTS["font_size"]
+    result["show_project_explorer"] = bool(result["show_project_explorer"])
+    if not isinstance(result["last_workspace"], str):
+        result["last_workspace"] = ""
+    timeout = result["timeout_seconds"]
     if timeout is not None:
         try:
             timeout = int(timeout)
@@ -44,12 +44,49 @@ def load_preferences():
             timeout = DEFAULTS["timeout_seconds"]
         if timeout not in {5, 10, 30, 60}:
             timeout = DEFAULTS["timeout_seconds"]
-    values["timeout_seconds"] = timeout
-    return values
+    result["timeout_seconds"] = timeout
+    recent = result["recent_workspaces"]
+    if not isinstance(recent, list):
+        recent = []
+    cleaned = []
+    seen = set()
+    for item in recent:
+        if not isinstance(item, str) or not item.strip():
+            continue
+        # Preserve the user's path spelling for a faithful preferences
+        # round-trip; normalize only the comparison key for deduplication.
+        normalized = os.path.expanduser(item.strip())
+        key = os.path.normcase(os.path.abspath(normalized))
+        if key not in seen:
+            seen.add(key)
+            cleaned.append(normalized)
+        if len(cleaned) == 8:
+            break
+    result["recent_workspaces"] = cleaned
+    if not isinstance(result["interpreter_path"], str):
+        result["interpreter_path"] = ""
+    mappings = result["project_interpreters"]
+    if not isinstance(mappings, dict):
+        mappings = {}
+    result["project_interpreters"] = {
+        str(root): str(executable)
+        for root, executable in mappings.items()
+        if isinstance(root, str) and root.strip()
+        and isinstance(executable, str) and executable.strip()
+    }
+    return result
+
+
+def load_preferences():
+    try:
+        stored = json.loads(preferences_path().read_text(encoding="utf-8"))
+    except (OSError, UnicodeError, json.JSONDecodeError):
+        stored = {}
+    return _normalise(stored)
 
 
 def save_preferences(values):
-    data = {key: values.get(key, DEFAULTS[key]) for key in DEFAULTS}
+    data = _normalise(values)
     path = preferences_path()
     path.write_text(json.dumps(data, indent=2), encoding="utf-8")
     return path
