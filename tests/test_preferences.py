@@ -34,6 +34,17 @@ class PreferencesTests(unittest.TestCase):
                 self.assertEqual(loaded["ui_font_family"], "Segoe UI")
                 self.assertEqual(loaded["ui_font_size"], 10)
 
+    def test_account_display_name_is_normalized_and_persisted(self):
+        with tempfile.TemporaryDirectory() as folder:
+            with patch("pylex.preferences.Path.home", return_value=Path(folder)):
+                values = dict(DEFAULTS)
+                values["account_display_name"] = "  PyLex Developer  "
+                save_preferences(values)
+                self.assertEqual(load_preferences()["account_display_name"], "PyLex Developer")
+                values["account_display_name"] = " " * 4
+                save_preferences(values)
+                self.assertEqual(load_preferences()["account_display_name"], "Developer")
+
     def test_timeout_preference_round_trip_and_unlimited(self):
         with tempfile.TemporaryDirectory() as folder:
             with patch("pylex.preferences.Path.home", return_value=Path(folder)):
