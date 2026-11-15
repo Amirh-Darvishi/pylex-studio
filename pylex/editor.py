@@ -88,19 +88,53 @@ class CodeEditor(tk.Frame):
         self.gutter.tag_configure("gutter_current", foreground="#ffffff")
         self.gutter.tag_configure("gutter_error", foreground="#ff7777")
 
-    def set_theme(self, dark=True):
+    def set_theme(self, dark=True, palette=None):
+        """Apply the shared application palette to the editor and syntax tokens."""
+        palette = palette or {}
         if dark:
-            bg, fg, gutter_bg, gutter_fg = "#1e1e1e", "#dddddd", "#252526", "#858585"
-            current_bg, error_bg = "#2a2d2e", "#4b2528"
+            bg = palette.get("editor_bg", "#111827")
+            fg = palette.get("editor_fg", "#e6edf7")
+            gutter_bg = palette.get("panel_bg", "#161f2d")
+            gutter_fg = palette.get("muted", "#91a0b7")
+            current_bg = "#182438"
+            error_bg = "#48252e"
+            bracket_bg = "#344b70"
+            syntax = {
+                "py_keyword": "#c792ea", "py_builtin": "#82aaff",
+                "py_string": "#c3e88d", "py_comment": "#7f8c9f",
+                "py_number": "#f78c6c", "py_function": "#82aaff",
+                "py_class": "#ffcb6b", "py_error": "#ff6b78",
+            }
         else:
-            bg, fg, gutter_bg, gutter_fg = "#ffffff", "#202020", "#eeeeee", "#666666"
-            current_bg, error_bg = "#eef4ff", "#ffe8e8"
-        self.text.configure(bg=bg, fg=fg, insertbackground=fg)
+            bg = palette.get("editor_bg", "#ffffff")
+            fg = palette.get("editor_fg", "#202938")
+            gutter_bg = palette.get("panel_bg", "#edf2f9")
+            gutter_fg = palette.get("muted", "#68778d")
+            current_bg = "#f1f5fc"
+            error_bg = "#ffe8e8"
+            bracket_bg = "#d7e5ff"
+            syntax = {
+                "py_keyword": "#8e44ad", "py_builtin": "#087f8c",
+                "py_string": "#21834a", "py_comment": "#788392",
+                "py_number": "#b45309", "py_function": "#245fbe",
+                "py_class": "#946200", "py_error": "#c62828",
+            }
+        self.text.configure(
+            bg=bg, fg=fg, insertbackground=fg,
+            selectbackground=palette.get("selection_bg", bracket_bg),
+            selectforeground=fg,
+        )
         self.gutter.configure(bg=gutter_bg, fg=gutter_fg)
+        for tag, color in syntax.items():
+            self.text.tag_configure(tag, foreground=color)
+        self.text.tag_configure("py_comment", font=self.editor_font)
+        self.text.tag_configure("py_error", underline=True)
         self.text.tag_configure("py_operator", foreground=fg)
         self.text.tag_configure("current_line", background=current_bg)
         self.text.tag_configure("error_line", background=error_bg)
-        self.text.tag_configure("matching_bracket", background="#565b63" if dark else "#d8e8ff")
+        self.text.tag_configure("matching_bracket", background=bracket_bg)
+        self.gutter.tag_configure("gutter_current", foreground=palette.get("accent", fg))
+        self.gutter.tag_configure("gutter_error", foreground=palette.get("danger", "#c62828"))
 
     def _changed(self, event=None):
         if self.text.edit_modified():
