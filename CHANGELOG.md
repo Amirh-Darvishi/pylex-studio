@@ -17,6 +17,9 @@
 - Applied the selected interface font to native Tk controls and expanded the future language, language-server, plugin, theme and project-template roadmap.
 - Added a bottom-left Account center with a locally stored display name and clearly marked future cloud/GitHub account integrations.
 - Added an original PyLex Studio vector logo at `assets/pylex-logo.svg` and reused its visual mark in the app header and About window.
+- Added a Recent Workspaces list directly to Explorer, with open, copy-path, remove and clear actions.
+- Added configurable, persistent status-bar indicators and effective indentation, encoding and line-ending settings.
+- Added context-aware right-click menus for the editor, Explorer files/folders, open editors, document tabs, Activity Bar, terminal, Git, diagnostics, tests and output panels.
 
 ### Design goals
 - Keep file-type presentation extensible for future JavaScript, CSS, and HTML editing support.
