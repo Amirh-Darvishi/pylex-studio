@@ -59,22 +59,33 @@ class ContextMenu:
         if self._closed:
             return
         self._closed = True
-        if self._parent_menu is None:
+
+        # Closing a child submenu must never close its parent menu. The previous
+        # recursive parent dismissal caused hover transitions to destroy the
+        # entire menu tree and left stale <Enter> callbacks behind.
+        parent = self._parent_menu
+        if parent is not None and parent._submenu is self:
+            parent._submenu = None
+
+        child = self._submenu
+        self._submenu = None
+        if child is not None:
+            child._parent_menu = None
+            child._dismiss()
+
+        window = self.window
+        self.window = None
+        if window is not None:
+            try:
+                if window.winfo_exists():
+                    window.destroy()
+            except tk.TclError:
+                pass
+
+        if parent is None:
             root = self.master.winfo_toplevel()
             if getattr(root, "_pylex_active_context_menu", None) is self:
                 root._pylex_active_context_menu = None
-        if self._parent_menu is not None:
-            self._parent_menu._dismiss()
-        if self._submenu is not None:
-            self._submenu._dismiss()
-            self._submenu = None
-        if self.window is not None:
-            try:
-                if self.window.winfo_exists():
-                    self.window.destroy()
-            except tk.TclError:
-                pass
-        self.window = None
 
     def _root_menu(self):
         menu = self
@@ -89,27 +100,48 @@ class ContextMenu:
             callback()
 
     def _open_submenu(self, row, child):
-        if child is None or child is self:
+        # Tk can deliver a queued <Enter> after a popup was dismissed. Ignore
+        # that stale callback instead of dereferencing a cleared self.window.
+        if child is None or child is self or self._closed:
             return
+        parent_window = self.window
+        try:
+            if parent_window is None or not parent_window.winfo_exists():
+                return
+            if row is None or not row.winfo_exists():
+                return
+        except tk.TclError:
+            return
+
         if self._submenu is not None and self._submenu is not child:
-            self._submenu._dismiss()
+            old_child = self._submenu
+            self._submenu = None
+            old_child._parent_menu = None
+            old_child._dismiss()
+
         self._submenu = child
         child._parent_menu = self
-        if child.window is None or not child.window.winfo_exists():
+        child._closed = False
+        if child.window is None:
             child._render()
-        child.window.update_idletasks()
-        x = self.window.winfo_rootx() + self.window.winfo_width() - 2
-        y = row.winfo_rooty()
-        screen_w = self.master.winfo_screenwidth()
-        if x + child.window.winfo_reqwidth() > screen_w:
-            x = self.window.winfo_rootx() - child.window.winfo_reqwidth() + 2
-        child.window.geometry(f"+{max(0, x)}+{max(0, y)}")
-        child.window.deiconify()
-        child.window.lift()
         try:
+            if not child.window.winfo_exists():
+                child.window = None
+                child._render()
+            child.window.update_idletasks()
+            parent_window.update_idletasks()
+            x = parent_window.winfo_rootx() + parent_window.winfo_width() - 2
+            y = row.winfo_rooty()
+            screen_w = self.master.winfo_screenwidth()
+            if x + child.window.winfo_reqwidth() > screen_w:
+                x = parent_window.winfo_rootx() - child.window.winfo_reqwidth() + 2
+            child.window.geometry(f"+{max(0, x)}+{max(0, y)}")
+            child.window.deiconify()
+            child.window.lift()
             child.window.focus_force()
-        except tk.TclError:
-            pass
+        except (tk.TclError, AttributeError):
+            # A parent or row can disappear during rapid pointer movement.
+            return
 
     def _render(self):
         root = self.master.winfo_toplevel()
