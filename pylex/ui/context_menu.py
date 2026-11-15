@@ -18,6 +18,7 @@ class ContextMenu:
         self._submenu = None
         self._parent_menu = None
         self._closed = False
+        self._global_bind_id = None
 
     def add_command(self, *, label, command=None, state="normal", accelerator="", **_kwargs):
         self.items.append({
@@ -57,6 +58,12 @@ class ContextMenu:
         if self._closed:
             return
         self._closed = True
+        if self._parent_menu is None and self._global_bind_id is not None:
+            try:
+                self.master.winfo_toplevel().unbind_all("<Button-1>")
+            except tk.TclError:
+                pass
+            self._global_bind_id = None
         if self._parent_menu is not None:
             self._parent_menu._dismiss()
         if self._submenu is not None:
@@ -155,7 +162,7 @@ class ContextMenu:
 
             hover_job = {"id": None}
 
-            def set_row_hover(target, target_label, active, color):
+            def set_row_hover(target, target_label, active, color, normal_fg=fg):
                 if not active:
                     return
                 target.configure(background=color)
@@ -164,23 +171,25 @@ class ContextMenu:
                     if child_widget is target_label:
                         child_widget.configure(
                             foreground=self._color("accent", "#8FB7D8")
-                            if color != surface else fg
+                            if color != surface else normal_fg
                         )
 
-            def hover(_event, target=row, target_label=text_label, active=enabled):
-                if hover_job["id"] is not None:
+            def hover(_event, target=row, target_label=text_label, active=enabled,
+                      hover_data=hover_job, normal_fg=fg):
+                if hover_data["id"] is not None:
                     try:
-                        self.window.after_cancel(hover_job["id"])
+                        self.window.after_cancel(hover_data["id"])
                     except tk.TclError:
                         pass
-                    hover_job["id"] = None
-                set_row_hover(target, target_label, active, self._color("elevated", "#303B49"))
+                    hover_data["id"] = None
+                set_row_hover(target, target_label, active, self._color("elevated", "#303B49"), normal_fg)
 
-            def unhover(_event, target=row, target_label=text_label, active=enabled):
+            def unhover(_event, target=row, target_label=text_label, active=enabled,
+                        hover_data=hover_job, normal_fg=fg):
                 if not active:
                     return
                 def settle():
-                    hover_job["id"] = None
+                    hover_data["id"] = None
                     try:
                         x, y = self.window.winfo_pointerxy()
                         inside = (target.winfo_rootx() <= x < target.winfo_rootx() + target.winfo_width()
@@ -188,8 +197,8 @@ class ContextMenu:
                     except tk.TclError:
                         inside = False
                     if not inside:
-                        set_row_hover(target, target_label, active, surface)
-                hover_job["id"] = self.window.after(45, settle)
+                        set_row_hover(target, target_label, active, surface, normal_fg)
+                hover_data["id"] = self.window.after(45, settle)
 
             for widget in (row, text_label, *row.winfo_children()):
                 widget.bind("<Enter>", hover, add="+")
@@ -229,7 +238,6 @@ class ContextMenu:
                     widget.bind("<Button-1>", lambda event, fn=callback: fn(), add="+")
         self.window.update_idletasks()
         self.window.bind("<Escape>", lambda _event: self._root_menu()._dismiss(), add="+")
-        self.window.bind("<Button-1>", self._outside_click, add="+")
 
     def tk_popup(self, x, y, *_args):
         self._closed = False
@@ -248,10 +256,13 @@ class ContextMenu:
         self.window.geometry(f"+{max(0, x)}+{max(0, y)}")
         self.window.deiconify()
         self.window.lift()
-        try:
-            self.window.grab_set()
-        except tk.TclError:
-            pass
+        if self._parent_menu is None:
+            try:
+                self._global_bind_id = self.master.winfo_toplevel().bind_all(
+                    "<Button-1>", self._outside_click, add="+"
+                )
+            except tk.TclError:
+                self._global_bind_id = None
 
     def _outside_click(self, event):
         x, y = event.x_root, event.y_root
