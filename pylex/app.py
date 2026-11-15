@@ -509,6 +509,7 @@ class PyLexApp(tk.Tk):
                     active_close()
                 destroy_popups()
                 state["closed"] = False
+                state["outside_polls"] = 0
                 self._toolbar_menu_close = destroy_popups
                 popup = make_popup(button, commands)
                 popup.update_idletasks()
