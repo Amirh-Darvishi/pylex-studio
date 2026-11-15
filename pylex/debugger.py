@@ -82,6 +82,8 @@ class DebugSession:
         """Collect raw pdb output and close the session when the debuggee finishes."""
         decoder = codecs.getincrementaldecoder("utf-8")(errors="replace")
         line_buffer = ""
+        pending_completion = None
+        expected_frame_prefix = f"> {self.script_path}("
         try:
             while True:
                 data = os.read(self.process.stdout.fileno(), 4096)
@@ -91,16 +93,16 @@ class DebugSession:
                 if not chunk:
                     continue
                 self._output.put(chunk)
-                line_buffer = (line_buffer + chunk)[-512:]
+                line_buffer = (line_buffer + chunk)[-1024:]
                 while "\n" in line_buffer and not self._completion_sent:
                     line, line_buffer = line_buffer.split("\n", 1)
                     line = line.strip()
                     if line == "The program finished and will be restarted" or line == "The program exited":
-                        self.completion_status = "finished"
-                        self._completion_sent = True
-                        self.command("q")
+                        pending_completion = "finished"
                     elif line == "Uncaught exception. Entering post mortem debugging":
-                        self.completion_status = "error"
+                        pending_completion = "error"
+                    elif pending_completion and line.startswith(expected_frame_prefix):
+                        self.completion_status = pending_completion
                         self._completion_sent = True
                         self.command("q")
             tail = decoder.decode(b"", final=True)
