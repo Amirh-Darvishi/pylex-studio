@@ -296,22 +296,39 @@ class GitService:
                 found.append(parts[0])
         return found
 
-    def fetch(self, remote="origin"):
+    def _default_remote(self, remote=None):
+        if remote:
+            return remote
+        remotes = self.remotes()
+        if not remotes:
+            raise GitError("This repository has no configured Git remote.")
+        return "origin" if "origin" in remotes else remotes[0]
+
+    def fetch(self, remote=None):
+        target = self._default_remote(remote)
         return self._run(
-            "fetch", "--prune", remote, timeout=max(self.timeout, 120)
+            "fetch", "--prune", target, timeout=max(self.timeout, 120)
         ).stdout
 
-    def pull(self, remote="origin"):
-        return self._run(
-            "pull", "--ff-only", remote, timeout=max(self.timeout, 120)
-        ).stdout
-
-    def push(self, remote="origin", set_upstream=False):
+    def pull(self, remote=None):
         status = self.status()
-        args = ["push"]
-        if set_upstream or not status.upstream:
-            args.append("--set-upstream")
-        args.extend([remote, status.branch])
+        args = ["pull", "--ff-only"]
+        if remote is None and status.upstream:
+            pass
+        else:
+            args.extend([self._default_remote(remote), status.branch])
+        return self._run(*args, timeout=max(self.timeout, 120)).stdout
+
+    def push(self, remote=None, set_upstream=False):
+        status = self.status()
+        if remote is None and status.upstream and not set_upstream:
+            args = ["push"]
+        else:
+            target = self._default_remote(remote)
+            args = ["push"]
+            if set_upstream or not status.upstream:
+                args.append("--set-upstream")
+            args.extend([target, status.branch])
         return self._run(*args, timeout=max(self.timeout, 120)).stdout
 
     def stash(self, message="PyLex Studio temporary changes"):
