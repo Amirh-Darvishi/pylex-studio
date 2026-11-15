@@ -32,9 +32,7 @@ class CommandPalette:
         dialog.minsize(420, 280)
 
         query = tk.StringVar()
-        entry = ttk.Entry(
-            dialog, textvariable=query, font=(self.font_family, 11)
-        )
+        entry = ttk.Entry(dialog, textvariable=query, font=(self.font_family, 11))
         entry.pack(fill="x", padx=12, pady=12)
 
         listing = tk.Listbox(
