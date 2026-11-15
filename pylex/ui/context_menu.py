@@ -228,6 +228,8 @@ class ContextMenu:
                 for widget in (row, text_label):
                     widget.bind("<Button-1>", lambda event, fn=callback: fn(), add="+")
         self.window.update_idletasks()
+        self.window.bind("<Escape>", lambda _event: self._root_menu()._dismiss(), add="+")
+        self.window.bind("<Button-1>", self._outside_click, add="+")
 
     def tk_popup(self, x, y, *_args):
         self._closed = False
@@ -246,8 +248,6 @@ class ContextMenu:
         self.window.geometry(f"+{max(0, x)}+{max(0, y)}")
         self.window.deiconify()
         self.window.lift()
-        self.window.bind("<Escape>", lambda _event: self._dismiss(), add="+")
-        self.window.bind("<Button-1>", self._outside_click, add="+")
         try:
             self.window.grab_set()
         except tk.TclError:
@@ -255,17 +255,29 @@ class ContextMenu:
 
     def _outside_click(self, event):
         x, y = event.x_root, event.y_root
-        try:
-            left, top = self.window.winfo_rootx(), self.window.winfo_rooty()
-            inside = left <= x < left + self.window.winfo_width() and top <= y < top + self.window.winfo_height()
-            if self._submenu is not None and self._submenu.window is not None:
-                child = self._submenu.window
-                cx, cy = child.winfo_rootx(), child.winfo_rooty()
-                inside = inside or (cx <= x < cx + child.winfo_width() and cy <= y < cy + child.winfo_height())
-        except tk.TclError:
-            inside = False
+        menus = [self]
+        parent = self._parent_menu
+        while parent is not None:
+            menus.append(parent)
+            parent = parent._parent_menu
+        child = self._submenu
+        while child is not None:
+            menus.append(child)
+            child = child._submenu
+        inside = False
+        for menu in menus:
+            try:
+                window = menu.window
+                if window is None or not window.winfo_exists():
+                    continue
+                left, top = window.winfo_rootx(), window.winfo_rooty()
+                if left <= x < left + window.winfo_width() and top <= y < top + window.winfo_height():
+                    inside = True
+                    break
+            except tk.TclError:
+                continue
         if not inside:
-            self._dismiss()
+            self._root_menu()._dismiss()
 
     def grab_release(self):
         # Keep the popup visible; unlike native tk.Menu, the window owns its grab.
