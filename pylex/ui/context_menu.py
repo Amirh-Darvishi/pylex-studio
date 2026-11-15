@@ -106,6 +106,10 @@ class ContextMenu:
         child.window.geometry(f"+{max(0, x)}+{max(0, y)}")
         child.window.deiconify()
         child.window.lift()
+        try:
+            child.window.focus_force()
+        except tk.TclError:
+            pass
 
     def _render(self):
         root = self.master.winfo_toplevel()
@@ -253,6 +257,8 @@ class ContextMenu:
             return "break"
         count = len(self._row_widgets)
         index = self._active_row_index
+        if index < 0:
+            index = -1 if direction > 0 else 0
         for _ in range(count):
             index = (index + direction) % count
             row, label, enabled, item = self._row_widgets[index]
