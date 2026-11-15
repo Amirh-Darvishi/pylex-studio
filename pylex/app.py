@@ -163,7 +163,6 @@ class PyLexApp(tk.Tk):
         self._menus.append(view_menu)
         view_menu.add_command(label="Preferences...", command=self.open_preferences)
         view_menu.add_command(label="Toggle Project Explorer", command=self.toggle_project_explorer)
-        view_menu.add_command(label="Configure Status Bar…", command=self._configure_status_bar)
         menu.add_cascade(label="View", menu=view_menu)
 
         help_menu = tk.Menu(menu, tearoff=False)
@@ -436,6 +435,7 @@ class PyLexApp(tk.Tk):
                 schedule_poll()
 
             def open_on_hover(_event=None):
+                button.state(["active"])
                 cancel_timer("open_id")
                 if state["closed"]:
                     state["open_id"] = self.after(150, post_menu)
@@ -448,7 +448,7 @@ class PyLexApp(tk.Tk):
                 return "break"
 
             button.bind("<Enter>", open_on_hover, add="+")
-            button.bind("<Leave>", lambda _event: cancel_timer("open_id"), add="+")
+            button.bind("<Leave>", lambda _event: (cancel_timer("open_id"), button.state(["!active"])), add="+")
             button.bind("<Button-1>", click_menu, add="+")
             button.bind("<Button-3>", click_menu, add="+")
             return button
@@ -456,6 +456,7 @@ class PyLexApp(tk.Tk):
         add_menu("File", "folder2-open", "accent", [
             ("New File    Ctrl+N", self.new_file), ("Open File    Ctrl+O", self.open_file),
             ("Open Workspace...", self.open_project_folder),
+            ("Open Recent Workspace…", self._show_recent_workspace_menu),
             ("Quick Open    Ctrl+P", self.open_quick_file), None,
             ("Save    Ctrl+S", self.save_file), ("Save As...", self.save_as),
             ("Close Tab    Ctrl+W", self.close_tab), ("Close Workspace", self.close_workspace),
@@ -513,7 +514,6 @@ class PyLexApp(tk.Tk):
         ])
         add_menu("View", "columns-gap", "muted", [
             ("Toggle Project Explorer", self.toggle_project_explorer),
-            ("Configure Status Bar…", self._configure_status_bar),
             ("Preferences...", self.open_preferences), ("Switch Theme", self.toggle_theme),
         ])
         add_menu("Help", "question-circle", "muted", [
@@ -559,6 +559,8 @@ class PyLexApp(tk.Tk):
                 )
                 button.pack(side="left", padx=1, ipady=2)
                 button.configure(takefocus=False)
+                button.bind("<Enter>", lambda _event, target=button: target.state(["active"]), add="+")
+                button.bind("<Leave>", lambda _event, target=button: target.state(["!active"]), add="+")
                 self._toolbar_icon_bindings.append((button, icon_name, color_key))
 
         spacer = ttk.Frame(action_row, style="PyLex.Toolbar.TFrame")
@@ -831,7 +833,7 @@ class PyLexApp(tk.Tk):
         profile_entry.focus_set()
 
     def _show_activity_context_menu(self, view, event):
-        menu = tk.Menu(self, tearoff=False)
+        menu = self._new_context_menu()
         if view == 'explorer':
             menu.add_command(label='Open Explorer', command=lambda: self._activity_action('explorer'))
             menu.add_command(label='Open Workspace…', command=self.open_project_folder)
@@ -933,7 +935,7 @@ class PyLexApp(tk.Tk):
             )
             label.pack(side="left")
             self._editor_status_items[key] = label
-            label.bind("<Button-1>", lambda _event, item=key: self._configure_status_item(item), add="+")
+            label.bind("<Button-1>", self._show_status_context_menu, add="+")
             label.bind("<Button-3>", self._show_status_context_menu, add="+")
         ttk.Separator(self, orient="horizontal").pack(fill="x", side="bottom")
         self._apply_status_bar_visibility()
@@ -1022,16 +1024,6 @@ class PyLexApp(tk.Tk):
         self.open_editors_list.pack(fill="x", padx=6, pady=(0, 8))
         self.open_editors_list.bind("<Double-1>", self._select_open_editor)
         self.open_editors_list.bind("<Button-3>", self._show_open_editors_context_menu, add="+")
-        ttk.Label(self.explorer_frame, text="RECENT WORKSPACES", style="PyLex.Group.TLabel", padding=(9, 4)).pack(fill="x")
-        self.recent_workspaces_list = tk.Listbox(
-            self.explorer_frame, height=3, activestyle="none", borderwidth=0,
-            highlightthickness=0, bg=self.theme_palette["surface"],
-            fg=self.theme_palette["editor_fg"], selectbackground=self.theme_palette["accent"],
-        )
-        self.recent_workspaces_list.pack(fill="x", padx=6, pady=(0, 7))
-        self.recent_workspaces_list.bind("<Double-1>", self._select_recent_workspace)
-        self.recent_workspaces_list.bind("<Button-3>", self._show_recent_workspace_context_menu, add="+")
-        self._refresh_recent_workspace_list()
         ttk.Label(self.explorer_frame, text="WORKSPACE", style="PyLex.Group.TLabel", padding=(9, 4)).pack(fill="x")
         self.workspace_path_label = ttk.Label(
             self.explorer_frame, text="No folder opened", style="PyLex.Muted.TLabel", padding=(9, 4),
@@ -1155,65 +1147,88 @@ class PyLexApp(tk.Tk):
         return " " * max(1, min(8, width))
 
     def _configure_status_bar(self):
-        dialog = tk.Toplevel(self)
-        dialog.title("Configure Status Bar")
-        dialog.transient(self)
-        dialog.resizable(False, False)
-        body = ttk.Frame(dialog, padding=18)
-        body.pack(fill="both", expand=True)
-        ttk.Label(body, text="Visible status items", style="PyLex.DialogTitle.TLabel").pack(anchor="w", pady=(0, 10))
-        options = (("position", "Cursor position (Ln / Col)"), ("indent", "Indentation"),
-                   ("encoding", "Encoding"), ("eol", "Line ending"),
-                   ("language", "Language mode"), ("mode", "Insert / overwrite mode"))
-        current = set(self.preferences.get("status_bar_items", DEFAULTS["status_bar_items"]))
-        variables = {}
-        for key, label in options:
-            variables[key] = tk.BooleanVar(value=key in current)
-            ttk.Checkbutton(body, text=label, variable=variables[key]).pack(anchor="w", pady=2)
-        ttk.Separator(body).pack(fill="x", pady=10)
-        ttk.Label(body, text="Indentation").pack(anchor="w")
-        indent = tk.StringVar(value=self.preferences.get("status_bar_indent", "Spaces: 4"))
-        ttk.Combobox(body, textvariable=indent, state="readonly", width=22,
-                     values=("Spaces: 2", "Spaces: 4", "Spaces: 8", "Tabs")).pack(anchor="w", pady=(3, 8))
-        ttk.Label(body, text="Encoding").pack(anchor="w")
-        encoding = tk.StringVar(value=self.preferences.get("status_bar_encoding", "UTF-8"))
-        ttk.Combobox(body, textvariable=encoding, state="readonly", width=22,
-                     values=("UTF-8", "UTF-8 with BOM", "ASCII")).pack(anchor="w", pady=(3, 8))
-        ttk.Label(body, text="Line ending").pack(anchor="w")
-        eol = tk.StringVar(value=self.preferences.get("status_bar_eol", "Auto"))
-        ttk.Combobox(body, textvariable=eol, state="readonly", width=22,
-                     values=("Auto", "LF", "CRLF")).pack(anchor="w", pady=(3, 12))
-        def save():
-            self.preferences["status_bar_items"] = [key for key, var in variables.items() if var.get()]
-            self.preferences["status_bar_indent"] = indent.get()
-            self.preferences["status_bar_encoding"] = encoding.get()
-            self.preferences["status_bar_eol"] = eol.get()
-            indent_string = self._configured_indent_string()
-            for editor in self.documents:
-                editor.indent_string = indent_string
-            self._persist_preferences()
-            self._apply_status_bar_visibility()
-            self._update_editor_status()
-            dialog.destroy()
-        actions = ttk.Frame(body)
-        actions.pack(fill="x")
-        def restore_defaults():
-            for variable in variables.values():
-                variable.set(True)
-            indent.set(DEFAULTS["status_bar_indent"])
-            encoding.set(DEFAULTS["status_bar_encoding"])
-            eol.set(DEFAULTS["status_bar_eol"])
-        ttk.Button(actions, text="Restore Defaults", command=restore_defaults).pack(side="left")
-        ttk.Button(actions, text="Save", command=save, style="PyLex.Primary.TButton").pack(side="right")
+        """Open the inline status-bar context menu; no separate settings window."""
+        try:
+            x, y = self.winfo_pointerxy()
+        except tk.TclError:
+            x, y = self.winfo_rootx() + 20, self.winfo_rooty() + self.winfo_height() - 24
+        event = type("PointerEvent", (), {"x_root": x, "y_root": y})()
+        self._show_status_context_menu(event)
 
     def _configure_status_item(self, _item):
         self._configure_status_bar()
 
+    def _set_status_item_visible(self, key, visible):
+        current = set(self.preferences.get("status_bar_items", DEFAULTS["status_bar_items"]))
+        if visible:
+            current.add(key)
+        else:
+            if len(current) <= 1:
+                self.status.configure(text="At least one status item must remain visible.")
+                return
+            current.discard(key)
+        order = ("position", "indent", "encoding", "eol", "language", "mode")
+        self.preferences["status_bar_items"] = [item for item in order if item in current]
+        self._persist_preferences()
+        self._apply_status_bar_visibility()
+
+    def _set_status_preference(self, key, value):
+        self.preferences[key] = value
+        if key == "status_bar_indent":
+            indent_string = self._configured_indent_string()
+            for editor in self.documents:
+                editor.indent_string = indent_string
+        self._persist_preferences()
+        self._update_editor_status()
+
+    def _new_context_menu(self):
+        palette = self.theme_palette
+        return tk.Menu(
+            self, tearoff=False, background=palette["menu_bg"],
+            foreground=palette["menu_fg"], activebackground=palette["elevated"],
+            activeforeground=palette["accent"], disabledforeground=palette["muted"],
+            borderwidth=1, relief="solid",
+            font=(self._resolved_ui_font(), self.preferences.get("ui_font_size", 9)),
+        )
+
     def _show_status_context_menu(self, event):
-        menu = tk.Menu(self, tearoff=False)
-        menu.add_command(label="Configure Status Bar…", command=self._configure_status_bar)
-        menu.add_command(label="Reset Status Bar", command=self._reset_status_bar)
-        menu.tk_popup(event.x_root, event.y_root)
+        menu = self._new_context_menu()
+        visible = set(self.preferences.get("status_bar_items", DEFAULTS["status_bar_items"]))
+        menu.add_command(label="Status Bar  ·  Visible Items", state="disabled")
+        menu.add_separator()
+        labels = (
+            ("position", "Cursor Position"), ("indent", "Indentation"),
+            ("encoding", "Encoding"), ("eol", "Line Ending"),
+            ("language", "Language Mode"), ("mode", "Insert / Overwrite Mode"),
+        )
+        menu._status_vars = []
+        for key, label in labels:
+            variable = tk.BooleanVar(self, value=key in visible)
+            menu._status_vars.append(variable)
+            menu.add_checkbutton(
+                label=label, variable=variable,
+                command=lambda item=key, var=variable: self._set_status_item_visible(item, var.get()),
+            )
+        menu.add_separator()
+        for title, key, values in (
+            ("Indentation", "status_bar_indent", ("Spaces: 2", "Spaces: 4", "Spaces: 8", "Tabs")),
+            ("Encoding", "status_bar_encoding", ("UTF-8", "UTF-8 with BOM", "ASCII")),
+            ("Line Ending", "status_bar_eol", ("Auto", "LF", "CRLF")),
+        ):
+            submenu = self._new_context_menu()
+            variable = tk.StringVar(self, value=self.preferences.get(key, values[0]))
+            for value in values:
+                submenu.add_radiobutton(
+                    label=value, variable=variable, value=value,
+                    command=lambda setting=key, choice=value: self._set_status_preference(setting, choice),
+                )
+            menu.add_cascade(label=title, menu=submenu)
+        menu.add_separator()
+        menu.add_command(label="Reset to Defaults", command=self._reset_status_bar)
+        try:
+            menu.tk_popup(event.x_root, event.y_root)
+        finally:
+            menu.grab_release()
         return "break"
 
     def _reset_status_bar(self):
@@ -1840,20 +1855,26 @@ class PyLexApp(tk.Tk):
         menu.add_command(label="Clear Recent Workspaces", command=self.clear_recent_workspaces)
 
     def _refresh_recent_workspace_list(self):
-        widget = getattr(self, 'recent_workspaces_list', None)
-        if widget is None:
-            return
-        widget.delete(0, 'end')
-        self._recent_workspace_paths = [p for p in self.preferences.get('recent_workspaces', []) if isinstance(p, str) and Path(p).is_dir()]
-        for path in self._recent_workspace_paths:
-            widget.insert('end', '{}  —  {}'.format(Path(path).name, path))
-        if not self._recent_workspace_paths:
-            widget.insert('end', 'No recent workspaces')
+        """Compatibility no-op: recent workspaces are accessed from the File menu."""
+        return
 
     def _select_recent_workspace(self, _event=None):
-        selection = self.recent_workspaces_list.curselection()
-        if selection and selection[0] < len(getattr(self, '_recent_workspace_paths', [])):
-            self._activate_workspace(self._recent_workspace_paths[selection[0]])
+        return
+
+    def _show_recent_workspace_menu(self):
+        """Open the recent-workspace picker from the File toolbar menu."""
+        self._refresh_recent_workspace_menu()
+        menu = getattr(self, "recent_workspace_menu", None)
+        if menu is None:
+            return
+        try:
+            x, y = self.winfo_pointerxy()
+            menu.tk_popup(x, y)
+        finally:
+            try:
+                menu.grab_release()
+            except tk.TclError:
+                pass
 
     def _copy_to_clipboard(self, value):
         self.clipboard_clear()
