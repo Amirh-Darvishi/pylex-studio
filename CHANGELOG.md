@@ -1,6 +1,6 @@
 # Changelog
 
-## [2.1.0] - Unreleased
+## [2.1.0] - 2026-11-15
 
 ### Architecture
 - Added a UI-independent command registry with stable command IDs, shortcut-aware search, duplicate registration protection, and explicit command execution.
@@ -16,7 +16,7 @@
 - Retained the six-platform/version validation matrix: Windows and Ubuntu with Python 3.10, 3.11, and 3.13.
 
 ### Documentation
-- Corrected the README link label for the 2.0.2 stable release and documented the 2.1.0 development boundary.
+- Updated the README to identify 2.1.0 as the latest stable release and link to its release notes.
 
 
 ## [2.0.2] - 2026-11-15
