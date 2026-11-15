@@ -174,7 +174,13 @@ class QualityPanel(ttk.Frame):
         # Double-clicking a discovered test (or pressing Enter) runs that test.
         self.test_tree.bind("<Double-1>", self._run_test_from_event)
         self.test_tree.bind("<Return>", self._run_test_from_event)
-        self.test_tree.bind("<Button-3>", lambda event: self._show_tree_context_menu(self.test_tree, event, tests=True), add="+")
+        self.test_tree.bind(
+            "<Button-3>",
+            lambda event: self._show_tree_context_menu(
+                self.test_tree, event, tests=True
+            ),
+            add="+",
+        )
         self.notebook.add(tests_frame, text="Test Explorer")
 
         diagnostics_frame = ttk.Frame(self.notebook, padding=4)
@@ -194,20 +200,30 @@ class QualityPanel(ttk.Frame):
             self.diagnostic_tree.column(key, width=width)
         self.diagnostic_tree.pack(fill="both", expand=True)
         self.diagnostic_tree.bind("<Double-1>", self._open_diagnostic)
-        self.diagnostic_tree.bind("<Button-3>", lambda event: self._show_tree_context_menu(self.diagnostic_tree, event), add="+")
+        self.diagnostic_tree.bind(
+            "<Button-3>",
+            lambda event: self._show_tree_context_menu(self.diagnostic_tree, event),
+            add="+",
+        )
         self.notebook.add(diagnostics_frame, text="Lint Diagnostics")
 
         output_frame = ttk.Frame(self.notebook, padding=4)
         self.output = tk.Text(output_frame, wrap="none", height=8, state="disabled")
         self.output.pack(fill="both", expand=True)
-        self.output.bind("<Shift-MouseWheel>", self._scroll_output_horizontally, add="+")
+        self.output.bind(
+            "<Shift-MouseWheel>", self._scroll_output_horizontally, add="+"
+        )
         self.output.bind("<Button-3>", self._show_output_context_menu, add="+")
         self.notebook.add(output_frame, text="Tool Output")
 
     def _context_menu(self):
         root = self.winfo_toplevel()
         preferences = getattr(root, "preferences", {})
-        font_family = root._resolved_ui_font() if hasattr(root, "_resolved_ui_font") else "Segoe UI"
+        font_family = (
+            root._resolved_ui_font()
+            if hasattr(root, "_resolved_ui_font")
+            else "Segoe UI"
+        )
         return ContextMenu(
             self, palette=getattr(root, "theme_palette", {}),
             font_family=font_family, font_size=preferences.get("ui_font_size", 9),
@@ -232,15 +248,23 @@ class QualityPanel(ttk.Frame):
                 if 0 <= index < len(values):
                     menu.add_command(
                         label="Copy Cell",
-                        command=lambda value=values[index]: self._copy_context_text(value),
+                        command=lambda value=values[index]: self._copy_context_text(
+                            value
+                        ),
                     )
             menu.add_separator()
             if tests:
-                menu.add_command(label="Run Selected Test", command=self.run_selected_test)
+                menu.add_command(
+                    label="Run Selected Test", command=self.run_selected_test
+                )
             else:
                 menu.add_command(label="Open Diagnostic", command=self._open_diagnostic)
-                menu.add_command(label="Copy Diagnostic Message",
-                                 command=lambda: self._copy_context_text(values[-1] if values else ""))
+                menu.add_command(
+                    label="Copy Diagnostic Message",
+                    command=lambda: self._copy_context_text(
+                        values[-1] if values else ""
+                    ),
+                )
         if tests:
             menu.add_command(label="Discover Tests", command=self.discover_tests)
             menu.add_command(label="Run All Tests", command=self.run_all_tests)
