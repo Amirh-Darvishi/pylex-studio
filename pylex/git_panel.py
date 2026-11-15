@@ -59,6 +59,7 @@ class GitPanel(ttk.Frame):
         self.tree.column("status", width=75, anchor="center", stretch=False)
         self.tree.column("path", width=450)
         self.tree.pack(fill="both", expand=True)
+        self.tree.bind("<Button-3>", self._show_tree_context_menu, add="+")
 
         commit = ttk.LabelFrame(self, text="Commit", padding=5)
         commit.pack(fill="x", pady=(5, 4))
@@ -66,6 +67,7 @@ class GitPanel(ttk.Frame):
         entry = ttk.Entry(commit, textvariable=self.message)
         entry.pack(side="left", fill="x", expand=True, padx=(0, 5))
         entry.bind("<Return>", lambda _event: self.commit())
+        entry.bind("<Button-3>", lambda event: self._show_entry_context_menu(entry, event), add="+")
         ttk.Button(commit, text="Commit Staged", command=self.commit).pack(side="right")
 
         branch = ttk.LabelFrame(self, text="Branches", padding=5)
@@ -347,6 +349,32 @@ class GitPanel(ttk.Frame):
                 "end",
                 values=(commit.short_hash, commit.date, commit.author, commit.subject),
             )
+
+    def _show_tree_context_menu(self, event):
+        row = self.tree.identify_row(event.y)
+        if row:
+            self.tree.selection_set(row)
+        menu = tk.Menu(self, tearoff=False)
+        menu.add_command(label='Refresh Changes', command=self.refresh)
+        if row:
+            values = self.tree.item(row, 'values')
+            menu.add_command(label='Copy File Path', command=lambda: self._copy_context_text(values[-1]))
+            menu.add_command(label='Show Diff', command=self.show_diff)
+        menu.tk_popup(event.x_root, event.y_root)
+        return 'break'
+
+    def _copy_context_text(self, value):
+        self.clipboard_clear()
+        self.clipboard_append(str(value))
+
+    def _show_entry_context_menu(self, widget, event):
+        menu = tk.Menu(self, tearoff=False)
+        menu.add_command(label='Cut', command=lambda: widget.event_generate('<<Cut>>'))
+        menu.add_command(label='Copy', command=lambda: widget.event_generate('<<Copy>>'))
+        menu.add_command(label='Paste', command=lambda: widget.event_generate('<<Paste>>'))
+        menu.add_command(label='Select All', command=lambda: widget.select_range(0, 'end'))
+        menu.tk_popup(event.x_root, event.y_root)
+        return 'break'
 
     def close(self):
         if self._poll_id is not None:
