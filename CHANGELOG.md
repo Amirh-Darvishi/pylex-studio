@@ -2,6 +2,18 @@
 
 All notable changes to PyLex Studio are documented here.
 
+## [1.10.0] - Unreleased
+
+### Improved
+- Centralized the application version so the window title stays consistent with package metadata.
+- Made preference persistence atomic to protect existing settings from interrupted writes.
+- Expanded continuous integration to cover Python 3.10, 3.11, and 3.13 on Windows and Ubuntu.
+- Updated project documentation and corrected the released 1.9.0 changelog status.
+- Corrected the binary-file classification metadata.
+
+### Tests
+- Added regression coverage ensuring a failed preference-file replacement preserves the previous settings and cleans up its temporary file.
+
 ## [1.9.0] - 2026-11-15
 
 ### Added
