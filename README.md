@@ -1,6 +1,6 @@
 # PyLex Studio
 
-**Current development target: 1.4.0** (in development)
+**Current development target: 1.5.0 — Smart Editor** (in development)
 
 A lightweight Python desktop editor with independent lexical and syntax analysis.
 
@@ -28,6 +28,10 @@ A lightweight Python desktop editor with independent lexical and syntax analysis
 - Open and save Python files
 - Keyboard-navigable Python keyword and built-in completion with Ctrl+Space
 - Automatic closing of brackets and quotes
+- Smart indentation after Python suite headers and indentation-aware Backspace / Shift+Tab
+- Toggle comments for a line or selected block with Ctrl+/
+- Duplicate a line or selection with Ctrl+D; move lines with Alt+Up / Alt+Down
+- Matching bracket highlighting and Go to Line with Ctrl+G
 - Find and replace with Ctrl+H
 - pdb-backed debugging with breakpoints, Continue, Step Into, Step Over, variables, and stack inspection
 - Adjustable editor font family and font size
@@ -133,3 +137,6 @@ Run, debug, static dependency inspection, and generated pip commands all use the
 Virtual environments are machine-local and generally not portable because installed script entry points can contain absolute interpreter paths. Do not commit .venv to Git. Recreate it on another machine with `python -m venv .venv`, then install project dependencies with `python -m pip install -r requirements.txt`.
 
 Interpreter probing and dependency inspection are not a security sandbox. Programs still run with the current user's operating-system permissions.
+## Smart Editor (1.5.0 development)
+
+The editor continues indentation when pressing Enter, adds one indentation level after Python suite headers, and removes indentation in four-column steps with Backspace. Shift+Tab dedents the selected lines or current line. Use Ctrl+/ to toggle comments, Ctrl+D to duplicate a line or selection, Alt+Up / Alt+Down to move the current line, and Ctrl+G to navigate to a line. Matching Python delimiters are highlighted while the caret is adjacent to a bracket. These are editor conveniences, not a replacement for a language server or full semantic IntelliSense.
