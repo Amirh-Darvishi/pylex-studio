@@ -384,6 +384,10 @@ class PyLexApp(tk.Tk):
                         continue
                     if item[0] == "submenu":
                         label, submenu_items = item[1], item[2]
+                        # Resolve dynamic submenu contents when the parent is
+                        # opened so recent-workspace entries never go stale.
+                        if callable(submenu_items):
+                            submenu_items = submenu_items()
                         command = None
                         shortcut = ""
                         display = f"{label}    ›"
@@ -546,7 +550,7 @@ class PyLexApp(tk.Tk):
         add_menu("File", "folder2-open", "accent", [
             ("New File    Ctrl+N", self.new_file), ("Open File    Ctrl+O", self.open_file),
             ("Open Workspace...", self.open_project_folder),
-            ("Open Recent Workspace…", self._show_recent_workspace_menu),
+            ("submenu", "Open Recent Workspace…", self._recent_workspace_toolbar_items),
             ("Quick Open    Ctrl+P", self.open_quick_file), None,
             ("Save    Ctrl+S", self.save_file), ("Save As...", self.save_as),
             ("Close Tab    Ctrl+W", self.close_tab), ("Close Workspace", self.close_workspace),
@@ -1953,6 +1957,34 @@ class PyLexApp(tk.Tk):
 
     def _select_recent_workspace(self, _event=None):
         return
+
+    def _recent_workspace_toolbar_items(self):
+        """Build the File toolbar's dynamic, hover-only recent-workspace submenu."""
+        recent = [
+            value for value in self.preferences.get("recent_workspaces", [])
+            if isinstance(value, str) and Path(value).is_dir()
+        ]
+        items = []
+        if not recent:
+            items.append(("No recent workspaces", None))
+        else:
+            for value in recent:
+                folder = Path(value)
+                actions = [
+                    ("Open Workspace", lambda target=value: self._activate_workspace(target)),
+                    ("Open in File Manager", lambda target=folder: self._reveal_path(target)),
+                    ("Open Terminal Here", lambda target=folder: self._open_terminal_at(target)),
+                    None,
+                    ("Copy Workspace Path", lambda target=value: self._copy_to_clipboard(target)),
+                    ("Remove from Recent", lambda target=value: self._remove_recent_workspace(target)),
+                ]
+                items.append(("submenu", folder.name, actions))
+        items.extend([
+            None,
+            ("Open Workspace…", self.open_project_folder),
+            ("Clear Recent Workspaces", self.clear_recent_workspaces),
+        ])
+        return items
 
     def _show_recent_workspace_menu(self):
         """Show a styled, action-rich recent-workspace picker."""
