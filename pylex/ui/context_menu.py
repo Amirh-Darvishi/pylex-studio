@@ -137,7 +137,7 @@ class ContextMenu:
             elif kind == "radio":
                 marker = "● " if item["variable"].get() == item["value"] else "○ "
             elif kind == "cascade":
-                marker = "›"
+                marker = ""
 
             text_label = tk.Label(
                 row, text=(marker + label), anchor="w",
@@ -255,6 +255,10 @@ class ContextMenu:
         self.window.geometry(f"+{max(0, x)}+{max(0, y)}")
         self.window.deiconify()
         self.window.lift()
+        try:
+            self.window.focus_force()
+        except tk.TclError:
+            pass
         if self._parent_menu is None:
             root = self.master.winfo_toplevel()
             active = getattr(root, "_pylex_active_context_menu", None)
