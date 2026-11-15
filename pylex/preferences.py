@@ -14,6 +14,7 @@ DEFAULTS = {
     "timeout_seconds": 10,
     "interpreter_path": "",
     "project_interpreters": {},
+    "terminal_shell": "",
 }
 
 
@@ -65,6 +66,8 @@ def _normalise(values):
     result["recent_workspaces"] = cleaned
     if not isinstance(result["interpreter_path"], str):
         result["interpreter_path"] = ""
+    if not isinstance(result["terminal_shell"], str):
+        result["terminal_shell"] = ""
     mappings = result["project_interpreters"]
     if not isinstance(mappings, dict):
         mappings = {}

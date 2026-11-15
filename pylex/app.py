@@ -21,6 +21,7 @@ from .services.execution import ExecutionService
 from .debugger import DebugSession
 from .preferences import load_preferences, save_preferences
 from .interpreters import create_virtual_environment, discover_interpreters, ensure_pip, find_project_environment, probe_interpreter
+from .terminal import TerminalPanel
 
 
 class PyLexApp(tk.Tk):
@@ -28,7 +29,7 @@ class PyLexApp(tk.Tk):
 
     def __init__(self):
         super().__init__()
-        self.title("PyLex Studio 1.6.0 — Python Editor")
+        self.title("PyLex Studio 1.7.0 — Python Editor")
         self.geometry("1180x780")
         self.minsize(850, 560)
         self.current_path = None
@@ -83,6 +84,7 @@ class PyLexApp(tk.Tk):
 
         tools_menu = tk.Menu(menu, tearoff=False)
         tools_menu.add_command(label="Python Interpreter...", command=self.manage_interpreter)
+        tools_menu.add_command(label="Integrated Terminal", command=self.open_terminal)
         tools_menu.add_separator()
         tools_menu.add_command(label="Analyze All", command=self.analyze_all)
         tools_menu.add_command(label="Lexical Analysis", command=self.analyze_lexical)
@@ -142,7 +144,7 @@ class PyLexApp(tk.Tk):
             ("Open Workspace", self.open_project_folder),
             ("Close Workspace", self.close_workspace),
             ("Python", self.manage_interpreter),
-            ("Save", self.save_file), ("▶ Run", self.run_code), ("■ Force Stop", self.stop_execution),
+            ("Save", self.save_file), ("▶ Run", self.run_code), ("■ Force Stop", self.stop_execution), ("Terminal", self.open_terminal),
             ("Debug", self.start_debugging), ("Continue", self.debug_continue),
             ("Step", self.debug_step), ("Next", self.debug_next),
             ("Breakpoint", self.toggle_breakpoint), ("Temp BP", self.debug_temporary_breakpoint), ("Variables", self.debug_variables),
@@ -201,6 +203,12 @@ class PyLexApp(tk.Tk):
         self.syntax = self._text_panel("Syntax Analysis")
         self._errors_panel()
         self._dependencies_panel()
+        self.terminal_panel = TerminalPanel(
+            lower, self._terminal_context,
+            default_shell=self.preferences.get("terminal_shell", ""),
+            on_shell_change=self._save_terminal_shell,
+        )
+        self.tabs.add(self.terminal_panel, text="Terminal")
 
         self.status = ttk.Label(self, text="Ready", padding=5)
         self.status.pack(fill="x")
@@ -230,6 +238,40 @@ class PyLexApp(tk.Tk):
         frame.columnconfigure(0, weight=1)
         self.tabs.add(frame, text=title)
         return text
+
+    def _terminal_context(self):
+        """Return the current workspace, environment, and selected interpreter."""
+        document = self._active_document()
+        path = document.get("path") if document else self.current_path
+        project = self.project
+        if project is None and path:
+            try:
+                project = Project.from_file(path)
+            except (OSError, ValueError):
+                project = None
+        cwd = project.working_directory_for(path) if project else (
+            Path(path).expanduser().resolve().parent if path else Path.cwd()
+        )
+        env = project.execution_environment() if project else dict(os.environ)
+        try:
+            interpreter = self._interpreter_for_project(project).executable
+        except (OSError, ValueError, TimeoutError):
+            interpreter = sys.executable
+        return cwd, env, interpreter
+
+    def _save_terminal_shell(self, shell):
+        self.preferences["terminal_shell"] = shell
+        self._persist_preferences()
+
+    def open_terminal(self):
+        """Open the Terminal panel and create a shell session when needed."""
+        self.tabs.select(self.terminal_panel)
+        if self.terminal_panel.session_count == 0:
+            self.terminal_panel.create_session()
+        else:
+            frame = self.terminal_panel._current_frame()
+            if frame in self.terminal_panel.views:
+                self.terminal_panel.views[frame]["entry"].focus_set()
 
     def _dependencies_panel(self):
         frame = ttk.Frame(self.tabs, padding=4)
@@ -1658,6 +1700,7 @@ class PyLexApp(tk.Tk):
             editor.set_theme(self.dark)
         for panel in (self.output, self.lexical, self.syntax):
             panel.configure(bg=bg, fg=fg, insertbackground=fg)
+        self.terminal_panel.set_theme(self.dark)
         style = ttk.Style(self)
         if self.dark:
             style.configure("Treeview", background="#252526", foreground="#dddddd",
@@ -1682,4 +1725,5 @@ class PyLexApp(tk.Tk):
             self.execution.wait(timeout=2)
         if self.debug_session is not None:
             self.debug_session.close()
+        self.terminal_panel.close_all()
         self.destroy()
