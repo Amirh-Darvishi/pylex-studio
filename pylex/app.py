@@ -75,9 +75,9 @@ class PyLexApp(tk.Tk):
 
         edit_menu = tk.Menu(menu, tearoff=False)
         edit_menu.add_command(label="Find / Replace...", command=self.find_replace)
-        edit_menu.add_command(label="Toggle Line Comment", command=self.editor._toggle_comment, accelerator="Ctrl+/")
-        edit_menu.add_command(label="Duplicate Line / Selection", command=self.editor._duplicate_line, accelerator="Ctrl+D")
-        edit_menu.add_command(label="Go to Line...", command=self.editor._go_to_line, accelerator="Ctrl+G")
+        edit_menu.add_command(label="Toggle Line Comment", command=lambda: self.editor._toggle_comment(), accelerator="Ctrl+/")
+        edit_menu.add_command(label="Duplicate Line / Selection", command=lambda: self.editor._duplicate_line(), accelerator="Ctrl+D")
+        edit_menu.add_command(label="Go to Line...", command=lambda: self.editor._go_to_line(), accelerator="Ctrl+G")
         menu.add_cascade(label="Edit", menu=edit_menu)
 
         tools_menu = tk.Menu(menu, tearoff=False)
