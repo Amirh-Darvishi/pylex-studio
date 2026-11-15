@@ -230,6 +230,10 @@ class TerminalPanel(ttk.Frame):
             cwd = Path(cwd_override).expanduser().resolve() if cwd_override else cwd
             env = terminal_environment(env, python_executable)
             process = TerminalProcess.start(shell, cwd=cwd, env=env)
+            active_file = env.get("PYLEX_ACTIVE_FILE")
+            process.active_file = (
+                Path(active_file).expanduser().resolve() if active_file else None
+            )
         except (OSError, ValueError, RuntimeError) as exc:
             self.status.configure(text="Could not start terminal: " + str(exc))
             return None
@@ -270,6 +274,8 @@ class TerminalPanel(ttk.Frame):
         self.notebook.select(frame)
         output.configure(state="normal")
         output.insert("end", f"[{label}] {cwd}\n", "system")
+        if process.active_file is not None:
+            output.insert("end", f"[Active file] {process.active_file}\n", "system")
         output.configure(state="disabled")
         entry.focus_set()
         self.status.configure(text=f"Running — {cwd}")
