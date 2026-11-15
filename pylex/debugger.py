@@ -104,37 +104,15 @@ class DebugSession:
     def command(self, value):
         if self.done or self.process.stdin is None:
             return False
+        value = str(value)
+        if any(char in value for char in ("\n", "\r", "\x00")):
+            return False
         try:
-            self.process.stdin.write(value.rstrip("\n") + "\n")
+            self.process.stdin.write(value + "\n")
             self.process.stdin.flush()
             return True
         except (BrokenPipeError, OSError, ValueError):
             return False
-
-    def set_breakpoint(self, line):
-        return self.command(f"b {int(line)}")
-
-    def clear_breakpoint(self, line):
-        return self.command(f"cl {int(line)}")
-
-    def continue_execution(self):
-        return self.command("c")
-
-    def step(self):
-        return self.command("s")
-
-    def next(self):
-        return self.command("n")
-
-    def inspect_variables(self):
-        return self.command("p locals()")
-
-    def evaluate(self, expression):
-        """Evaluate a Python expression in the current paused frame."""
-        expression = str(expression).strip()
-        if not expression or "\n" in expression:
-            return False
-        return self.command(f"p {expression}")
 
     @staticmethod
     def _positive_number(value, label="number"):
@@ -149,7 +127,7 @@ class DebugSession:
     @staticmethod
     def _single_line(value, label="value"):
         value = str(value).strip()
-        if not value or any(char in value for char in ("\\n", "\\r", "\\x00")):
+        if not value or any(char in value for char in ("\n", "\r", "\x00")):
             raise ValueError(f"{label} must be a non-empty single line.")
         return value
 
