@@ -1851,7 +1851,7 @@ class PyLexApp(tk.Tk):
         )
         ui_box.grid(row=4, column=0, sticky="w")
         ttk.Label(appearance, text="Interface size").grid(row=3, column=1, sticky="w", padx=(24, 0), pady=(0, 5))
-        tk.Spinbox(appearance, from_=8, to=14, textvariable=ui_size_var, width=6).grid(
+        ttk.Spinbox(appearance, from_=8, to=14, textvariable=ui_size_var, width=6).grid(
             row=4, column=1, sticky="w", padx=(24, 0)
         )
 
@@ -1872,7 +1872,7 @@ class PyLexApp(tk.Tk):
         )
         code_box.grid(row=1, column=0, sticky="w")
         ttk.Label(editor_page, text="Code font size").grid(row=0, column=1, sticky="w", padx=(24, 0), pady=(0, 5))
-        tk.Spinbox(editor_page, from_=8, to=32, textvariable=code_size_var, width=6).grid(
+        ttk.Spinbox(editor_page, from_=8, to=32, textvariable=code_size_var, width=6).grid(
             row=1, column=1, sticky="w", padx=(24, 0)
         )
         ttk.Label(
@@ -1934,6 +1934,13 @@ class PyLexApp(tk.Tk):
         help_view = tk.Text(
             help_page, wrap="word", height=18, borderwidth=0,
             padx=8, pady=8, font=(ui_font_var.get(), 10),
+        )
+        help_view.configure(
+            bg=self.theme_palette["editor_bg"],
+            fg=self.theme_palette["editor_fg"],
+            insertbackground=self.theme_palette["editor_fg"],
+            selectbackground=self.theme_palette["selection_bg"],
+            selectforeground=self.theme_palette["editor_fg"],
         )
         help_view.pack(fill="both", expand=True)
         help_view.insert("1.0", help_text)
@@ -2098,10 +2105,15 @@ class PyLexApp(tk.Tk):
             self.error_tree.tag_configure("info", foreground=palette["accent"])
         if hasattr(self, "project_tree"):
             self.project_tree.tag_configure("directory", foreground=palette["accent"])
-            for kind in ("python", "web", "markup", "style", "data"):
-                self.project_tree.tag_configure(kind, foreground=palette[f"file_{kind}"])
-            self.project_tree.tag_configure("config", foreground=palette["muted"])
-            self.project_tree.tag_configure("text", foreground=palette["editor_fg"])
+            for kind in (
+                "python", "web", "markup", "style", "data", "config",
+                "shell", "compiled", "image", "audio", "video", "pdf",
+                "document", "archive", "database", "font", "text",
+                "binary", "unknown",
+            ):
+                self.project_tree.tag_configure(
+                    kind, foreground=palette.get(f"file_{kind}", palette["editor_fg"])
+                )
         if hasattr(self, "theme_button"):
             self.theme_button.configure(
                 text="Light theme" if self.dark else "Dark theme"
