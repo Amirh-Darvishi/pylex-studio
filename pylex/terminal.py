@@ -11,6 +11,8 @@ import tkinter as tk
 from tkinter import ttk
 import time
 
+from .ui.context_menu import ContextMenu
+
 def available_shells():
     """Return supported shells available on the current operating system."""
     if os.name == "nt":
