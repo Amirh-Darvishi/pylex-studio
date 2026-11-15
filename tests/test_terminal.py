@@ -17,7 +17,8 @@ class TerminalHelperTests(unittest.TestCase):
             command = shell_command("powershell")
         self.assertEqual(command[0], r"C:\PowerShell\pwsh.exe")
         self.assertIn("-NoProfile", command)
-        self.assertEqual(command[-2:], ["-Command", "-"])
+        self.assertIn("-NoExit", command)
+        self.assertNotIn("-Command", command)
 
     def test_cmd_uses_windows_command_processor(self):
         with patch("pylex.terminal.os.name", "nt"), patch.dict(

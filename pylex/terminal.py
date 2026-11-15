@@ -40,7 +40,7 @@ def shell_command(shell):
     """Build a shell launch command without passing user input through a shell."""
     if shell == "powershell":
         return [shutil.which("pwsh") or shutil.which("powershell") or "powershell.exe",
-                "-NoLogo", "-NoProfile", "-NoExit", "-Command", "-"]
+                "-NoLogo", "-NoProfile", "-NoExit"]
     if shell == "cmd":
         return [os.environ.get("COMSPEC", "cmd.exe"), "/Q", "/K"]
     if shell == "git-bash":
