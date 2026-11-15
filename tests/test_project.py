@@ -26,8 +26,10 @@ class ProjectTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as folder:
             root = Path(folder)
             project = Project.open(root)
-            self.assertEqual(project.working_directory_for(root / "src/main.py"), root)
-            self.assertEqual(project.working_directory_for(), root)
+            # Windows may expose the same directory through an 8.3 alias
+            # (for example, USERNA~1) or its long name. Compare resolved paths.
+            self.assertEqual(project.working_directory_for(root / "src/main.py"), root.resolve())
+            self.assertEqual(project.working_directory_for(), root.resolve())
 
     def test_external_file_uses_its_parent(self):
         with tempfile.TemporaryDirectory() as folder:
@@ -35,7 +37,10 @@ class ProjectTests(unittest.TestCase):
             outside = Path(folder) / "outside"
             root.mkdir()
             outside.mkdir()
-            self.assertEqual(Project.open(root).working_directory_for(outside / "a.py"), outside)
+            self.assertEqual(
+                Project.open(root).working_directory_for(outside / "a.py"),
+                outside.resolve(),
+            )
 
     def test_execution_environment_prepends_project_path(self):
         with tempfile.TemporaryDirectory() as folder:
