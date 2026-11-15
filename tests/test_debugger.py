@@ -26,6 +26,32 @@ class DebuggerTests(unittest.TestCase):
             session.close()
         self.assertFalse(script_path.exists())
 
+    def test_debugger_forwards_program_input_and_streams_prompt(self):
+        session = DebugSession.start(
+            "name = input('Name: ')\\nprint('Hello', name)\\n"
+        )
+        output = ""
+        try:
+            self.assertTrue(session.continue_execution())
+            deadline = time.monotonic() + 5
+            while time.monotonic() < deadline and "Name: " not in output:
+                output += session.read_available()
+                time.sleep(0.02)
+            self.assertIn("Name: ", output)
+            self.assertTrue(session.send_input("Ada"))
+            deadline = time.monotonic() + 5
+            while time.monotonic() < deadline and not session.done:
+                output += session.read_available()
+                time.sleep(0.02)
+            session.wait(timeout=1)
+            session._reader.join(timeout=2)
+            output += session.read_available()
+            self.assertTrue(session.done)
+            self.assertEqual(session.completion_status, "finished")
+            self.assertIn("Hello Ada", output)
+        finally:
+            session.close()
+
     def test_debugger_reports_uncaught_exception_and_finishes(self):
         session = DebugSession.start("raise RuntimeError('debug-boom')\n")
         output = ""
