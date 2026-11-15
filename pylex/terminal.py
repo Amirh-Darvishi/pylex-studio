@@ -4,6 +4,7 @@ import os
 from pathlib import Path, PureWindowsPath
 import queue
 import shutil
+import shlex
 import signal
 import subprocess
 import threading
@@ -51,6 +52,20 @@ def shell_command(shell):
         executable = shutil.which(shell) or shell
         return [executable, "--noprofile", "--norc", "-i"] if shell in {"bash", "zsh"} else [executable]
     raise ValueError("Unsupported terminal shell: " + str(shell))
+
+def python_file_command(shell, python_executable, file_path):
+    """Build a safely quoted command that runs the active editor file."""
+    executable = str(python_executable)
+    path = str(Path(file_path).expanduser().resolve())
+    if shell == "powershell":
+        quote = lambda value: "'" + value.replace("'", "''") + "'"
+        return f"& {quote(executable)} {quote(path)}"
+    if shell == "cmd":
+        return subprocess.list2cmdline([executable, path])
+    if shell in {"bash", "zsh", "sh", "git-bash"}:
+        return shlex.join([executable, path])
+    raise ValueError("Unsupported terminal shell: " + str(shell))
+
 
 def terminal_environment(base=None, python_executable=None):
     """Prepare a shell environment that prefers the selected project interpreter."""
@@ -183,10 +198,14 @@ class TerminalProcess:
 
 class TerminalPanel(ttk.Frame):
     """Dockable terminal panel with multiple independent shell sessions."""
-    def __init__(self, master, context_provider, default_shell="", on_shell_change=None):
+    def __init__(
+        self, master, context_provider, default_shell="", on_shell_change=None,
+        on_run_file=None,
+    ):
         super().__init__(master)
         self.context_provider = context_provider
         self.on_shell_change = on_shell_change
+        self.on_run_file = on_run_file
         self.shells = available_shells()
         shell_ids = [item[1] for item in self.shells]
         selected = default_shell if default_shell in shell_ids else (
@@ -204,6 +223,7 @@ class TerminalPanel(ttk.Frame):
         self.shell_box.pack(side="left", padx=(0, 6))
         self.shell_box.bind("<<ComboboxSelected>>", self._shell_changed)
         ttk.Button(toolbar, text="New Terminal", command=self.create_session).pack(side="left", padx=2)
+        ttk.Button(toolbar, text="Run Active File", command=self._run_active_file).pack(side="left", padx=2)
         ttk.Button(toolbar, text="Interrupt", command=self.interrupt_current).pack(side="left", padx=2)
         ttk.Button(toolbar, text="Kill", command=self.stop_current).pack(side="left", padx=2)
         ttk.Button(toolbar, text="Clear", command=self.clear_current).pack(side="left", padx=2)
@@ -222,6 +242,23 @@ class TerminalPanel(ttk.Frame):
     def _shell_changed(self, _event=None):
         if self.on_shell_change:
             self.on_shell_change(self.shell_var.get())
+
+    def _run_active_file(self):
+        if self.on_run_file:
+            self.on_run_file()
+
+    def run_command(self, command):
+        """Send an IDE-generated command to the currently selected shell."""
+        frame = self._current_frame()
+        if frame not in self.sessions:
+            return False
+        view = self.views.get(frame)
+        if not view:
+            return False
+        view["entry"].delete(0, "end")
+        view["entry"].insert(0, str(command))
+        self._send(frame)
+        return True
 
     def create_session(self, shell=None, cwd_override=None):
         shell = shell or self.shell_var.get()
