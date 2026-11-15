@@ -161,7 +161,7 @@ class ThemeManager:
         self.style.configure(
             "Treeview",
             rowheight=max(25, ui_font_size * 3),
-            font=("Segoe UI", 9),
+            font=ui_font,
             background=palette["surface"],
             foreground=palette["editor_fg"],
             fieldbackground=palette["surface"],
