@@ -2,7 +2,19 @@
 
 All notable changes to PyLex Studio are documented here.
 
-## [1.4.0] - In development
+## [1.5.0] - In development
+
+### Added
+- Smart Python indentation after suite headers and indentation-aware Backspace and Shift+Tab dedenting.
+- Line and block comment toggling, line/selection duplication, and current-line movement shortcuts.
+- Matching bracket highlighting that ignores delimiters inside strings and comments.
+- Go to Line navigation and keyboard shortcuts for common editing actions.
+- Pure editor text helpers with dedicated unit tests.
+
+### Improved
+- Exposed Smart Editor actions through the Edit menu and toolbar.
+
+## [1.4.0] - 2026-11-15
 
 ### Added
 - Verified Python interpreter discovery from the active runtime, common PATH entries, and Windows Python launcher registrations.

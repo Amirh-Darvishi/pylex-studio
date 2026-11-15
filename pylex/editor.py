@@ -10,6 +10,11 @@ from pygments.token import (
     Comment, Error, Keyword, Name, Number, Operator, Punctuation, String,
 )
 
+from .editor_features import (
+    find_matching_bracket, indentation_for_newline,
+    smart_backspace_prefix, toggle_comment_block,
+)
+
 
 class CodeEditor(tk.Frame):
     """Text editor with line numbers, current-line emphasis, and error markers."""
@@ -48,6 +53,14 @@ class CodeEditor(tk.Frame):
         self.text.bind("<ButtonRelease-1>", self._cursor_changed)
         self.text.bind("<MouseWheel>", self._cursor_changed, add="+")
         self.text.bind("<Tab>", self._tab)
+        self.text.bind("<Shift-Tab>", self._dedent)
+        self.text.bind("<Return>", self._smart_newline)
+        self.text.bind("<BackSpace>", self._smart_backspace)
+        self.text.bind("<Control-slash>", self._toggle_comment)
+        self.text.bind("<Control-d>", self._duplicate_line)
+        self.text.bind("<Alt-Up>", lambda event: self._move_line(-1))
+        self.text.bind("<Alt-Down>", lambda event: self._move_line(1))
+        self.text.bind("<Control-g>", self._go_to_line)
         self.text.bind("<KeyPress>", self._auto_pair, add="+")
         self.text.bind("<Control-space>", self.show_completions)
         self.text.bind("<Control-a>", self._select_all)
@@ -69,6 +82,7 @@ class CodeEditor(tk.Frame):
         self.text.tag_configure("py_error", underline=True)
         self.text.tag_configure("current_line", background="#2a2d2e")
         self.text.tag_configure("error_line", background="#4b2528", underline=True)
+        self.text.tag_configure("matching_bracket", background="#565b63", underline=True)
         self.gutter.tag_configure("gutter_current", foreground="#ffffff")
         self.gutter.tag_configure("gutter_error", foreground="#ff7777")
 
@@ -84,6 +98,7 @@ class CodeEditor(tk.Frame):
         self.text.tag_configure("py_operator", foreground=fg)
         self.text.tag_configure("current_line", background=current_bg)
         self.text.tag_configure("error_line", background=error_bg)
+        self.text.tag_configure("matching_bracket", background="#565b63" if dark else "#d8e8ff")
 
     def _changed(self, event=None):
         if self.text.edit_modified():
@@ -105,6 +120,124 @@ class CodeEditor(tk.Frame):
     def _tab(self, event=None):
         self.text.insert("insert", "    ")
         return "break"
+
+    def _smart_newline(self, event=None):
+        """Continue indentation and add one level after a Python suite header."""
+        prefix = self.text.get("insert linestart", "insert")
+        indentation = indentation_for_newline(prefix)
+        self.text.insert("insert", "\n" + indentation)
+        return "break"
+
+    def _smart_backspace(self, event=None):
+        """Delete indentation to the previous four-column stop."""
+        prefix = self.text.get("insert linestart", "insert")
+        replacement = smart_backspace_prefix(prefix)
+        if replacement is None:
+            return None
+        self.text.delete("insert linestart", "insert")
+        self.text.insert("insert", replacement)
+        return "break"
+
+    def _dedent(self, event=None):
+        """Dedent selected lines, or the current line, by one level."""
+        try:
+            first = int(self.text.index("sel.first").split(".")[0])
+            last_index = self.text.index("sel.last")
+            last = int(last_index.split(".")[0])
+            if last > first and last_index.endswith(".0"):
+                last -= 1
+        except tk.TclError:
+            first = last = int(self.text.index("insert").split(".")[0])
+        for line in range(first, last + 1):
+            start = f"{line}.0"
+            prefix = self.text.get(start, f"{line}.0+4c")
+            if prefix.startswith("    "):
+                self.text.delete(start, f"{line}.0+4c")
+            elif prefix.startswith("\t"):
+                self.text.delete(start, f"{line}.0+1c")
+        return "break"
+
+    def _toggle_comment(self, event=None):
+        """Toggle comments for the selected block or current line."""
+        try:
+            first = int(self.text.index("sel.first").split(".")[0])
+            last_index = self.text.index("sel.last")
+            last = int(last_index.split(".")[0])
+            if last > first and last_index.endswith(".0"):
+                last -= 1
+        except tk.TclError:
+            first = last = int(self.text.index("insert").split(".")[0])
+        start, end = f"{first}.0", f"{last}.end"
+        replacement = toggle_comment_block(self.text.get(start, end))
+        self.text.delete(start, end)
+        self.text.insert(start, replacement)
+        self.text.tag_remove("sel", "1.0", "end")
+        self.text.tag_add("sel", start, f"{start}+{len(replacement)}c")
+        return "break"
+
+    def _duplicate_line(self, event=None):
+        """Duplicate selected text or the current line."""
+        try:
+            start, end = self.text.index("sel.first"), self.text.index("sel.last")
+            value = self.text.get(start, end)
+            self.text.insert(end, value)
+            self.text.tag_remove("sel", "1.0", "end")
+            self.text.tag_add("sel", end, f"{end}+{len(value)}c")
+        except tk.TclError:
+            line = self.text.index("insert").split(".")[0]
+            start, end = f"{line}.0", f"{line}.0 lineend+1c"
+            self.text.insert(end, self.text.get(start, end))
+        return "break"
+
+    def _move_line(self, direction):
+        """Move the current line one position while preserving its cursor column."""
+        line = int(self.text.index("insert").split(".")[0])
+        column = int(self.text.index("insert").split(".")[1])
+        count = int(self.text.index("end-1c").split(".")[0])
+        target = line + direction
+        if target < 1 or target > count:
+            return "break"
+        if direction < 0:
+            start, end = f"{target}.0", f"{line}.0"
+            previous = self.text.get(start, end)
+            current = self.text.get(end, f"{line}.0 lineend+1c")
+            self.text.delete(start, f"{line}.0 lineend+1c")
+            self.text.insert(start, current + previous)
+        else:
+            start, end = f"{line}.0", f"{target}.0"
+            current = self.text.get(start, end)
+            following = self.text.get(end, f"{target}.0 lineend+1c")
+            self.text.delete(start, f"{target}.0 lineend+1c")
+            self.text.insert(start, following + current)
+        self.text.mark_set("insert", f"{target}.0+{column}c")
+        self.text.see("insert")
+        return "break"
+
+    def _go_to_line(self, event=None):
+        """Prompt for a line number and navigate to it."""
+        from tkinter import simpledialog
+        line = simpledialog.askinteger(
+            "Go to Line", "Line number:", parent=self.winfo_toplevel(),
+            initialvalue=int(self.text.index("insert").split(".")[0]), minvalue=1,
+        )
+        if line is not None:
+            self.text.mark_set("insert", f"{line}.0")
+            self.text.see("insert")
+            self.text.focus_set()
+            self.update_current_line()
+        return "break"
+
+    def _update_matching_bracket(self):
+        self.text.tag_remove("matching_bracket", "1.0", "end")
+        source = self.get_content()
+        cursor_count = self.text.count("1.0", "insert", "chars")
+        offset = cursor_count[0] if cursor_count else 0
+        match = find_matching_bracket(source, offset)
+        if match:
+            for position in match:
+                self.text.tag_add("matching_bracket", f"1.0+{position}c", f"1.0+{position + 1}c")
+            self.text.tag_raise("matching_bracket")
+            self.text.tag_raise("sel")
 
     def _select_all(self, event=None):
         self.text.tag_add("sel", "1.0", "end-1c")
@@ -261,6 +394,7 @@ class CodeEditor(tk.Frame):
 
     def _cursor_changed(self, event=None):
         self.update_current_line()
+        self._update_matching_bracket()
 
     def get_content(self):
         return self.text.get("1.0", "end-1c")
@@ -319,6 +453,7 @@ class CodeEditor(tk.Frame):
             offset += len(value)
         self.text.tag_raise("error_line")
         self.text.tag_raise("sel")
+        self._update_matching_bracket()
 
     def show_diagnostic(self, line, column=0, end_line=None, end_column=None):
         """Highlight an error span and move the insertion cursor to its location."""
