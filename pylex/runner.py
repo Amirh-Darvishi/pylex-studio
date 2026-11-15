@@ -52,6 +52,7 @@ class ExecutionHandle:
         self.started_at = time.monotonic()
         self._done = threading.Event()
         self._lock = threading.Lock()
+        self._stdin_lock = threading.Lock()
         self._stop_requested = False
         self._result = None
         self._events = queue.Queue()
@@ -78,11 +79,15 @@ class ExecutionHandle:
             return self._result
 
     def _read_stream(self, stream, channel):
+        """Stream characters so prompts without a trailing newline appear immediately."""
         parts = self._stdout_parts if channel == "stdout" else self._stderr_parts
         try:
-            for line in iter(stream.readline, ""):
-                parts.append(line)
-                self._events.put((channel, line))
+            while True:
+                chunk = stream.read(1)
+                if chunk == "":
+                    break
+                parts.append(chunk)
+                self._events.put((channel, chunk))
         except (OSError, ValueError):
             pass
         finally:
@@ -94,11 +99,37 @@ class ExecutionHandle:
     def read_available(self):
         """Return queued live output as (channel, text) pairs without blocking."""
         chunks = []
+        current_channel = None
+        current_text = []
         while True:
             try:
-                chunks.append(self._events.get_nowait())
+                channel, content = self._events.get_nowait()
             except queue.Empty:
+                if current_text:
+                    chunks.append((current_channel, "".join(current_text)))
                 return chunks
+            if current_channel is not None and channel != current_channel:
+                chunks.append((current_channel, "".join(current_text)))
+                current_text = []
+            current_channel = channel
+            current_text.append(content)
+
+    def send_input(self, value):
+        """Send one line to a running program's standard input."""
+        value = str(value)
+        if "\\x00" in value:
+            raise ValueError("Program input cannot contain a NUL character.")
+        if self.done or self.process.poll() is not None or self.process.stdin is None:
+            return False
+        with self._stdin_lock:
+            if self.done or self.process.poll() is not None:
+                return False
+            try:
+                self.process.stdin.write(value + "\\n")
+                self.process.stdin.flush()
+                return True
+            except (BrokenPipeError, OSError, ValueError):
+                return False
 
     def stop(self):
         """Force-stop the process tree so descendants cannot keep pipes alive."""
@@ -126,6 +157,11 @@ class ExecutionHandle:
                 status = "timed_out"
                 _terminate_process_tree(self.process)
                 self.process.wait()
+            if self.process.stdin is not None:
+                try:
+                    self.process.stdin.close()
+                except OSError:
+                    pass
             for reader in self._readers:
                 reader.join(timeout=3)
             with self._lock:
@@ -184,7 +220,7 @@ def start_source(source, timeout=10, cwd=None, env=None, python_executable=None)
         process = subprocess.Popen(
             [str(python_executable or sys.executable), "-u", str(script_path)],
             cwd=str(cwd) if cwd is not None else None, env=env,
-            stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+            stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
             text=True, encoding="utf-8", errors="replace", bufsize=1,
             **_process_options(),
         )
