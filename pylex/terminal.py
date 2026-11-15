@@ -4,6 +4,7 @@ import os
 from pathlib import Path, PureWindowsPath
 import queue
 import shutil
+import shlex
 import signal
 import subprocess
 import threading
@@ -204,6 +205,7 @@ class TerminalPanel(ttk.Frame):
         self.shell_box.pack(side="left", padx=(0, 6))
         self.shell_box.bind("<<ComboboxSelected>>", self._shell_changed)
         ttk.Button(toolbar, text="New Terminal", command=self.create_session).pack(side="left", padx=2)
+        ttk.Button(toolbar, text="Run Active File", command=self.run_active_file).pack(side="left", padx=2)
         ttk.Button(toolbar, text="Interrupt", command=self.interrupt_current).pack(side="left", padx=2)
         ttk.Button(toolbar, text="Kill", command=self.stop_current).pack(side="left", padx=2)
         ttk.Button(toolbar, text="Clear", command=self.clear_current).pack(side="left", padx=2)
@@ -408,6 +410,36 @@ class TerminalPanel(ttk.Frame):
             self._poll_id = self.after(80, self._poll)
         except tk.TclError:
             self._poll_id = None
+
+    def run_active_file(self):
+        """Run the active saved editor file in the selected terminal session."""
+        frame = self._current_frame()
+        session = self.sessions.get(frame)
+        if session is None or not session.running:
+            self.status.configure(text="Create or select a running terminal session first.")
+            return
+        try:
+            _cwd, env, python_executable = self.context_provider()
+            active_file = env.get("PYLEX_ACTIVE_FILE")
+            if not active_file:
+                self.status.configure(text="No saved active file. Save the editor document first.")
+                return
+            path = Path(active_file).expanduser().resolve()
+            if not path.is_file():
+                self.status.configure(text="Active file does not exist: " + str(path))
+                return
+            executable = str(python_executable or "python")
+            if os.name == "nt":
+                command = subprocess.list2cmdline([executable, str(path)])
+                if self.views[frame]["shell"] == "powershell":
+                    command = "& " + command
+            else:
+                command = shlex.join([executable, str(path)])
+            session.send(command)
+            self._append(frame, f"> {command}\n", "system")
+            self.status.configure(text=f"Running active file — {path.name}")
+        except (OSError, RuntimeError, ValueError) as exc:
+            self.status.configure(text="Could not run active file: " + str(exc))
 
     def interrupt_current(self):
         session = self.sessions.get(self._current_frame())
