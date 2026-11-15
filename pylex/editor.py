@@ -10,6 +10,8 @@ from pygments.token import (
     Comment, Error, Keyword, Name, Number, Operator, Punctuation, String,
 )
 
+from .ui.context_menu import ContextMenu
+
 from .editor_features import (
     find_matching_bracket, indentation_for_newline,
     smart_backspace_prefix, toggle_comment_block,
