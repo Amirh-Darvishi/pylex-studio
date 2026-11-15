@@ -1,5 +1,20 @@
 # Changelog
 
+## [2.2.0] - Unreleased
+
+### Architecture
+- Introduced UI-independent Workspace, Document, Execution, and Debugger controllers.
+- Routed workspace activation/restoration, document registration and lookup, execution startup/stop/completion, and debugger startup/stop/cleanup through their respective controllers.
+- Kept Tkinter widgets, prompts, rendering, and polling schedules in the application layer; controllers own lifecycle state and delegate process creation to the existing execution service.
+- Preserved the existing PyLexApp state attributes through compatibility properties while migrating ownership behind controller boundaries.
+
+### Tests
+- Added isolated controller tests for workspace restoration, external-file project context, document activation and dirty state, execution lifecycle, stale-handle protection, and debugger cleanup.
+- Retained the Windows/Ubuntu Python 3.10, 3.11, and 3.13 CI matrix and Ruff/Black quality checks.
+
+### Documentation
+- Updated the Persian project guide with the 2.2.0 controller boundaries, lifecycle ownership, compatibility strategy, and testing approach.
+
 ## [2.1.0] - 2026-11-15
 
 ### Architecture
