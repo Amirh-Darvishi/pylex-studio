@@ -188,7 +188,7 @@ class DebugSession:
         try:
             number = int(value)
         except (TypeError, ValueError):
-            raise ValueError(f"{label} must be a positive integer.")
+            raise ValueError(f"{label} must be a positive integer.") from None
         if number < 1:
             raise ValueError(f"{label} must be a positive integer.")
         return number
