@@ -611,12 +611,12 @@ class PyLexApp(tk.Tk):
         return canvas
 
     def show_account(self):
-        """Open a spacious account center with honest local and planned service states."""
+        """Open the account center with local profile, workspace and feedback tools."""
         dialog = tk.Toplevel(self)
         dialog.title("PyLex Studio — Account Center")
         dialog.transient(self)
-        dialog.geometry("900x680")
-        dialog.minsize(760, 580)
+        dialog.geometry("940x720")
+        dialog.minsize(800, 620)
         dialog.resizable(True, True)
 
         shell = ttk.Frame(dialog, padding=24)
@@ -629,7 +629,7 @@ class PyLexApp(tk.Tk):
         ttk.Label(heading, text="Account Center", style="PyLex.DialogTitle.TLabel").pack(anchor="w")
         ttk.Label(
             heading,
-            text="Manage your local identity, workspace profile and future connected services.",
+            text="Manage your local profile, workspace information and product feedback.",
             style="PyLex.Muted.TLabel",
         ).pack(anchor="w", pady=(4, 0))
 
@@ -638,9 +638,11 @@ class PyLexApp(tk.Tk):
         profile_page = ttk.Frame(notebook, padding=20)
         services_page = ttk.Frame(notebook, padding=20)
         workspace_page = ttk.Frame(notebook, padding=20)
+        feedback_page = ttk.Frame(notebook, padding=20)
         notebook.add(profile_page, text="Profile")
         notebook.add(services_page, text="Connected Services")
         notebook.add(workspace_page, text="Workspace")
+        notebook.add(feedback_page, text="Feedback")
 
         profile_name = tk.StringVar(
             value=self.preferences.get("account_display_name", "Developer")
@@ -649,7 +651,7 @@ class PyLexApp(tk.Tk):
         ttk.Label(
             profile_page,
             text="Your display name is saved on this computer and is not uploaded to a server.",
-            style="PyLex.Muted.TLabel", wraplength=680,
+            style="PyLex.Muted.TLabel", wraplength=700,
         ).pack(anchor="w", pady=(5, 18))
         ttk.Label(profile_page, text="Display name").pack(anchor="w")
         profile_entry = ttk.Entry(profile_page, textvariable=profile_name, width=48)
@@ -672,7 +674,7 @@ class PyLexApp(tk.Tk):
             profile_page,
             text="PyLex Studio currently keeps this profile in your local preferences file. "
                  "No account registration, telemetry upload or cloud synchronization is performed by this screen.",
-            style="PyLex.Muted.TLabel", wraplength=680, justify="left",
+            style="PyLex.Muted.TLabel", wraplength=700, justify="left",
         ).pack(anchor="w")
 
         ttk.Label(
@@ -697,12 +699,10 @@ class PyLexApp(tk.Tk):
             top = ttk.Frame(card)
             top.pack(fill="x")
             ttk.Label(top, text=name, style="PyLex.Field.TLabel").pack(side="left")
-            ttk.Label(
-                top, text=status, foreground=self.theme_palette[color_key]
-            ).pack(side="right")
+            ttk.Label(top, text=status, foreground=self.theme_palette[color_key]).pack(side="right")
             ttk.Label(
                 card, text=description, style="PyLex.Muted.TLabel",
-                wraplength=680, justify="left",
+                wraplength=700, justify="left",
             ).pack(anchor="w", pady=(5, 0))
 
         root = str(self.project_root) if self.project_root else "No workspace is currently open."
@@ -711,7 +711,7 @@ class PyLexApp(tk.Tk):
             workspace_page, text="Current workspace",
             style="PyLex.DialogTitle.TLabel",
         ).pack(anchor="w", pady=(0, 12))
-        ttk.Label(workspace_page, text=root, wraplength=680).pack(anchor="w", pady=(0, 16))
+        ttk.Label(workspace_page, text=root, wraplength=700).pack(anchor="w", pady=(0, 16))
         metrics = ttk.Frame(workspace_page)
         metrics.pack(fill="x")
         for label, value in (
@@ -723,6 +723,99 @@ class PyLexApp(tk.Tk):
             tile.pack(side="left", fill="both", expand=True, padx=(0, 8))
             ttk.Label(tile, text=value, style="PyLex.DialogTitle.TLabel").pack(anchor="w")
             ttk.Label(tile, text=label, style="PyLex.Muted.TLabel").pack(anchor="w", pady=(4, 0))
+
+        ttk.Label(
+            feedback_page, text="Share feedback",
+            style="PyLex.DialogTitle.TLabel",
+        ).pack(anchor="w")
+        ttk.Label(
+            feedback_page,
+            text="Report a bug, suggest an improvement or tell us what is working well.",
+            style="PyLex.Muted.TLabel", wraplength=700,
+        ).pack(anchor="w", pady=(5, 16))
+
+        feedback_type = tk.StringVar(value="Suggestion")
+        ttk.Label(feedback_page, text="Feedback type", style="PyLex.Field.TLabel").pack(anchor="w")
+        type_picker = ttk.Combobox(
+            feedback_page, textvariable=feedback_type, state="readonly",
+            values=("Suggestion", "Bug report", "Usability", "Performance", "Other"),
+        )
+        type_picker.pack(anchor="w", fill="x", pady=(5, 14))
+
+        ttk.Label(feedback_page, text="Your message", style="PyLex.Field.TLabel").pack(anchor="w")
+        feedback_message = tk.Text(
+            feedback_page, height=9, wrap="word", undo=True,
+            font=("Segoe UI", 10), relief="solid", bd=1,
+            padx=10, pady=8,
+        )
+        feedback_message.pack(fill="both", expand=True, pady=(5, 12))
+
+        ttk.Label(
+            feedback_page,
+            text="Privacy: feedback is not sent automatically. You can copy it or save it as a local text file.",
+            style="PyLex.Muted.TLabel", wraplength=700,
+        ).pack(anchor="w", pady=(0, 12))
+
+        def build_feedback():
+            message = feedback_message.get("1.0", "end-1c").strip()
+            if not message:
+                messagebox.showinfo(
+                    "Feedback", "Please enter a message before continuing.", parent=dialog
+                )
+                return None
+            return (
+                "PyLex Studio Feedback\\n"
+                "======================\\n"
+                f"Type: {feedback_type.get()}\\n"
+                f"Application version: {__version__}\\n"
+                f"Platform: {sys.platform}\\n"
+                f"Workspace: {root}\\n\\n"
+                f"{message}\\n"
+            )
+
+        def copy_feedback():
+            content = build_feedback()
+            if content is None:
+                return
+            dialog.clipboard_clear()
+            dialog.clipboard_append(content)
+            self.status.configure(text="Feedback copied to clipboard.")
+            messagebox.showinfo(
+                "Feedback", "Feedback copied. You can paste it wherever you want to share it.",
+                parent=dialog,
+            )
+
+        def save_feedback():
+            content = build_feedback()
+            if content is None:
+                return
+            destination = filedialog.asksaveasfilename(
+                parent=dialog, title="Save Feedback",
+                defaultextension=".txt",
+                filetypes=(("Text files", "*.txt"), ("All files", "*.*")),
+                initialfile="pylex-feedback.txt",
+            )
+            if not destination:
+                return
+            try:
+                Path(destination).write_text(content, encoding="utf-8")
+            except OSError as exc:
+                messagebox.showerror("Save Feedback", str(exc), parent=dialog)
+                return
+            self.status.configure(text="Feedback saved locally.")
+            messagebox.showinfo(
+                "Feedback", "Your feedback was saved as a local text file.", parent=dialog
+            )
+
+        feedback_actions = ttk.Frame(feedback_page)
+        feedback_actions.pack(fill="x")
+        ttk.Button(
+            feedback_actions, text="Copy Feedback", command=copy_feedback,
+        ).pack(side="left")
+        ttk.Button(
+            feedback_actions, text="Save Feedback…", command=save_feedback,
+            style="PyLex.Primary.TButton",
+        ).pack(side="left", padx=(8, 0))
 
         footer = ttk.Frame(shell)
         footer.pack(fill="x", pady=(14, 0))
@@ -924,19 +1017,27 @@ class PyLexApp(tk.Tk):
         )
         self._add_tool_tab(self.git_panel, "Git", "git", "violet")
 
-        status_row = ttk.Frame(self, style="PyLex.Toolbar.TFrame", padding=(8, 2))
+        status_row = ttk.Frame(self, style="PyLex.Toolbar.TFrame", padding=(10, 3))
         status_row.pack(fill="x", side="bottom")
+        ttk.Separator(self, orient="horizontal").place(
+            relx=0, rely=1, relwidth=1, anchor="sw"
+        )
         self.status = ttk.Label(
-            status_row, text="Ready", style="PyLex.Status.TLabel"
+            status_row, text="Ready", style="PyLex.Status.TLabel",
+            anchor="w", padding=(6, 3),
         )
         self.status.pack(side="left", fill="x", expand=True)
         self.editor_status = ttk.Frame(status_row, style="PyLex.Toolbar.TFrame")
         self.editor_status.pack(side="right")
         self._editor_status_items = {}
-        for key in ("position", "indent", "encoding", "eol", "language", "mode"):
+        for index, key in enumerate(("position", "indent", "encoding", "eol", "language", "mode")):
+            if index:
+                ttk.Separator(
+                    self.editor_status, orient="vertical",
+                ).pack(side="left", fill="y", padx=2, pady=3)
             label = ttk.Label(
                 self.editor_status, text="", style="PyLex.Status.TLabel",
-                padding=(8, 1),
+                padding=(7, 3), anchor="center",
             )
             label.pack(side="left")
             self._editor_status_items[key] = label
