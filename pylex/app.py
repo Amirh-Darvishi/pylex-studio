@@ -1,7 +1,7 @@
 """Main graphical interface for PyLex Studio."""
 from . import __version__
 import tkinter as tk
-from tkinter import ttk, filedialog, messagebox, simpledialog
+from tkinter import ttk, filedialog, messagebox, simpledialog, font as tkfont
 import queue
 import threading
 from pathlib import Path
@@ -33,7 +33,7 @@ class PyLexApp(tk.Tk):
 
     def __init__(self):
         super().__init__()
-        self.title(f"PyLex Studio {__version__} — Python Editor")
+        self.title("PyLex Studio")
         self.geometry("1180x780")
         self.minsize(850, 560)
         self.current_path = None
@@ -133,8 +133,18 @@ class PyLexApp(tk.Tk):
         view_menu.add_command(label="Preferences...", command=self.open_preferences)
         view_menu.add_command(label="Toggle Project Explorer", command=self.toggle_project_explorer)
         menu.add_cascade(label="View", menu=view_menu)
+
+        help_menu = tk.Menu(menu, tearoff=False)
+        self._menus.append(help_menu)
+        help_menu.add_command(label="Quick Start & Help...", command=self.show_help)
+        help_menu.add_command(label="Command Palette...", command=self.open_command_palette, accelerator="Ctrl+Shift+P")
+        help_menu.add_separator()
+        help_menu.add_command(label="About PyLex Studio...", command=self.show_about)
+        menu.add_cascade(label="Help", menu=help_menu)
         self.config(menu=menu)
 
+        self.bind_all("<Control-Shift-P>", lambda event: self.open_command_palette())
+        self.bind_all("<Control-comma>", lambda event: self.open_preferences())
         self.bind_all("<Control-n>", lambda event: self.new_file())
         self.bind_all("<Control-o>", lambda event: self.open_file())
         self.bind_all("<Control-s>", lambda event: self.save_file())
@@ -151,21 +161,19 @@ class PyLexApp(tk.Tk):
         self.bind_all("<Control-F10>", lambda event: self.debug_continue())
 
     def _toolbar(self):
-        """Build a compact, grouped toolbar for the most common workflows."""
-        bar = ttk.Frame(self, style="PyLex.Toolbar.TFrame", padding=(12, 9))
+        """Build a compact, shortcut-aware toolbar with non-duplicated actions."""
+        bar = ttk.Frame(self, style="PyLex.Toolbar.TFrame", padding=(14, 8))
         bar.pack(fill="x")
 
-        brand = ttk.Label(
-            bar, text="PyLex Studio", style="PyLex.Brand.TLabel"
-        )
-        brand.pack(side="left", padx=(0, 18))
+        brand = ttk.Label(bar, text="PyLex Studio", style="PyLex.Brand.TLabel")
+        brand.pack(side="left", padx=(0, 20))
 
         def add_group(title, actions):
             group = ttk.Frame(bar, style="PyLex.Toolbar.TFrame")
-            group.pack(side="left", padx=(0, 12))
+            group.pack(side="left", padx=(0, 14))
             ttk.Label(
                 group, text=title.upper(), style="PyLex.Group.TLabel"
-            ).pack(anchor="w", padx=(2, 0), pady=(0, 3))
+            ).pack(anchor="w", padx=(2, 3), pady=(0, 3))
             buttons = ttk.Frame(group, style="PyLex.Toolbar.TFrame")
             buttons.pack(anchor="w")
             for label, action, style_name in actions:
@@ -176,32 +184,27 @@ class PyLexApp(tk.Tk):
             return group
 
         add_group("File", [
-            ("New", self.new_file, "PyLex.Toolbar.TButton"),
-            ("Open", self.open_file, "PyLex.Toolbar.TButton"),
-            ("Save", self.save_file, "PyLex.Toolbar.TButton"),
+            ("New  Ctrl+N", self.new_file, "PyLex.Toolbar.TButton"),
+            ("Open  Ctrl+O", self.open_file, "PyLex.Toolbar.TButton"),
+            ("Save  Ctrl+S", self.save_file, "PyLex.Toolbar.TButton"),
         ])
-        add_group("Run", [
-            ("Run  F5", self.run_code, "PyLex.Primary.TButton"),
-            ("Stop", self.stop_execution, "PyLex.Danger.TButton"),
+        add_group("Run & Debug", [
+            ("▶ Run  F5", self.run_code, "PyLex.Primary.TButton"),
+            ("Stop  ⇧F5", self.stop_execution, "PyLex.Danger.TButton"),
+            ("Debug  Ctrl+F5", self.start_debugging, "PyLex.Toolbar.TButton"),
         ])
-        add_group("Tools", [
-            ("Terminal", self.open_terminal, "PyLex.Toolbar.TButton"),
-            ("Quality", self.open_quality_tools, "PyLex.Toolbar.TButton"),
-            ("Git", self.open_git_tools, "PyLex.Toolbar.TButton"),
-        ])
-        add_group("Analysis", [
-            ("Analyze All", self.analyze_all, "PyLex.Toolbar.TButton"),
-            ("Debug", self.start_debugging, "PyLex.Toolbar.TButton"),
+        add_group("Code", [
+            ("Analyze  F6", self.analyze_all, "PyLex.Toolbar.TButton"),
         ])
 
         spacer = ttk.Frame(bar, style="PyLex.Toolbar.TFrame")
         spacer.pack(side="left", fill="x", expand=True)
         ttk.Button(
-            bar, text="A−", width=3, command=lambda: self.zoom(-1),
+            bar, text="Help", command=self.show_help,
             style="PyLex.Toolbar.TButton",
         ).pack(side="right", padx=(4, 0))
         ttk.Button(
-            bar, text="A+", width=3, command=lambda: self.zoom(1),
+            bar, text="Settings  Ctrl+,", command=self.open_preferences,
             style="PyLex.Toolbar.TButton",
         ).pack(side="right", padx=(4, 0))
         self.theme_button = ttk.Button(
@@ -209,10 +212,6 @@ class PyLexApp(tk.Tk):
             command=self.toggle_theme, style="PyLex.Toolbar.TButton",
         )
         self.theme_button.pack(side="right", padx=(4, 0))
-        ttk.Button(
-            bar, text="Preferences", command=self.open_preferences,
-            style="PyLex.Toolbar.TButton",
-        ).pack(side="right", padx=(4, 0))
 
     def _workspace(self):
         workspace = ttk.Panedwindow(self, orient="horizontal")
@@ -227,11 +226,19 @@ class PyLexApp(tk.Tk):
         ).pack(side="left")
         ttk.Button(explorer_header, text="Close", command=self.close_workspace).pack(side="right", padx=(4, 0))
         ttk.Button(explorer_header, text="Open Folder", command=self.open_project_folder).pack(side="right")
-        ttk.Button(explorer_header, text="↻", width=3, command=self.refresh_workspace).pack(side="right", padx=(0, 4))
+        ttk.Button(explorer_header, text="Refresh", width=8, command=self.refresh_workspace).pack(side="right", padx=(0, 4))
         self.workspace_path_label = ttk.Label(self.explorer_frame, text="No folder opened", padding=(7, 0, 7, 5))
         self.workspace_path_label.pack(fill="x")
         self.project_tree = ttk.Treeview(self.explorer_frame, show="tree", selectmode="browse")
         self.project_tree.pack(fill="both", expand=True)
+        self.project_tree.tag_configure("directory", foreground=self.theme_palette["accent"])
+        self.project_tree.tag_configure("python", foreground=self.theme_palette["file_python"])
+        self.project_tree.tag_configure("web", foreground=self.theme_palette["file_web"])
+        self.project_tree.tag_configure("markup", foreground=self.theme_palette["file_markup"])
+        self.project_tree.tag_configure("style", foreground=self.theme_palette["file_style"])
+        self.project_tree.tag_configure("data", foreground=self.theme_palette["file_data"])
+        self.project_tree.tag_configure("config", foreground=self.theme_palette["muted"])
+        self.project_tree.tag_configure("text", foreground=self.theme_palette["editor_fg"])
         self.project_tree.bind("<Double-1>", self._on_project_tree_open)
         if self.preferences["show_project_explorer"]:
             workspace.add(self.explorer_frame, weight=1)
@@ -986,7 +993,7 @@ class PyLexApp(tk.Tk):
             return
         root_id = self.project_tree.insert(
             "", "end", text=f"📂 {self.project_root.name}",
-            values=(str(self.project_root), "directory"), open=True,
+            values=(str(self.project_root), "directory"), tags=("directory",), open=True,
         )
         ignored = {
             ".git", ".venv", "venv", "__pycache__", ".pytest_cache",
@@ -1007,14 +1014,14 @@ class PyLexApp(tk.Tk):
                 if entry.is_dir():
                     node = self.project_tree.insert(
                         parent_id, "end", text=f"📁 {entry.name}",
-                        values=(str(entry), "directory"), open=False,
+                        values=(str(entry), "directory"), tags=("directory",), open=False,
                     )
                     add_children(node, entry)
                 elif entry.is_file():
                     info = file_type_for(entry)
                     self.project_tree.insert(
                         parent_id, "end", text=f"{info.icon} {entry.name}",
-                        values=(str(entry), info.kind),
+                        values=(str(entry), info.kind), tags=(info.kind,),
                     )
 
         add_children(root_id, self.project_root)
@@ -1120,8 +1127,9 @@ class PyLexApp(tk.Tk):
                 break
 
     def _title(self):
-        name = self.current_path.name if self.current_path else "Untitled"
-        self.title(f"{'*' if self.dirty else ''}{name} — PyLex Studio {__version__}")
+        # Keep the application identity stable; document names and dirty state
+        # are represented by editor tabs and their modified markers.
+        self.title("PyLex Studio")
 
     def _confirm(self):
         document = self._active_document()
@@ -1762,69 +1770,184 @@ class PyLexApp(tk.Tk):
         self._persist_preferences()
 
     def open_preferences(self):
+        """Open a structured, resizable preferences window."""
         dialog = tk.Toplevel(self)
-        dialog.title("PyLex Studio Preferences")
+        dialog.title("PyLex Studio — Settings")
         dialog.transient(self)
-        dialog.resizable(False, False)
-        body = ttk.Frame(dialog, padding=12)
-        body.pack(fill="both", expand=True)
+        dialog.geometry("760x560")
+        dialog.minsize(640, 460)
+        dialog.resizable(True, True)
 
-        ttk.Label(body, text="Theme").grid(row=0, column=0, sticky="w", pady=5)
+        shell = ttk.Frame(dialog, padding=16)
+        shell.pack(fill="both", expand=True)
+        ttk.Label(shell, text="Settings", style="PyLex.DialogTitle.TLabel").pack(
+            anchor="w", pady=(0, 2)
+        )
+        ttk.Label(
+            shell, text="Personalize the editor and workspace experience.",
+            style="PyLex.Muted.TLabel",
+        ).pack(anchor="w", pady=(0, 12))
+
+        notebook = ttk.Notebook(shell)
+        notebook.pack(fill="both", expand=True)
+
+        appearance = ttk.Frame(notebook, padding=16)
+        editor_page = ttk.Frame(notebook, padding=16)
+        workspace_page = ttk.Frame(notebook, padding=16)
+        execution_page = ttk.Frame(notebook, padding=16)
+        help_page = ttk.Frame(notebook, padding=16)
+        for page, label in (
+            (appearance, "Appearance"), (editor_page, "Editor"),
+            (workspace_page, "Workspace"), (execution_page, "Execution"),
+            (help_page, "Help"),
+        ):
+            notebook.add(page, text=label)
+
         theme_var = tk.StringVar(value=self.preferences["theme"])
+        ttk.Label(appearance, text="Color theme", style="PyLex.Field.TLabel").grid(
+            row=0, column=0, sticky="w", pady=(0, 6)
+        )
         theme_box = ttk.Combobox(
-            body, textvariable=theme_var, values=("dark", "light"),
-            state="readonly", width=20,
+            appearance, textvariable=theme_var, values=("dark", "light"),
+            state="readonly", width=24,
         )
-        theme_box.grid(row=0, column=1, sticky="ew", pady=5)
+        theme_box.grid(row=1, column=0, sticky="w")
+        ttk.Label(
+            appearance,
+            text="Dark uses deep navy surfaces with blue and violet accents. "
+                 "Light uses soft white surfaces and professional blue accents.",
+            style="PyLex.Muted.TLabel", wraplength=560,
+        ).grid(row=2, column=0, sticky="w", pady=(8, 18))
 
-        ttk.Label(body, text="Editor font").grid(row=1, column=0, sticky="w", pady=5)
-        font_var = tk.StringVar(value=self.preferences["font_family"])
-        font_box = ttk.Combobox(
-            body, textvariable=font_var,
-            values=("Consolas", "Cascadia Code", "Courier New", "Lucida Console"),
-            state="readonly", width=20,
+        ui_font_var = tk.StringVar(value=self.preferences.get("ui_font_family", "Segoe UI"))
+        ui_size_var = tk.IntVar(value=self.preferences.get("ui_font_size", 9))
+        ttk.Label(appearance, text="Interface font").grid(row=3, column=0, sticky="w", pady=(0, 5))
+        available_fonts = sorted(tkfont.families(dialog), key=str.casefold)
+        ui_fonts = [name for name in ("Segoe UI", "Inter", "Arial", "Tahoma") if name in available_fonts]
+        if not ui_fonts:
+            ui_fonts = ["TkDefaultFont"]
+        ui_box = ttk.Combobox(
+            appearance, textvariable=ui_font_var, values=ui_fonts,
+            state="readonly", width=24,
         )
-        font_box.grid(row=1, column=1, sticky="ew", pady=5)
+        ui_box.grid(row=4, column=0, sticky="w")
+        ttk.Label(appearance, text="Interface size").grid(row=3, column=1, sticky="w", padx=(24, 0), pady=(0, 5))
+        tk.Spinbox(appearance, from_=8, to=14, textvariable=ui_size_var, width=6).grid(
+            row=4, column=1, sticky="w", padx=(24, 0)
+        )
 
-        ttk.Label(body, text="Font size").grid(row=2, column=0, sticky="w", pady=5)
-        size_var = tk.IntVar(value=self.preferences["font_size"])
-        size_box = tk.Spinbox(body, from_=7, to=40, textvariable=size_var, width=8)
-        size_box.grid(row=2, column=1, sticky="w", pady=5)
+        code_font_var = tk.StringVar(value=self.preferences["font_family"])
+        code_size_var = tk.IntVar(value=self.preferences["font_size"])
+        ttk.Label(editor_page, text="Code font family").grid(row=0, column=0, sticky="w", pady=(0, 5))
+        code_fonts = [
+            name for name in (
+                "JetBrains Mono", "Cascadia Code", "Fira Code",
+                "Consolas", "Cascadia Mono", "Courier New",
+            ) if name in available_fonts
+        ]
+        if self.preferences["font_family"] not in code_fonts:
+            code_fonts.insert(0, self.preferences["font_family"])
+        code_box = ttk.Combobox(
+            editor_page, textvariable=code_font_var, values=code_fonts,
+            state="readonly", width=28,
+        )
+        code_box.grid(row=1, column=0, sticky="w")
+        ttk.Label(editor_page, text="Code font size").grid(row=0, column=1, sticky="w", padx=(24, 0), pady=(0, 5))
+        tk.Spinbox(editor_page, from_=8, to=32, textvariable=code_size_var, width=6).grid(
+            row=1, column=1, sticky="w", padx=(24, 0)
+        )
+        ttk.Label(
+            editor_page,
+            text="JetBrains Mono is preferred for code when installed. "
+                 "Cascadia Code and Consolas are reliable fallbacks.",
+            style="PyLex.Muted.TLabel", wraplength=560,
+        ).grid(row=2, column=0, columnspan=2, sticky="w", pady=(10, 0))
 
         explorer_var = tk.BooleanVar(value=self.preferences["show_project_explorer"])
         ttk.Checkbutton(
-            body, text="Show project explorer", variable=explorer_var,
-        ).grid(row=3, column=0, columnspan=2, sticky="w", pady=5)
+            workspace_page, text="Show project explorer on startup",
+            variable=explorer_var,
+        ).pack(anchor="w", pady=(0, 10))
+        ttk.Label(
+            workspace_page,
+            text="Drag the separators between Explorer, Editor and the lower tool panel "
+                 "to resize each area. Use the mouse wheel over a panel to scroll.",
+            style="PyLex.Muted.TLabel", wraplength=560,
+        ).pack(anchor="w")
 
-        ttk.Label(body, text="Execution timeout").grid(row=4, column=0, sticky="w", pady=5)
-        timeout_values = ("5 seconds", "10 seconds", "30 seconds", "60 seconds", "Unlimited")
+        timeout_var = tk.StringVar()
         current_timeout = self.preferences["timeout_seconds"]
-        timeout_text = "Unlimited" if current_timeout is None else f"{current_timeout} seconds"
-        timeout_var = tk.StringVar(value=timeout_text)
-        timeout_box = ttk.Combobox(
-            body, textvariable=timeout_var, values=timeout_values,
-            state="readonly", width=20,
+        timeout_var.set("Unlimited" if current_timeout is None else f"{current_timeout} seconds")
+        ttk.Label(execution_page, text="Execution timeout").grid(row=0, column=0, sticky="w", pady=(0, 5))
+        ttk.Combobox(
+            execution_page, textvariable=timeout_var,
+            values=("5 seconds", "10 seconds", "30 seconds", "60 seconds", "Unlimited"),
+            state="readonly", width=22,
+        ).grid(row=1, column=0, sticky="w")
+        ttk.Label(
+            execution_page,
+            text="Unlimited execution is useful for long-running scripts. You can always stop a run manually.",
+            style="PyLex.Muted.TLabel", wraplength=560,
+        ).grid(row=2, column=0, sticky="w", pady=(8, 0))
+
+        help_text = (
+            "QUICK START\n\n"
+            "1. Open a folder with File → Open Workspace.\n"
+            "2. Select a file in Explorer or use File → Open.\n"
+            "3. Edit your code and press Ctrl+S to save.\n"
+            "4. Press F5 to run the current Python file.\n"
+            "5. Press F6 to run lexical and syntax analysis.\n"
+            "6. Use the bottom tabs for Output, Terminal, Quality and Git.\n\n"
+            "USEFUL SHORTCUTS\n"
+            "Ctrl+N  New file     Ctrl+O  Open file\n"
+            "Ctrl+S  Save         Ctrl+W  Close tab\n"
+            "F5      Run           Shift+F5  Stop\n"
+            "Ctrl+F5 Debug         F6  Analyze all\n"
+            "F9      Toggle breakpoint   F10  Step over\n"
+            "F11     Step into     Ctrl+Shift+P  Command palette\n"
+            "Ctrl+,  Settings     Ctrl+G  Go to line\n\n"
+            "TIPS\n"
+            "• Drag pane separators to resize the workspace.\n"
+            "• Use the mouse wheel over the editor and panels to scroll.\n"
+            "• Hover toolbar actions to see their purpose.\n"
+            "• The About window shows the installed application version."
         )
-        timeout_box.grid(row=4, column=1, sticky="ew", pady=5)
+        help_view = tk.Text(
+            help_page, wrap="word", height=18, borderwidth=0,
+            padx=8, pady=8, font=(ui_font_var.get(), 10),
+        )
+        help_view.pack(fill="both", expand=True)
+        help_view.insert("1.0", help_text)
+        help_view.configure(state="disabled")
+
+        buttons = ttk.Frame(shell)
+        buttons.pack(fill="x", pady=(12, 0))
 
         def apply():
-            self.preferences["theme"] = theme_var.get()
-            self.preferences["font_family"] = font_var.get()
             try:
-                self.preferences["font_size"] = max(7, min(40, int(size_var.get())))
+                code_size = max(8, min(32, int(code_size_var.get())))
+                ui_size = max(8, min(14, int(ui_size_var.get())))
             except (ValueError, tk.TclError):
-                messagebox.showerror("Preferences", "Font size must be a number from 7 to 40.")
+                messagebox.showerror(
+                    "Settings", "Font sizes must be valid numbers.", parent=dialog
+                )
                 return
             selected_timeout = timeout_var.get()
             timeout_map = {
                 "5 seconds": 5, "10 seconds": 10,
-                "30 seconds": 30, "60 seconds": 60,
-                "Unlimited": None,
+                "30 seconds": 30, "60 seconds": 60, "Unlimited": None,
             }
             if selected_timeout not in timeout_map:
-                messagebox.showerror("Preferences", "Choose a valid execution timeout.")
+                messagebox.showerror("Settings", "Choose a valid execution timeout.", parent=dialog)
                 return
-            self.preferences["timeout_seconds"] = timeout_map[selected_timeout]
+            self.preferences.update({
+                "theme": theme_var.get(),
+                "font_family": code_font_var.get(),
+                "font_size": code_size,
+                "ui_font_family": ui_font_var.get(),
+                "ui_font_size": ui_size,
+                "timeout_seconds": timeout_map[selected_timeout],
+            })
             desired_explorer = bool(explorer_var.get())
             if desired_explorer != self.preferences["show_project_explorer"]:
                 self.toggle_project_explorer()
@@ -1836,10 +1959,103 @@ class PyLexApp(tk.Tk):
             self._persist_preferences()
             dialog.destroy()
 
-        buttons = ttk.Frame(body)
-        buttons.grid(row=5, column=0, columnspan=2, sticky="e", pady=(10, 0))
-        ttk.Button(buttons, text="Apply", command=apply).pack(side="right", padx=3)
-        ttk.Button(buttons, text="Cancel", command=dialog.destroy).pack(side="right", padx=3)
+        ttk.Button(buttons, text="Apply", command=apply, style="PyLex.Primary.TButton").pack(side="right", padx=(6, 0))
+        ttk.Button(buttons, text="Cancel", command=dialog.destroy).pack(side="right")
+
+    def show_about(self):
+        """Show product identity and version outside the main title area."""
+        dialog = tk.Toplevel(self)
+        dialog.title("About PyLex Studio")
+        dialog.transient(self)
+        dialog.resizable(False, False)
+        body = ttk.Frame(dialog, padding=26)
+        body.pack(fill="both", expand=True)
+        ttk.Label(body, text="PyLex Studio", style="PyLex.AboutTitle.TLabel").pack(anchor="w")
+        ttk.Label(
+            body, text=f"Version {__version__}",
+            style="PyLex.Muted.TLabel",
+        ).pack(anchor="w", pady=(2, 14))
+        ttk.Label(
+            body,
+            text="A focused Python development environment with code editing, "
+                 "analysis, execution, debugging, Git and quality tools.",
+            wraplength=390, justify="left",
+        ).pack(anchor="w")
+        ttk.Button(body, text="Close", command=dialog.destroy).pack(anchor="e", pady=(20, 0))
+
+    def show_help(self):
+        """Open the built-in getting-started and shortcut guide."""
+        self.open_preferences()
+        # The Help tab is part of Settings; select it after the window is created.
+        try:
+            window = self.winfo_children()[-1]
+            for child in window.winfo_children():
+                if isinstance(child, ttk.Frame):
+                    for widget in child.winfo_children():
+                        if isinstance(widget, ttk.Notebook):
+                            widget.select(4)
+                            return
+        except (tk.TclError, IndexError):
+            pass
+
+    def open_command_palette(self):
+        """Show searchable commands and their keyboard shortcuts."""
+        commands = [
+            ("New File", "Ctrl+N", self.new_file),
+            ("Open File", "Ctrl+O", self.open_file),
+            ("Save File", "Ctrl+S", self.save_file),
+            ("Open Workspace", "", self.open_project_folder),
+            ("Run Current File", "F5", self.run_code),
+            ("Stop Execution", "Shift+F5", self.stop_execution),
+            ("Analyze All", "F6", self.analyze_all),
+            ("Start Debugging", "Ctrl+F5", self.start_debugging),
+            ("Open Terminal", "", self.open_terminal),
+            ("Open Quality Tools", "", self.open_quality_tools),
+            ("Open Git", "", self.open_git_tools),
+            ("Toggle Theme", "", self.toggle_theme),
+            ("Settings", "Ctrl+,", self.open_preferences),
+            ("Quick Start & Help", "", self.show_help),
+            ("About PyLex Studio", "", self.show_about),
+        ]
+        dialog = tk.Toplevel(self)
+        dialog.title("Command Palette")
+        dialog.transient(self)
+        dialog.geometry("560x420")
+        dialog.minsize(420, 280)
+        query = tk.StringVar()
+        entry = ttk.Entry(dialog, textvariable=query, font=("Segoe UI", 11))
+        entry.pack(fill="x", padx=12, pady=12)
+        listing = tk.Listbox(dialog, activestyle="none", height=14, borderwidth=0)
+        listing.pack(fill="both", expand=True, padx=12, pady=(0, 12))
+        matches = []
+
+        def refresh(*_args):
+            listing.delete(0, "end")
+            matches.clear()
+            term = query.get().casefold().strip()
+            for label, shortcut, action in commands:
+                if term in label.casefold():
+                    matches.append((label, action))
+                    listing.insert("end", f"{label}    {shortcut}".rstrip())
+            if matches:
+                listing.selection_set(0)
+
+        def execute(_event=None):
+            selection = listing.curselection()
+            if not selection:
+                return "break"
+            action = matches[selection[0]][1]
+            dialog.destroy()
+            action()
+            return "break"
+
+        query.trace_add("write", refresh)
+        listing.bind("<Double-1>", execute)
+        listing.bind("<Return>", execute)
+        entry.bind("<Down>", lambda _event: (listing.focus_set(), listing.selection_set(0), "break"))
+        entry.bind("<Return>", execute)
+        refresh()
+        entry.focus_set()
 
     def toggle_theme(self):
         self.dark = not self.dark
@@ -1848,7 +2064,11 @@ class PyLexApp(tk.Tk):
         self._persist_preferences()
 
     def _theme(self):
-        palette = self.theme_manager.apply(self.dark)
+        palette = self.theme_manager.apply(
+            self.dark,
+            ui_font_family=self.preferences.get("ui_font_family", "Segoe UI"),
+            ui_font_size=self.preferences.get("ui_font_size", 9),
+        )
         self.theme_palette = palette
         self.configure(bg=palette["window_bg"])
         for editor in self.documents:
