@@ -10,7 +10,11 @@
 - Added workspace Quick Open (`Ctrl+P`) with ranked file-name and path filtering.
 - Applied the selected interface font consistently to notebook tabs and other themed controls while retaining the existing Tkinter editor and application services.
 - Added a VS Code-inspired Activity Bar, an Explorer with Open Editors and Workspace sections, and quick actions for creating files/folders.
-- Added hover-open categorized toolbar menus with cascading Debug groups, plus persistent Run and Stop actions with explicit theme states.
+- Added a dedicated categorized menu row above the brand/action toolbar, with cascading File, Edit, Navigate, Run, Debug, Code, Tools, View and Help menus.
+- Restored a compact brand/action row beside the logo with workspace, interpreter, save, terminal, quality, Git, analysis, Debug, Run and Stop shortcuts.
+- Unified Run and Stop button dimensions, typography, spacing, hover, pressed and disabled states across both themes.
+- Expanded Account Center and Settings into larger resizable workspaces with Profile, Connected Services, Workspace, Productivity, Extensions and Privacy & Security sections.
+- Applied the selected interface font to native Tk controls and expanded the future language, language-server, plugin, theme and project-template roadmap.
 - Added a bottom-left Account center with a locally stored display name and clearly marked future cloud/GitHub account integrations.
 - Added an original PyLex Studio vector logo at `assets/pylex-logo.svg` and reused its visual mark in the app header and About window.
 
