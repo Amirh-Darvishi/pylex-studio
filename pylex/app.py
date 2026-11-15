@@ -1266,7 +1266,7 @@ class PyLexApp(tk.Tk):
         return 'break'
 
     def _text_context_menu(self, widget, event):
-        menu = tk.Menu(self, tearoff=False)
+        menu = self._new_context_menu()
         try:
             selected = bool(widget.tag_ranges("sel"))
         except (tk.TclError, AttributeError):
@@ -2075,7 +2075,7 @@ class PyLexApp(tk.Tk):
         index = self.recent_workspaces_list.nearest(event.y)
         self.recent_workspaces_list.selection_clear(0, 'end')
         self.recent_workspaces_list.selection_set(index)
-        menu = tk.Menu(self, tearoff=False)
+        menu = self._new_context_menu()
         paths = getattr(self, '_recent_workspace_paths', [])
         if index < len(paths):
             path = paths[index]
@@ -2096,7 +2096,7 @@ class PyLexApp(tk.Tk):
     def _show_open_editors_context_menu(self, event):
         index = self.open_editors_list.nearest(event.y)
         editors = list(self.documents)
-        menu = tk.Menu(self, tearoff=False)
+        menu = self._new_context_menu()
         if index < len(editors):
             editor = editors[index]
             doc = self.documents[editor]
@@ -2126,7 +2126,7 @@ class PyLexApp(tk.Tk):
             return 'break'
         self.editor_tabs.select(frame)
         self.editor = editor
-        menu = tk.Menu(self, tearoff=False)
+        menu = self._new_context_menu()
         menu.add_command(label='Close', command=self.close_tab)
         menu.add_command(label='Close Others', command=lambda: self._close_other_documents(editor))
         menu.add_command(label='Close All', command=self._close_all_documents)
@@ -2185,7 +2185,7 @@ class PyLexApp(tk.Tk):
             self.project_tree.focus(row)
         values = self.project_tree.item(row, 'values') if row else ()
         path = Path(values[0]) if values else self.project_root
-        menu = tk.Menu(self, tearoff=False)
+        menu = self._new_context_menu()
         if path is None:
             menu.add_command(label='Open Workspace…', command=self.open_project_folder)
         elif path.is_dir():
