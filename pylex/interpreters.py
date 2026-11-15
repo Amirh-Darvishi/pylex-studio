@@ -215,11 +215,11 @@ def create_virtual_environment(
     executable = virtual_environment_python(target)
     try:
         info = probe_interpreter(executable)
-    except Exception:
+    except Exception as exc:
         # Preserve a useful failure message but never report a broken environment as ready.
         raise RuntimeError(
             f"Virtual environment was created but its interpreter could not be verified: {executable}"
-        )
+        ) from exc
     if not info.is_venv:
         raise RuntimeError(f"Created interpreter is not recognized as a virtual environment: {executable}")
     return info
