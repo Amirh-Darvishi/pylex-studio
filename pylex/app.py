@@ -408,13 +408,13 @@ class PyLexApp(tk.Tk):
                     hover_state = {"job": None}
 
                     def highlight_menu_row(_event=None, target=row, button_widget=item_button,
-                                            shortcut_widget=shortcut_label):
-                        if hover_state["job"] is not None:
+                                            shortcut_widget=shortcut_label, hover_data=hover_state):
+                        if hover_data["job"] is not None:
                             try:
-                                self.after_cancel(hover_state["job"])
+                                self.after_cancel(hover_data["job"])
                             except tk.TclError:
                                 pass
-                            hover_state["job"] = None
+                            hover_data["job"] = None
                         active_bg = self.theme_palette["elevated"]
                         target.configure(background=active_bg)
                         button_widget.configure(
@@ -428,9 +428,9 @@ class PyLexApp(tk.Tk):
                             )
 
                     def clear_menu_row_hover(_event=None, target=row, button_widget=item_button,
-                                             shortcut_widget=shortcut_label):
+                                             shortcut_widget=shortcut_label, hover_data=hover_state):
                         def settle():
-                            hover_state["job"] = None
+                            hover_data["job"] = None
                             try:
                                 px, py = self.winfo_pointerxy()
                                 inside = (
@@ -451,7 +451,7 @@ class PyLexApp(tk.Tk):
                                         background=normal_bg,
                                         foreground=self.theme_palette["muted"],
                                     )
-                        hover_state["job"] = self.after(45, settle)
+                        hover_data["job"] = self.after(45, settle)
 
                     for hover_widget in (row, item_button, shortcut_label):
                         if hover_widget is not None:
