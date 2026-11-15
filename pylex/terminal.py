@@ -238,6 +238,7 @@ class TerminalPanel(ttk.Frame):
                          undo=False, state="disabled")
         output.tag_configure("system", foreground="#4b83c3")
         output.tag_configure("error", foreground="#d9534f")
+        output.bind("<Button-3>", lambda event, widget=output: self._show_output_context_menu(widget, event), add="+")
         output.grid(row=0, column=0, columnspan=2, sticky="nsew")
         output.bind(
             "<Shift-MouseWheel>",
@@ -252,6 +253,7 @@ class TerminalPanel(ttk.Frame):
         entry = ttk.Entry(input_row)
         entry.pack(side="left", fill="x", expand=True)
         entry.bind("<Return>", lambda _event, item=frame: self._send(item))
+        entry.bind("<Button-3>", lambda event, widget=entry: self._show_entry_context_menu(widget, event), add="+")
         entry.bind("<Up>", lambda _event, item=frame: self._history_move(item, -1))
         entry.bind("<Down>", lambda _event, item=frame: self._history_move(item, 1))
         entry.bind("<Control-c>", lambda _event: self.interrupt_current())
@@ -269,6 +271,28 @@ class TerminalPanel(ttk.Frame):
         entry.focus_set()
         self.status.configure(text=f"Running — {cwd}")
         return process
+
+    def _show_output_context_menu(self, widget, event):
+        menu = tk.Menu(self, tearoff=False)
+        menu.add_command(label='Copy', command=lambda: widget.event_generate('<<Copy>>'))
+        menu.add_command(label='Select All', command=lambda: widget.tag_add('sel', '1.0', 'end-1c'))
+        menu.add_command(label='Clear Output', command=lambda: self._clear_output(widget))
+        menu.tk_popup(event.x_root, event.y_root)
+        return 'break'
+
+    def _clear_output(self, widget):
+        widget.configure(state='normal')
+        widget.delete('1.0', 'end')
+        widget.configure(state='disabled')
+
+    def _show_entry_context_menu(self, widget, event):
+        menu = tk.Menu(self, tearoff=False)
+        menu.add_command(label='Cut', command=lambda: widget.event_generate('<<Cut>>'))
+        menu.add_command(label='Copy', command=lambda: widget.event_generate('<<Copy>>'))
+        menu.add_command(label='Paste', command=lambda: widget.event_generate('<<Paste>>'))
+        menu.add_command(label='Select All', command=lambda: widget.select_range(0, 'end'))
+        menu.tk_popup(event.x_root, event.y_root)
+        return 'break'
 
     def _current_frame(self):
         selected = self.notebook.select()
