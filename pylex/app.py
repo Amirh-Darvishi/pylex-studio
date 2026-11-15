@@ -274,7 +274,7 @@ class PyLexApp(tk.Tk):
             add(info)
         add(current)
         def browse():
-            path = filedialog.askopenfilename(parent=dialog, title="Select Python", filetypes=[("Python executable", "*.exe" if os.name == "nt" else "python"), ("All files", "*.*")])
+            path = filedialog.askopenfilename(parent=dialog, title="Select Python", filetypes=[("Python executable", "*.exe" if os.name == "nt" else "python*"), ("All files", "*.*")])
             if path:
                 try:
                     add(probe_interpreter(path))

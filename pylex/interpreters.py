@@ -100,34 +100,35 @@ def probe_interpreter(executable: os.PathLike | str, timeout: float = 6.0) -> In
 
 
 def _launcher_candidates() -> Iterable[str]:
-    """Yield runtimes from the current Python install manager or legacy launcher."""
+    """Yield runtimes from the current Python install manager and legacy launcher."""
     if os.name != "nt":
         return ()
-    launcher = shutil.which("py")
-    if not launcher:
-        return ()
-    commands = ([launcher, "list", "--format=exe"], [launcher, "-0p"])
-    for command in commands:
-        try:
-            result = subprocess.run(
-                command, capture_output=True, text=True,
-                encoding="utf-8", errors="replace", timeout=5, check=False,
-            )
-        except (OSError, subprocess.SubprocessError):
+    paths = []
+    for name in ("py", "pymanager"):
+        launcher = shutil.which(name)
+        if not launcher:
             continue
-        if result.returncode != 0:
-            continue
-        paths = []
-        for line in result.stdout.splitlines():
-            value = line.strip().strip('"')
-            if command[-1] == "-0p":
-                match = re.search(r"([A-Za-z]:\\.*?python\.exe)\s*$", value, re.I)
-                value = match.group(1) if match else ""
-            if value and Path(value).is_file():
-                paths.append(value)
-        if paths:
-            return paths
-    return ()
+        commands = ([launcher, "list", "--format=exe"], [launcher, "-0p"])
+        for command in commands:
+            try:
+                result = subprocess.run(
+                    command, capture_output=True, text=True,
+                    encoding="utf-8", errors="replace", timeout=5, check=False,
+                )
+            except (OSError, subprocess.SubprocessError):
+                continue
+            if result.returncode != 0:
+                continue
+            for line in result.stdout.splitlines():
+                value = line.strip().strip('"')
+                if command[-1] == "-0p":
+                    match = re.search(r"([A-Za-z]:\\.*?python\.exe)\s*$", value, re.I)
+                    value = match.group(1) if match else ""
+                if value and Path(value).is_file() and value not in paths:
+                    paths.append(value)
+            if paths and command[-1] == "list":
+                break
+    return paths
 
 def discover_interpreters(extra_paths: Iterable[str] = (), timeout: float = 6.0) -> list[InterpreterInfo]:
     """Discover and verify common PATH, active, and Windows launcher interpreters."""

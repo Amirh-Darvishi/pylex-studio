@@ -1,5 +1,6 @@
 """Load and validate persistent PyLex Studio preferences."""
 import json
+import os
 from pathlib import Path
 
 
@@ -53,7 +54,7 @@ def _normalise(values):
         if not isinstance(item, str) or not item.strip():
             continue
         normalized = str(Path(item).expanduser())
-        key = str(Path(normalized).resolve()).casefold()
+        key = os.path.normcase(str(Path(normalized).resolve()))
         if key not in seen:
             seen.add(key)
             cleaned.append(normalized)
