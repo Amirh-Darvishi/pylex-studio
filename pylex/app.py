@@ -1120,7 +1120,7 @@ class PyLexApp(tk.Tk):
     def _configured_indent_string(self):
         value = self.preferences.get("status_bar_indent", "Spaces: 4")
         if value == "Tabs":
-            return "\\t"
+            return "\t"
         try:
             width = int(value.split(":", 1)[1].strip())
         except (IndexError, ValueError):
