@@ -1,6 +1,6 @@
 # PyLex Studio
 
-**Current development version: 1.7.0 — Integrated Terminal**
+**Current version: 1.7.0 — Integrated Terminal**
 
 A lightweight Python desktop editor with independent lexical and syntax analysis.
 
