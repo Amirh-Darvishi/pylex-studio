@@ -136,29 +136,32 @@ class CommandPalette:
             return "break"
 
         def dismiss(_event=None):
+            if getattr(root, "_pylex_command_palette_window", None) is dialog:
+                root._pylex_command_palette_window = None
             try:
                 if dialog.winfo_exists():
                     dialog.destroy()
             except tk.TclError:
                 pass
-            try:
-                root.unbind_all("<Button-1>")
-            except tk.TclError:
-                pass
 
         def outside_click(event):
+            active = getattr(root, "_pylex_command_palette_window", None)
+            if active is None:
+                return
             try:
-                if not dialog.winfo_exists():
+                if not active.winfo_exists():
+                    root._pylex_command_palette_window = None
                     return
-                left, top = dialog.winfo_rootx(), dialog.winfo_rooty()
+                left, top = active.winfo_rootx(), active.winfo_rooty()
                 inside = (
-                    left <= event.x_root < left + dialog.winfo_width()
-                    and top <= event.y_root < top + dialog.winfo_height()
+                    left <= event.x_root < left + active.winfo_width()
+                    and top <= event.y_root < top + active.winfo_height()
                 )
                 if not inside:
-                    dismiss()
+                    active.destroy()
+                    root._pylex_command_palette_window = None
             except tk.TclError:
-                dismiss()
+                root._pylex_command_palette_window = None
 
         query.trace_add("write", refresh)
         listing.bind("<Double-1>", execute)
@@ -166,7 +169,10 @@ class CommandPalette:
         entry.bind("<Down>", focus_results)
         entry.bind("<Return>", execute)
         dialog.bind("<Escape>", dismiss)
-        root.bind_all("<Button-1>", outside_click, add="+")
+        if not getattr(root, "_pylex_command_palette_listener", False):
+            root.bind_all("<Button-1>", outside_click, add="+")
+            root._pylex_command_palette_listener = True
+        root._pylex_command_palette_window = dialog
 
         refresh()
         dialog.update_idletasks()
