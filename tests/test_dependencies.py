@@ -53,11 +53,11 @@ class DependencyInspectionTests(unittest.TestCase):
         self.assertIn("version", env)
 
     def test_reports_missing_third_party_module(self):
-        missing = find_missing_imports("import pylex_studio_test_missing_package_xyz")
-        self.assertIn(
-            ("pylex_studio_test_missing_package_xyz", "pylex_studio_test_missing_package_xyz"),
-            missing,
-        )
+        missing_name = "pylex_studio_test_missing_package_xyz"
+        with patch("pylex.dependencies.importlib.util.find_spec", return_value=None), \
+             patch("pylex.dependencies.importlib.metadata.packages_distributions", return_value={}):
+            missing = find_missing_imports(f"import {missing_name}")
+        self.assertIn((missing_name, missing_name), missing)
 
     def test_ignores_standard_library(self):
         self.assertEqual(
@@ -65,7 +65,10 @@ class DependencyInspectionTests(unittest.TestCase):
         )
 
     def test_maps_common_distribution_names(self):
-        missing = find_missing_imports("import cv2\nimport yaml")
+        # Keep this test independent from packages installed on the test machine.
+        with patch("pylex.dependencies.importlib.util.find_spec", return_value=None), \
+             patch("pylex.dependencies.importlib.metadata.packages_distributions", return_value={}):
+            missing = find_missing_imports("import cv2\nimport yaml")
         self.assertIn(("cv2", "opencv-python"), missing)
         self.assertIn(("yaml", "PyYAML"), missing)
 

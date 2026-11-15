@@ -12,15 +12,17 @@ import threading
 class DebugSession:
     """Control a pdb child process and collect its interactive output."""
 
-    def __init__(self, process, script_path):
+    def __init__(self, process, script_path, cleanup_script=True):
         self.process = process
         self.script_path = Path(script_path)
+        self.cleanup_script = cleanup_script
         self._output = queue.Queue()
         self._reader = threading.Thread(target=self._read_output, daemon=True)
         self._reader.start()
 
     @classmethod
-    def start(cls, source):
+    def start(cls, source, cwd=None, env=None, python_executable=None):
+        """Start pdb for unsaved source in the supplied project context."""
         script_path = None
         try:
             with tempfile.NamedTemporaryFile(
@@ -28,9 +30,13 @@ class DebugSession:
             ) as script:
                 script.write(source)
                 script_path = Path(script.name)
-            options = {"creationflags": getattr(subprocess, "CREATE_NEW_PROCESS_GROUP", 0)} if os.name == "nt" else {"start_new_session": True}
+            options = (
+                {"creationflags": getattr(subprocess, "CREATE_NEW_PROCESS_GROUP", 0)}
+                if os.name == "nt" else {"start_new_session": True}
+            )
             process = subprocess.Popen(
-                [sys.executable, "-m", "pdb", str(script_path)],
+                [str(python_executable or sys.executable), "-m", "pdb", str(script_path)],
+                cwd=str(cwd) if cwd is not None else None, env=env,
                 stdin=subprocess.PIPE,
                 stdout=subprocess.PIPE,
                 stderr=subprocess.STDOUT,
@@ -45,6 +51,24 @@ class DebugSession:
             if script_path is not None:
                 script_path.unlink(missing_ok=True)
             raise
+
+    @classmethod
+    def start_file(cls, path, cwd=None, env=None, python_executable=None):
+        """Start pdb against a real source file, preserving its actual path."""
+        script_path = Path(path).expanduser().resolve()
+        if not script_path.is_file():
+            raise FileNotFoundError(f"Python file does not exist: {script_path}")
+        options = (
+            {"creationflags": getattr(subprocess, "CREATE_NEW_PROCESS_GROUP", 0)}
+            if os.name == "nt" else {"start_new_session": True}
+        )
+        process = subprocess.Popen(
+            [str(python_executable or sys.executable), "-m", "pdb", str(script_path)],
+            cwd=str(cwd) if cwd is not None else None, env=env,
+            stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+            text=True, encoding="utf-8", errors="replace", bufsize=1, **options,
+        )
+        return cls(process, script_path, cleanup_script=False)
 
     @property
     def done(self):
@@ -147,7 +171,8 @@ class DebugSession:
                     stream.close()
                 except OSError:
                     pass
-        try:
-            self.script_path.unlink(missing_ok=True)
-        except OSError:
-            pass
+        if self.cleanup_script:
+            try:
+                self.script_path.unlink(missing_ok=True)
+            except OSError:
+                pass

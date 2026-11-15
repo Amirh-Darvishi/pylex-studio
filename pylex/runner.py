@@ -44,10 +44,11 @@ def _terminate_process_tree(process):
 class ExecutionHandle:
     """Thread-safe handle exposing live stdout/stderr and force-stop support."""
 
-    def __init__(self, process, script_path, timeout):
+    def __init__(self, process, script_path, timeout, cleanup_script=True):
         self.process = process
         self.script_path = Path(script_path)
         self.timeout = timeout
+        self.cleanup_script = cleanup_script
         self.started_at = time.monotonic()
         self._done = threading.Event()
         self._lock = threading.Lock()
@@ -150,10 +151,11 @@ class ExecutionHandle:
                 self.process.wait()
                 exit_code = self.process.returncode
         finally:
-            try:
-                self.script_path.unlink(missing_ok=True)
-            except OSError:
-                pass
+            if self.cleanup_script:
+                try:
+                    self.script_path.unlink(missing_ok=True)
+                except OSError:
+                    pass
             result = ExecutionResult(
                 stdout=stdout or "", stderr=stderr or "",
                 exit_code=exit_code if exit_code is not None else -1,
@@ -165,31 +167,47 @@ class ExecutionHandle:
             self._done.set()
 
 
-def start_source(source, timeout=10):
-    """Start source asynchronously. Code is not sandboxed."""
+def _process_options():
+    """Return platform-specific options for a cancellable child process."""
+    if os.name == "nt":
+        return {"creationflags": getattr(subprocess, "CREATE_NEW_PROCESS_GROUP", 0)}
+    return {"start_new_session": True}
+
+
+def start_source(source, timeout=10, cwd=None, env=None, python_executable=None):
+    """Start unsaved source in an explicit project context. Code is not sandboxed."""
     script_path = None
     try:
-        with tempfile.NamedTemporaryFile(
-            mode="w", suffix=".py", encoding="utf-8", delete=False
-        ) as script:
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".py", encoding="utf-8", delete=False) as script:
             script.write(source)
             script_path = Path(script.name)
-        options = {}
-        if os.name == "nt":
-            options["creationflags"] = getattr(subprocess, "CREATE_NEW_PROCESS_GROUP", 0)
-        else:
-            options["start_new_session"] = True
         process = subprocess.Popen(
-            [sys.executable, "-u", str(script_path)],
+            [str(python_executable or sys.executable), "-u", str(script_path)],
+            cwd=str(cwd) if cwd is not None else None, env=env,
             stdout=subprocess.PIPE, stderr=subprocess.PIPE,
             text=True, encoding="utf-8", errors="replace", bufsize=1,
-            **options,
+            **_process_options(),
         )
         return ExecutionHandle(process, script_path, timeout)
     except Exception:
         if script_path is not None:
             script_path.unlink(missing_ok=True)
         raise
+
+
+def start_file(path, timeout=10, cwd=None, env=None, python_executable=None):
+    """Run a saved Python file by its real path without copying it to a temp file."""
+    script_path = Path(path).expanduser().resolve()
+    if not script_path.is_file():
+        raise FileNotFoundError(f"Python file does not exist: {script_path}")
+    process = subprocess.Popen(
+        [str(python_executable or sys.executable), "-u", str(script_path)],
+        cwd=str(cwd) if cwd is not None else None, env=env,
+        stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+        text=True, encoding="utf-8", errors="replace", bufsize=1,
+        **_process_options(),
+    )
+    return ExecutionHandle(process, script_path, timeout, cleanup_script=False)
 
 
 def run_source(source, timeout=10):

@@ -1,6 +1,6 @@
 # PyLex Studio
 
-**Current development target: 1.2.0** (in development)
+**Current development target: 1.3.0** (in development)
 
 A lightweight Python desktop editor with independent lexical and syntax analysis.
 
@@ -101,3 +101,17 @@ Code execution runs with the permissions of the current user. The runner is **no
 ## Documentation
 
 The Persian project guide is available at `docs/PROJECT_GUIDE.html`.
+
+
+## Project model and execution context (1.3.0 development)
+
+PyLex Studio models an opened folder as a workspace root. The workspace explorer classifies common source, markup, data, configuration, document, image, audio, video, archive, database, and font formats with dedicated file icons. Text files can be edited in tabs; binary assets are delegated to the operating system's default application. Tabs expose a close control and prompt before discarding unsaved changes. Project paths are
+normalized centrally, dependency inspection uses the project root, and code
+execution uses the project's working directory. Saved, unchanged Python files
+run from their real paths so sibling modules and local imports resolve naturally.
+Unsaved editor buffers continue to run from temporary scripts while inheriting the
+project working directory and import path. Runner and debugger services accept
+explicit working-directory, environment, and interpreter parameters to support
+future interpreter and virtual-environment management.
+
+Code execution is not sandboxed and uses the current user's permissions.

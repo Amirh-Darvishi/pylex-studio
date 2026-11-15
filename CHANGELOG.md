@@ -2,7 +2,23 @@
 
 All notable changes to PyLex Studio are documented here.
 
-## [1.2.0] - In development
+## [1.3.0] - In development
+
+### Added
+- Introduced a filesystem-backed Project model with normalized roots, containment checks, relative paths, and project-aware working directories.
+- Added a dedicated Workspace explorer with folder opening, visible root path, refresh, and nested directory navigation.
+- Added file-type recognition and distinct icons for common programming languages, markup, data/configuration, documents, media, archives, databases, and fonts; text files open in editor tabs and binary files launch through the system default application.
+- Added per-tab close controls with save/discard/cancel protection for unsaved edits and duplicate-open detection.
+- Added an execution service boundary so the UI no longer constructs runner/debugger processes directly.
+- Added project-aware process context (working directory, environment, and interpreter injection points) for execution and debugging.
+- Added real-file execution and debugging for saved, unchanged documents, preserving their actual source paths and enabling sibling/local module imports.
+- Preserved temporary-script execution for unsaved buffers and the existing synchronous runner API.
+
+### Improved
+- Dependency inspection now resolves local modules from the project root.
+- Kept the existing Tkinter interface and editor behavior while establishing modular core and service packages.
+
+## [1.2.0] - 2026-11-15
 
 ### Added
 - Configurable execution timeout: 5, 10, 30, 60 seconds, or Unlimited.
