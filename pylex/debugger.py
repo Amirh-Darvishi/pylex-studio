@@ -268,12 +268,17 @@ class DebugSession:
             self.process.kill()
             self.process.wait()
         self._reader.join(timeout=1)
-        for stream in (self.process.stdin, self.process.stdout):
-            if stream is not None:
+        with self._stdin_lock:
+            if self.process.stdin is not None:
                 try:
-                    stream.close()
-                except OSError:
+                    self.process.stdin.close()
+                except (OSError, ValueError):
                     pass
+        if self.process.stdout is not None:
+            try:
+                self.process.stdout.close()
+            except (OSError, ValueError):
+                pass
         if self.cleanup_script:
             try:
                 self.script_path.unlink(missing_ok=True)
