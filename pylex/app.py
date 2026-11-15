@@ -9,8 +9,9 @@ from .editor import CodeEditor
 from .analyzer import (
     lexical_analysis, syntax_analysis, format_tokens, collect_diagnostics,
 )
-from .runner import start_source
 from .dependencies import inspect_dependencies, python_environment
+from .core.project import Project
+from .services.execution import ExecutionService
 from .debugger import DebugSession
 from .preferences import load_preferences, save_preferences
 
@@ -25,6 +26,8 @@ class PyLexApp(tk.Tk):
         self.minsize(850, 560)
         self.current_path = None
         self.dirty = False
+        self.project = None
+        self.execution_service = ExecutionService()
         self.preferences = load_preferences()
         self.dark = self.preferences["theme"] == "dark"
         self.diagnostics = []
@@ -213,7 +216,7 @@ class PyLexApp(tk.Tk):
 
     def scan_dependencies(self):
         document = self._active_document()
-        root = document["path"].parent if document and document["path"] else Path.cwd()
+        root = self._project_for_document(document).root
         dependencies, error = inspect_dependencies(self.editor.get_content(), search_root=root)
         self._update_dependency_view(dependencies, error)
         self.tabs.select(self.dependency_tree.master)
@@ -324,12 +327,22 @@ class PyLexApp(tk.Tk):
                     self.error_summary.configure(text="Source changed. Run Analyze All to refresh diagnostics.")
         editor.clear_diagnostic()
 
+    def _project_for_document(self, document=None):
+        """Resolve a project context for a document or the current workspace."""
+        path = document.get("path") if document else None
+        if self.project is not None and (path is None or self.project.contains(path)):
+            return self.project
+        if path is not None:
+            return Project.from_file(path)
+        return self.project or Project.open(Path.cwd())
+
     def open_project_folder(self):
         """Choose a project root and display its files in the explorer."""
         folder = filedialog.askdirectory(title="Open Project Folder")
         if not folder:
             return
-        self.project_root = Path(folder)
+        self.project = Project.open(folder)
+        self.project_root = self.project.root
         self._populate_project_tree()
         self.status.configure(text=f"Project opened: {self.project_root}")
 
@@ -464,7 +477,7 @@ class PyLexApp(tk.Tk):
 
     def _title(self):
         name = self.current_path.name if self.current_path else "Untitled"
-        self.title(f"{'*' if self.dirty else ''}{name} — PyLex Studio 1.2.0")
+        self.title(f"{'*' if self.dirty else ''}{name} — PyLex Studio 1.3.0")
 
     def _confirm(self):
         document = self._active_document()
@@ -611,8 +624,8 @@ class PyLexApp(tk.Tk):
             return
         source = self.editor.get_content()
         document = self._active_document()
-        search_root = document["path"].parent if document and document["path"] else Path.cwd()
-        dependencies, scan_error = inspect_dependencies(source, search_root=search_root)
+        project = self._project_for_document(document)
+        dependencies, scan_error = inspect_dependencies(source, search_root=project.root)
         self._update_dependency_view(dependencies, scan_error)
         self._show(self.output, "")
         env = python_environment()
@@ -643,7 +656,10 @@ class PyLexApp(tk.Tk):
         self._append_output("Starting program...\n", "system")
         try:
             timeout = self.preferences["timeout_seconds"]
-            self.execution = start_source(source, timeout=timeout)
+            self.execution = self.execution_service.start_document(
+                source, document.get("path") if document else None, project,
+                timeout=timeout, dirty=bool(document and document.get("dirty")),
+            )
         except OSError as exc:
             self._append_output(f"Could not start Python process: {exc}\n", "stderr")
             self.status.configure(text="Could not start Python process.")
@@ -795,7 +811,12 @@ class PyLexApp(tk.Tk):
             self.status.configure(text="A debugging session is already active.")
             return
         try:
-            self.debug_session = DebugSession.start(self.editor.get_content())
+            document = self._active_document()
+            project = self._project_for_document(document)
+            self.debug_session = self.execution_service.start_debugger_document(
+                self.editor.get_content(), document.get("path") if document else None,
+                project, dirty=bool(document and document.get("dirty")),
+            )
         except OSError as exc:
             messagebox.showerror("Debugger Error", str(exc))
             return
