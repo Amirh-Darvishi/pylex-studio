@@ -1,5 +1,6 @@
 """Interactive pdb-backed debugging for Python source files."""
 from pathlib import Path
+import codecs
 import os
 import queue
 import signal
@@ -16,6 +17,9 @@ class DebugSession:
         self.process = process
         self.script_path = Path(script_path)
         self.cleanup_script = cleanup_script
+        self.completion_status = None
+        self._stdin_lock = threading.Lock()
+        self._completion_sent = False
         self._output = queue.Queue()
         self._reader = threading.Thread(target=self._read_output, daemon=True)
         self._reader.start()
@@ -35,15 +39,13 @@ class DebugSession:
                 if os.name == "nt" else {"start_new_session": True}
             )
             process = subprocess.Popen(
-                [str(python_executable or sys.executable), "-m", "pdb", str(script_path)],
+                [str(python_executable or sys.executable), "-u", "-m", "pdb", str(script_path)],
                 cwd=str(cwd) if cwd is not None else None, env=env,
                 stdin=subprocess.PIPE,
                 stdout=subprocess.PIPE,
                 stderr=subprocess.STDOUT,
-                text=True,
-                encoding="utf-8",
-                errors="replace",
-                bufsize=1,
+                text=False,
+                bufsize=0,
                 **options,
             )
             return cls(process, script_path)
@@ -63,10 +65,10 @@ class DebugSession:
             if os.name == "nt" else {"start_new_session": True}
         )
         process = subprocess.Popen(
-            [str(python_executable or sys.executable), "-m", "pdb", str(script_path)],
+            [str(python_executable or sys.executable), "-u", "-m", "pdb", str(script_path)],
             cwd=str(cwd) if cwd is not None else None, env=env,
             stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
-            text=True, encoding="utf-8", errors="replace", bufsize=1, **options,
+            text=False, bufsize=0, **options,
         )
         return cls(process, script_path, cleanup_script=False)
 
@@ -75,12 +77,61 @@ class DebugSession:
         return self.process.poll() is not None
 
     def _read_output(self):
+        """Collect raw pdb output and close the session when the debuggee finishes."""
+        decoder = codecs.getincrementaldecoder("utf-8")(errors="replace")
+        line_buffer = ""
+        pending_completion = None
         try:
             while True:
-                chunk = self.process.stdout.read(1)
-                if not chunk:
+                data = os.read(self.process.stdout.fileno(), 4096)
+                if not data:
                     break
+                chunk = decoder.decode(data)
+                if not chunk:
+                    continue
                 self._output.put(chunk)
+                line_buffer = (line_buffer + chunk)[-1024:]
+                while "\n" in line_buffer and not self._completion_sent:
+                    line, line_buffer = line_buffer.split("\n", 1)
+                    line = line.strip()
+                    if line == "The program finished and will be restarted" or line == "The program exited":
+                        pending_completion = "finished"
+                    elif "Uncaught exception. Entering post mortem debugging" in line:
+                        pending_completion = "error"
+                    elif "Post mortem debugger finished." in line:
+                        # Python 3.10/3.11 restart pdb after leaving post-mortem.
+                        # A second quit is required at the fresh initial prompt.
+                        pending_completion = "error_restart_prompt"
+                    elif pending_completion == "finished" and line.startswith("> "):
+                        # A successful run returns to the original script frame.
+                        self.completion_status = "finished"
+                        self._completion_sent = True
+                        self.command("q")
+                # Post-mortem pdb prints its prompt without a trailing newline.
+                # Wait for that prompt after the exception marker, then quit pdb.
+                # This also works when the frame path is abbreviated on Windows.
+                if (
+                    pending_completion == "error"
+                    and not self._completion_sent
+                    and "(Pdb) " in line_buffer
+                ):
+                    # First quit leaves post-mortem. Older pdb versions then
+                    # restart the script and present a second, initial prompt.
+                    self.completion_status = "error"
+                    pending_completion = "error_restart"
+                    self.command("q")
+                elif (
+                    pending_completion == "error_restart_prompt"
+                    and not self._completion_sent
+                    and "(Pdb) " in line_buffer
+                ):
+                    # The post-mortem-finished line and the new prompt may
+                    # arrive in one OS read; handle that chunk boundary too.
+                    self._completion_sent = True
+                    self.command("q")
+            tail = decoder.decode(b"", final=True)
+            if tail:
+                self._output.put(tail)
         finally:
             self._output.put(None)
 
@@ -108,8 +159,26 @@ class DebugSession:
         if any(char in value for char in ("\n", "\r", "\x00")):
             return False
         try:
-            self.process.stdin.write(value + "\n")
-            self.process.stdin.flush()
+            with self._stdin_lock:
+                if self.done:
+                    return False
+                self.process.stdin.write((value + "\n").encode("utf-8"))
+                self.process.stdin.flush()
+            return True
+        except (BrokenPipeError, OSError, ValueError):
+            return False
+
+    def send_input(self, value):
+        """Send one input line to a debugged program waiting in input()."""
+        value = str(value)
+        if "\x00" in value or "\n" in value or "\r" in value or self.done:
+            return False
+        try:
+            with self._stdin_lock:
+                if self.done:
+                    return False
+                self.process.stdin.write((value + "\n").encode("utf-8"))
+                self.process.stdin.flush()
             return True
         except (BrokenPipeError, OSError, ValueError):
             return False
@@ -231,12 +300,17 @@ class DebugSession:
             self.process.kill()
             self.process.wait()
         self._reader.join(timeout=1)
-        for stream in (self.process.stdin, self.process.stdout):
-            if stream is not None:
+        with self._stdin_lock:
+            if self.process.stdin is not None:
                 try:
-                    stream.close()
-                except OSError:
+                    self.process.stdin.close()
+                except (OSError, ValueError):
                     pass
+        if self.process.stdout is not None:
+            try:
+                self.process.stdout.close()
+            except (OSError, ValueError):
+                pass
         if self.cleanup_script:
             try:
                 self.script_path.unlink(missing_ok=True)

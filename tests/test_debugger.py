@@ -6,29 +6,92 @@ from pylex.debugger import DebugSession
 
 
 class DebuggerTests(unittest.TestCase):
-    def test_debugger_runs_source_and_captures_output(self):
+    def test_debugger_finishes_automatically_after_successful_run(self):
         session = DebugSession.start("print('debugger-ok')\n")
         script_path = session.script_path
+        output = ""
         try:
             self.assertTrue(session.continue_execution())
             deadline = time.monotonic() + 5
-            output = ""
-            while time.monotonic() < deadline:
+            while time.monotonic() < deadline and not session.done:
                 output += session.read_available()
-                if "debugger-ok" in output:
-                    break
-                if session.done:
-                    break
                 time.sleep(0.02)
-            self.assertIn("debugger-ok", output)
-            # pdb remains interactive at its post-run prompt until quit.
-            self.assertTrue(session.command("q"))
-            session.wait(timeout=5)
+            session.wait(timeout=1)
             session._reader.join(timeout=2)
             output += session.read_available()
+            self.assertTrue(session.done)
+            self.assertEqual(session.completion_status, "finished")
+            self.assertIn("debugger-ok", output)
         finally:
             session.close()
         self.assertFalse(script_path.exists())
+
+    def test_program_output_cannot_fake_the_pdb_completion_marker(self):
+        session = DebugSession.start(
+            "import time\n"
+            "print('The program finished and will be restarted', flush=True)\n"
+            "time.sleep(0.3)\n"
+            "print('still-running')\n"
+        )
+        output = ""
+        try:
+            self.assertTrue(session.continue_execution())
+            deadline = time.monotonic() + 5
+            while time.monotonic() < deadline and not session.done:
+                output += session.read_available()
+                time.sleep(0.02)
+            session.wait(timeout=1)
+            session._reader.join(timeout=2)
+            output += session.read_available()
+            self.assertTrue(session.done)
+            self.assertEqual(session.completion_status, "finished")
+            self.assertIn("still-running", output)
+        finally:
+            session.close()
+
+    def test_debugger_forwards_program_input_and_streams_prompt(self):
+        session = DebugSession.start(
+            "name = input('Name: ')\nprint('Hello', name)\n"
+        )
+        output = ""
+        try:
+            self.assertTrue(session.continue_execution())
+            deadline = time.monotonic() + 5
+            while time.monotonic() < deadline and "Name: " not in output:
+                output += session.read_available()
+                time.sleep(0.02)
+            self.assertIn("Name: ", output)
+            self.assertTrue(session.send_input("Ada"))
+            deadline = time.monotonic() + 5
+            while time.monotonic() < deadline and not session.done:
+                output += session.read_available()
+                time.sleep(0.02)
+            session.wait(timeout=1)
+            session._reader.join(timeout=2)
+            output += session.read_available()
+            self.assertTrue(session.done)
+            self.assertEqual(session.completion_status, "finished")
+            self.assertIn("Hello Ada", output)
+        finally:
+            session.close()
+
+    def test_debugger_reports_uncaught_exception_and_finishes(self):
+        session = DebugSession.start("raise RuntimeError('debug-boom')\n")
+        output = ""
+        try:
+            self.assertTrue(session.continue_execution())
+            deadline = time.monotonic() + 5
+            while time.monotonic() < deadline and not session.done:
+                output += session.read_available()
+                time.sleep(0.02)
+            session.wait(timeout=1)
+            session._reader.join(timeout=2)
+            output += session.read_available()
+            self.assertTrue(session.done)
+            self.assertEqual(session.completion_status, "error")
+            self.assertIn("RuntimeError: debug-boom", output)
+        finally:
+            session.close()
 
     def test_force_stop_closes_unresponsive_debuggee(self):
         session = DebugSession.start("import time\ntime.sleep(30)\n")

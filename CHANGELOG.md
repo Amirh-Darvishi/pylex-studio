@@ -1,6 +1,16 @@
 # Changelog
 
-## [2.0.1] - Unreleased
+## [2.0.2] - Unreleased
+
+### Execution, terminal, and debugger reliability
+- Added interactive standard-input support to Output for saved and unsaved Python programs.
+- Streamed output character-by-character so prompts without a newline are visible before the user responds.
+- Bound terminal sessions to the active editor file and workspace context, refreshing the terminal context when the active document changes.
+- Added a **Run Active File** terminal action with shell-safe quoting and automatic save-before-run behavior.
+- Made pdb sessions close automatically after successful completion and after reporting an uncaught exception.
+- Added regression tests for interactive input, prompt streaming, debugger completion, exception reporting, and terminal context propagation.
+
+## [2.0.1] - 2026-11-15
 
 ### Documentation and release metadata
 - Updated the README to identify 2.0.0 as the latest stable release and link to the complete Persian project guide.

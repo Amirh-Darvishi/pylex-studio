@@ -2,7 +2,7 @@
 import os
 import unittest
 from unittest.mock import patch
-from pylex.terminal import shell_command, terminal_environment
+from pylex.terminal import shell_command, terminal_environment, python_file_command
 
 class TerminalHelperTests(unittest.TestCase):
     def test_rejects_unknown_shell(self):
@@ -32,6 +32,30 @@ class TerminalHelperTests(unittest.TestCase):
         self.assertTrue(env["PATH"].startswith(r"C:\project\.venv\Scripts"))
         self.assertEqual(env["VIRTUAL_ENV"], r"C:\project\.venv")
         self.assertNotIn("PYTHONHOME", env)
+
+    def test_python_file_command_quotes_paths_for_supported_shells(self):
+        command = python_file_command(
+            "powershell", r"C:\Program Files\Python\python.exe",
+            r"C:\Project Files\main.py",
+        )
+        self.assertEqual(
+            command,
+            r"& 'C:\Program Files\Python\python.exe' 'C:\Project Files\main.py'",
+        )
+        bash_command = python_file_command(
+            "bash", "/opt/python/bin/python", "/home/user/My Project/main.py",
+        )
+        self.assertIn("'/home/user/My Project/main.py'", bash_command)
+
+    def test_active_editor_context_is_preserved_in_terminal_environment(self):
+        base = {
+            "PATH": "system-path",
+            "PYLEX_ACTIVE_FILE": r"C:\workspace\src\main.py",
+            "PYLEX_WORKSPACE_ROOT": r"C:\workspace",
+        }
+        env = terminal_environment(base)
+        self.assertEqual(env["PYLEX_ACTIVE_FILE"], r"C:\workspace\src\main.py")
+        self.assertEqual(env["PYLEX_WORKSPACE_ROOT"], r"C:\workspace")
 
     def test_base_environment_is_not_mutated(self):
         base = {"PATH": "original"}
