@@ -30,7 +30,7 @@ class PyLexApp(tk.Tk):
 
     def __init__(self):
         super().__init__()
-        self.title("PyLex Studio 1.8.0.dev0 — Python Editor")
+        self.title("PyLex Studio 1.8.0 — Python Editor")
         self.geometry("1180x780")
         self.minsize(850, 560)
         self.current_path = None
