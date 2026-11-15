@@ -1002,12 +1002,18 @@ class PyLexApp(tk.Tk):
             )
             label.pack(side="left")
             self._editor_status_items[key] = label
-            label.bind("<Button-1>", self._show_status_context_menu, add="+")
-            label.bind("<Button-3>", self._show_status_context_menu, add="+")
         ttk.Separator(self, orient="horizontal").pack(fill="x", side="bottom")
         self._apply_status_bar_visibility()
         self.status_row = status_row
-        status_row.bind("<Button-3>", self._show_status_context_menu, add="+")
+
+        # Right-click must work across the complete status strip, not only
+        # on the small indicators at its far-right edge.
+        def bind_status_context(widget):
+            widget.bind("<Button-3>", self._show_status_context_menu, add="+")
+            for child in widget.winfo_children():
+                bind_status_context(child)
+
+        bind_status_context(status_row)
         self._update_editor_status()
 
         shell = ttk.Frame(self)
