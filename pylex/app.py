@@ -187,7 +187,7 @@ class PyLexApp(tk.Tk):
         self.bind_all("<Control-F5>", lambda event: self.start_debugging())
         self.bind_all("<Control-F10>", lambda event: self.debug_continue())
 
-    def _icon(self, name, color=None, size=16):
+    def _icon(self, name, color=None, size=18):
         """Return a cached Bootstrap glyph using the active theme palette."""
         color = color or self.theme_palette.get("muted", "#91a0b7")
         key = (name, color, size)
@@ -676,7 +676,7 @@ class PyLexApp(tk.Tk):
             button = ttk.Button(
                 activity, text=label, command=lambda name=view: self._activity_action(name),
                 style="PyLex.Activity.TButton",
-                image=self._icon(icon_name, self.theme_palette.get(color_key), size=19),
+                image=self._icon(icon_name, self.theme_palette.get(color_key), size=21),
                 compound="top",
             )
             button.pack(fill="x", pady=4, ipadx=1, ipady=7)
@@ -684,12 +684,12 @@ class PyLexApp(tk.Tk):
         ttk.Separator(activity).pack(fill="x", pady=(10, 6))
         account_button = ttk.Button(
             activity, text="Account", command=self.show_account, style="PyLex.Activity.TButton",
-            image=self._icon("person-circle", self.theme_palette.get("muted"), size=19), compound="top",
+            image=self._icon("person-circle", self.theme_palette.get("muted"), size=21), compound="top",
         )
         account_button.pack(side="bottom", fill="x", pady=4, ipady=7)
         settings_button = ttk.Button(
             activity, text="Manage", command=self.open_preferences, style="PyLex.Activity.TButton",
-            image=self._icon("gear-fill", self.theme_palette.get("muted"), size=19), compound="top",
+            image=self._icon("gear-fill", self.theme_palette.get("muted"), size=21), compound="top",
         )
         settings_button.pack(side="bottom", fill="x", pady=4, ipady=7)
         self.activity_account_button = (account_button, "person-circle", "muted")
@@ -1508,7 +1508,7 @@ class PyLexApp(tk.Tk):
             return
         root_id = self.project_tree.insert(
             "", "end", text=self.project_root.name,
-            image=self._icon("folder-fill", self.theme_palette.get("accent"), 16),
+            image=self._icon("folder-fill", self.theme_palette.get("accent"), 18),
             values=(str(self.project_root), "directory"), tags=("directory",), open=True,
         )
         ignored = {
@@ -1530,7 +1530,7 @@ class PyLexApp(tk.Tk):
                 if entry.is_dir():
                     node = self.project_tree.insert(
                         parent_id, "end", text=entry.name,
-                        image=self._icon("folder", self.theme_palette.get("accent"), 16),
+                        image=self._icon("folder", self.theme_palette.get("accent"), 18),
                         values=(str(entry), "directory"), tags=("directory",), open=False,
                     )
                     add_children(node, entry)
@@ -1541,7 +1541,7 @@ class PyLexApp(tk.Tk):
                     )
                     self.project_tree.insert(
                         parent_id, "end", text=entry.name,
-                        image=self._icon(self._file_icon_name(info.kind), icon_color, 16),
+                        image=self._icon(self._file_icon_name(info.kind), icon_color, 18),
                         values=(str(entry), info.kind), tags=(info.kind,),
                     )
 
