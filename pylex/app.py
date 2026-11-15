@@ -1,4 +1,5 @@
 """Main graphical interface for PyLex Studio."""
+from . import __version__
 import tkinter as tk
 from tkinter import ttk, filedialog, messagebox, simpledialog
 import queue
@@ -31,7 +32,7 @@ class PyLexApp(tk.Tk):
 
     def __init__(self):
         super().__init__()
-        self.title("PyLex Studio 1.8.0 — Python Editor")
+        self.title(f"PyLex Studio {__version__} — Python Editor")
         self.geometry("1180x780")
         self.minsize(850, 560)
         self.current_path = None
@@ -1072,7 +1073,7 @@ class PyLexApp(tk.Tk):
 
     def _title(self):
         name = self.current_path.name if self.current_path else "Untitled"
-        self.title(f"{'*' if self.dirty else ''}{name} — PyLex Studio 1.8.0.dev0")
+        self.title(f"{'*' if self.dirty else ''}{name} — PyLex Studio {__version__}")
 
     def _confirm(self):
         document = self._active_document()
