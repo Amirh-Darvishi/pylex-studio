@@ -144,6 +144,13 @@ class ThemeManager:
             padding=(0, 2),
         )
         self.style.configure(
+            "PyLex.Status.TLabel",
+            background=palette["surface"],
+            foreground=palette["muted"],
+            font=(ui_font_family, max(7, ui_font_size - 1)),
+            padding=(4, 1),
+        )
+        self.style.configure(
             "PyLex.Group.TLabel",
             background=palette["surface"],
             foreground=palette["muted"],
@@ -167,6 +174,28 @@ class ThemeManager:
             borderwidth=0,
             background=palette["surface"],
             foreground=palette["editor_fg"],
+        )
+        self.style.configure(
+            "PyLex.Menu.TButton",
+            font=(ui_font_family, ui_font_size, "bold"),
+            padding=(7, 3),
+            borderwidth=0,
+            background=palette["surface"],
+            foreground=palette["editor_fg"],
+            relief="flat",
+            focusthickness=0,
+            focuscolor=palette["surface"],
+        )
+        self.style.map(
+            "PyLex.Menu.TButton",
+            background=[
+                ("active", palette["elevated"]),
+                ("pressed", palette["surface"]),
+            ],
+            foreground=[
+                ("active", palette["accent"]),
+                ("pressed", palette["accent"]),
+            ],
         )
         self.style.map(
             "PyLex.Menu.TMenubutton",
