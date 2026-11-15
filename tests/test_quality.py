@@ -46,7 +46,11 @@ class QualityToolTests(unittest.TestCase):
         )
         self.assertEqual(
             parse_pytest_nodeids(output),
-            ["tests/test_demo.py::test_one", "tests/test_demo.py::Suite::test_two"],
+            [
+                "tests/test_demo.py::test_one",
+                "tests/test_demo.py::Suite::test_two",
+                "tests/test_demo.py::test_parameterized[value with spaces]",
+            ],
         )
 
 
