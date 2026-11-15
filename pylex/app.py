@@ -301,12 +301,13 @@ class PyLexApp(tk.Tk):
         text.tag_configure("stderr", foreground="#d9534f")
         text.tag_configure("stdout", foreground="#5b9b68")
         text.tag_configure("system", foreground="#4b83c3")
-        ybar = ttk.Scrollbar(frame, command=text.yview)
-        xbar = ttk.Scrollbar(frame, orient="horizontal", command=text.xview)
-        text.configure(yscrollcommand=ybar.set, xscrollcommand=xbar.set)
-        text.grid(row=row, column=0, sticky="nsew")
-        ybar.grid(row=row, column=1, sticky="ns")
-        xbar.grid(row=row + 1, column=0, sticky="ew")
+        # Text widgets retain native wheel/keyboard scrolling without visible bars.
+        text.bind(
+            "<Shift-MouseWheel>",
+            lambda event: (text.xview_scroll(-int(event.delta / 120) * 3, "units"), "break"),
+            add="+",
+        )
+        text.grid(row=row, column=0, columnspan=2, sticky="nsew")
         frame.rowconfigure(row, weight=1)
         frame.columnconfigure(0, weight=1)
         self.tabs.add(frame, text=title)
@@ -715,10 +716,7 @@ class PyLexApp(tk.Tk):
         self.error_tree.column("column", width=58, anchor="center", stretch=False)
         self.error_tree.column("message", width=330)
         self.error_tree.column("source", width=360)
-        ybar = ttk.Scrollbar(frame, orient="vertical", command=self.error_tree.yview)
-        self.error_tree.configure(yscrollcommand=ybar.set)
-        self.error_tree.pack(side="left", fill="both", expand=True)
-        ybar.pack(side="right", fill="y")
+        self.error_tree.pack(fill="both", expand=True)
         self.error_tree.bind("<<TreeviewSelect>>", self._navigate_to_selected_error)
         self.error_tree.bind("<Double-1>", self._navigate_to_selected_error)
         self.tabs.add(frame, text="Errors")
@@ -1769,7 +1767,7 @@ class PyLexApp(tk.Tk):
         self.preferences["show_project_explorer"] = not visible
         self._persist_preferences()
 
-    def open_preferences(self):
+    def open_preferences(self, initial_tab=None):
         """Open a structured, resizable preferences window."""
         dialog = tk.Toplevel(self)
         dialog.title("PyLex Studio — Settings")
@@ -1796,12 +1794,15 @@ class PyLexApp(tk.Tk):
         workspace_page = ttk.Frame(notebook, padding=16)
         execution_page = ttk.Frame(notebook, padding=16)
         help_page = ttk.Frame(notebook, padding=16)
-        for page, label in (
+        pages = (
             (appearance, "Appearance"), (editor_page, "Editor"),
             (workspace_page, "Workspace"), (execution_page, "Execution"),
             (help_page, "Help"),
-        ):
+        )
+        for page, label in pages:
             notebook.add(page, text=label)
+        if initial_tab == "help":
+            notebook.select(help_page)
 
         theme_var = tk.StringVar(value=self.preferences["theme"])
         ttk.Label(appearance, text="Color theme", style="PyLex.Field.TLabel").grid(
@@ -1984,19 +1985,8 @@ class PyLexApp(tk.Tk):
         ttk.Button(body, text="Close", command=dialog.destroy).pack(anchor="e", pady=(20, 0))
 
     def show_help(self):
-        """Open the built-in getting-started and shortcut guide."""
-        self.open_preferences()
-        # The Help tab is part of Settings; select it after the window is created.
-        try:
-            window = self.winfo_children()[-1]
-            for child in window.winfo_children():
-                if isinstance(child, ttk.Frame):
-                    for widget in child.winfo_children():
-                        if isinstance(widget, ttk.Notebook):
-                            widget.select(4)
-                            return
-        except (tk.TclError, IndexError):
-            pass
+        """Open the built-in getting-started guide directly in Settings."""
+        self.open_preferences(initial_tab="help")
 
     def open_command_palette(self):
         """Show searchable commands and their keyboard shortcuts."""
@@ -2081,6 +2071,12 @@ class PyLexApp(tk.Tk):
                 selectforeground=palette["editor_fg"],
             )
         self.terminal_panel.set_theme(self.dark)
+        if hasattr(self, "project_tree"):
+            self.project_tree.tag_configure("directory", foreground=palette["accent"])
+            for kind in ("python", "web", "markup", "style", "data"):
+                self.project_tree.tag_configure(kind, foreground=palette[f"file_{kind}"])
+            self.project_tree.tag_configure("config", foreground=palette["muted"])
+            self.project_tree.tag_configure("text", foreground=palette["editor_fg"])
         if hasattr(self, "theme_button"):
             self.theme_button.configure(
                 text="Light theme" if self.dark else "Dark theme"
