@@ -1117,6 +1117,16 @@ class PyLexApp(tk.Tk):
                 self._editor_status_separators[index - 1].pack(side='left', fill='y', padx=2, pady=3)
             self._editor_status_items[key].pack(side='left')
 
+    def _configured_indent_string(self):
+        value = self.preferences.get("status_bar_indent", "Spaces: 4")
+        if value == "Tabs":
+            return "\\t"
+        try:
+            width = int(value.split(":", 1)[1].strip())
+        except (IndexError, ValueError):
+            width = 4
+        return " " * max(1, min(8, width))
+
     def _configure_status_bar(self):
         dialog = tk.Toplevel(self)
         dialog.title("Configure Status Bar")
@@ -1151,6 +1161,9 @@ class PyLexApp(tk.Tk):
             self.preferences["status_bar_indent"] = indent.get()
             self.preferences["status_bar_encoding"] = encoding.get()
             self.preferences["status_bar_eol"] = eol.get()
+            indent_string = self._configured_indent_string()
+            for editor in self.documents:
+                editor.indent_string = indent_string
             self._persist_preferences()
             self._apply_status_bar_visibility()
             self._update_editor_status()
@@ -2259,6 +2272,7 @@ class PyLexApp(tk.Tk):
             on_cursor_change=lambda: self._update_editor_status(editor),
         )
         editor.pack(fill="both", expand=True)
+        editor.indent_string = self._configured_indent_string()
         editor.text.bind("<<PyLexAnalyze>>", lambda _event: self.analyze_all(), add="+")
         editor.set_content(content)
         self.documents[editor] = {
