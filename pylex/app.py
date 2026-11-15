@@ -28,7 +28,7 @@ class PyLexApp(tk.Tk):
 
     def __init__(self):
         super().__init__()
-        self.title("PyLex Studio 1.4.0 — Python Editor")
+        self.title("PyLex Studio 1.5.0 — Python Editor")
         self.geometry("1180x780")
         self.minsize(850, 560)
         self.current_path = None
@@ -75,6 +75,9 @@ class PyLexApp(tk.Tk):
 
         edit_menu = tk.Menu(menu, tearoff=False)
         edit_menu.add_command(label="Find / Replace...", command=self.find_replace)
+        edit_menu.add_command(label="Toggle Line Comment", command=self.editor._toggle_comment, accelerator="Ctrl+/")
+        edit_menu.add_command(label="Duplicate Line / Selection", command=self.editor._duplicate_line, accelerator="Ctrl+D")
+        edit_menu.add_command(label="Go to Line...", command=self.editor._go_to_line, accelerator="Ctrl+G")
         menu.add_cascade(label="Edit", menu=edit_menu)
 
         tools_menu = tk.Menu(menu, tearoff=False)
@@ -130,6 +133,8 @@ class PyLexApp(tk.Tk):
             ("Analyze All", self.analyze_all),
             ("Lexical", self.analyze_lexical), ("Syntax", self.analyze_syntax),
             ("Clear Results", self.clear_results),
+            ("Comment", lambda: self.editor._toggle_comment()),
+            ("Duplicate", lambda: self.editor._duplicate_line()),
             ("A+", lambda: self.zoom(1)), ("A-", lambda: self.zoom(-1)),
             ("Toggle Theme", self.toggle_theme),
         ]
@@ -899,7 +904,7 @@ class PyLexApp(tk.Tk):
 
     def _title(self):
         name = self.current_path.name if self.current_path else "Untitled"
-        self.title(f"{'*' if self.dirty else ''}{name} — PyLex Studio 1.3.0")
+        self.title(f"{'*' if self.dirty else ''}{name} — PyLex Studio 1.5.0")
 
     def _confirm(self):
         document = self._active_document()
