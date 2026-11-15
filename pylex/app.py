@@ -23,6 +23,7 @@ from .preferences import load_preferences, save_preferences
 from .interpreters import create_virtual_environment, discover_interpreters, ensure_pip, find_project_environment, probe_interpreter
 from .terminal import TerminalPanel
 from .quality import QualityPanel
+from .git_panel import GitPanel
 
 
 class PyLexApp(tk.Tk):
@@ -87,6 +88,7 @@ class PyLexApp(tk.Tk):
         tools_menu.add_command(label="Python Interpreter...", command=self.manage_interpreter)
         tools_menu.add_command(label="Integrated Terminal", command=self.open_terminal)
         tools_menu.add_command(label="Formatter, Linter & Test Explorer", command=self.open_quality_tools)
+        tools_menu.add_command(label="Git Source Control", command=self.open_git_tools)
         tools_menu.add_separator()
         tools_menu.add_command(label="Analyze All", command=self.analyze_all)
         tools_menu.add_command(label="Lexical Analysis", command=self.analyze_lexical)
@@ -147,7 +149,7 @@ class PyLexApp(tk.Tk):
             ("Close Workspace", self.close_workspace),
             ("Python", self.manage_interpreter),
             ("Save", self.save_file), ("▶ Run", self.run_code), ("■ Force Stop", self.stop_execution), ("Terminal", self.open_terminal),
-            ("Quality", self.open_quality_tools),
+            ("Quality", self.open_quality_tools), ("Git", self.open_git_tools),
             ("Debug", self.start_debugging), ("Continue", self.debug_continue),
             ("Step", self.debug_step), ("Next", self.debug_next),
             ("Breakpoint", self.toggle_breakpoint), ("Temp BP", self.debug_temporary_breakpoint), ("Variables", self.debug_variables),
@@ -219,6 +221,11 @@ class PyLexApp(tk.Tk):
             project_format_guard=self._can_format_project,
         )
         self.tabs.add(self.quality_panel, text="Quality")
+        self.git_panel = GitPanel(
+            lower, lambda: self.project.root if self.project else None,
+            status_callback=lambda message: self.status.configure(text=message),
+        )
+        self.tabs.add(self.git_panel, text="Git")
 
         self.status = ttk.Label(self, text="Ready", padding=5)
         self.status.pack(fill="x")
@@ -347,6 +354,11 @@ class PyLexApp(tk.Tk):
     def open_quality_tools(self):
         """Show the integrated formatter, linter, and test explorer."""
         self.tabs.select(self.quality_panel)
+
+    def open_git_tools(self):
+        """Show Git status, staging, commits, branches, and remote controls."""
+        self.tabs.select(self.git_panel)
+        self.git_panel.refresh()
 
     def _save_terminal_shell(self, shell):
         self.preferences["terminal_shell"] = shell
@@ -812,6 +824,7 @@ class PyLexApp(tk.Tk):
         self._populate_project_tree()
         self.workspace_path_label.configure(text=str(candidate.root))
         self.status.configure(text=f"Workspace opened: {candidate.root}")
+        self.git_panel.refresh()
         return True
 
     def open_project_folder(self):
@@ -839,6 +852,7 @@ class PyLexApp(tk.Tk):
         self.preferences["last_workspace"] = ""
         self._persist_preferences()
         self.status.configure(text=f"Workspace closed: {closed}. Open editor tabs were kept.")
+        self.git_panel.refresh()
 
     def _restore_last_workspace(self):
         """Restore the most recently used workspace when it still exists."""
@@ -855,6 +869,7 @@ class PyLexApp(tk.Tk):
         self._remember_workspace(self.project_root)
         self.workspace_path_label.configure(text=str(self.project_root))
         self._populate_project_tree()
+        self.git_panel.refresh()
 
     def refresh_workspace(self):
         """Refresh the workspace tree from disk."""
@@ -1816,4 +1831,5 @@ class PyLexApp(tk.Tk):
             self.debug_session.close()
         self.terminal_panel.close_all()
         self.quality_panel.close()
+        self.git_panel.close()
         self.destroy()
