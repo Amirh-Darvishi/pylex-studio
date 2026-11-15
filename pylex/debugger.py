@@ -44,10 +44,8 @@ class DebugSession:
                 stdin=subprocess.PIPE,
                 stdout=subprocess.PIPE,
                 stderr=subprocess.STDOUT,
-                text=True,
-                encoding="utf-8",
-                errors="replace",
-                bufsize=1,
+                text=False,
+                bufsize=0,
                 **options,
             )
             return cls(process, script_path)
@@ -70,7 +68,7 @@ class DebugSession:
             [str(python_executable or sys.executable), "-u", "-m", "pdb", str(script_path)],
             cwd=str(cwd) if cwd is not None else None, env=env,
             stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
-            text=True, encoding="utf-8", errors="replace", bufsize=1, **options,
+            text=False, bufsize=0, **options,
         )
         return cls(process, script_path, cleanup_script=False)
 
@@ -145,7 +143,7 @@ class DebugSession:
             with self._stdin_lock:
                 if self.done:
                     return False
-                self.process.stdin.write(value + "\n")
+                self.process.stdin.write((value + "\n").encode("utf-8"))
                 self.process.stdin.flush()
             return True
         except (BrokenPipeError, OSError, ValueError):
