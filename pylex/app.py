@@ -405,7 +405,7 @@ class PyLexApp(tk.Tk):
             )
         env = python_environment(python_executable or self._interpreter_for_project(self._project_for_document(self._active_document())).executable)
         mode = "venv" if env["virtual_environment"] else "base interpreter"
-        message = f"Python {env['version']} ({mode}) — {env['executable']}"
+        message = f"Python {env['version']} ({mode}, pip {'available' if env['pip_available'] else 'missing'}) — {env['executable']}"
         if scan_error:
             message += " | " + scan_error
         self.dependency_environment.configure(text=message)
@@ -1029,6 +1029,8 @@ class PyLexApp(tk.Tk):
                 f"{env['executable']} -m pip install {item.distribution}"
                 for item in missing
             )
+            if not env["pip_available"]:
+                lines.append("pip is unavailable in this interpreter. Use Tools → Python Interpreter → Repair pip first.")
             lines.append(
                 "Static scanning cannot detect every dynamic import; runtime errors are also reported.\n"
             )
