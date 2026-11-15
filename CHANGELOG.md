@@ -2,7 +2,19 @@
 
 All notable changes to PyLex Studio are documented here.
 
-## [1.5.0] - In development
+## [1.6.0] - In development
+
+### Added
+- Expanded pdb controls with conditional and temporary breakpoints, Run Until, Run Until Return, Jump to Line, function argument inspection, and pretty-printed expression evaluation.
+- Added commands to enable, disable, ignore, and clear breakpoints in an active session.
+- Added input validation for debugger line numbers and single-line expressions to prevent accidental multi-command input.
+- Exposed advanced debugger actions through the Tools menu and toolbar.
+- Added tests for advanced command coverage and invalid argument handling.
+
+### Improved
+- Centralized debugger command validation and retained project-aware interpreter execution.
+
+## [1.5.0] - 2026-11-15
 
 ### Added
 - Smart Python indentation after suite headers and indentation-aware Backspace and Shift+Tab dedenting.
