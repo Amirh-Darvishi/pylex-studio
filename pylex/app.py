@@ -835,6 +835,8 @@ class PyLexApp(tk.Tk):
         if view == "explorer":
             if not self.preferences["show_project_explorer"]:
                 self.toggle_project_explorer()
+            self.project_tree.focus_set()
+            self.status.configure(text="Explorer ready — choose a recent workspace or open a folder.")
         elif view == "search":
             self.open_quick_file()
         elif view == "source":
@@ -1984,6 +1986,73 @@ class PyLexApp(tk.Tk):
                 subprocess.Popen(['xdg-open', str(target)])
         except OSError as exc:
             messagebox.showerror('Show in File Manager', str(exc), parent=self)
+
+    def _show_project_tree_context_menu(self, event):
+        row = self.project_tree.identify_row(event.y)
+        if row:
+            self.project_tree.selection_set(row)
+            self.project_tree.focus(row)
+        values = self.project_tree.item(row, 'values') if row else ()
+        path = Path(values[0]) if values else self.project_root
+        menu = tk.Menu(self, tearoff=False)
+        if path is None:
+            menu.add_command(label='Open Workspace…', command=self.open_project_folder)
+        elif path.is_dir():
+            menu.add_command(label='Open / Expand', command=lambda: self._open_tree_directory(row))
+            menu.add_command(label='New File…', command=lambda: self._create_tree_item(path, 'file'))
+            menu.add_command(label='New Folder…', command=lambda: self._create_tree_item(path, 'folder'))
+            menu.add_command(label='Refresh', command=self.refresh_workspace)
+        else:
+            menu.add_command(label='Open', command=lambda: self._open_path(path))
+            menu.add_command(label='Open with System App', command=lambda: self._open_external_file(path))
+        if path is not None:
+            menu.add_separator()
+            menu.add_command(label='Copy Path', command=lambda: self._copy_to_clipboard(path))
+            menu.add_command(label='Show in File Manager', command=lambda: self._reveal_path(path))
+            if path != self.project_root:
+                menu.add_command(label='Rename…', command=lambda: self._rename_tree_path(path))
+                menu.add_command(label='Delete…', command=lambda: self._delete_tree_path(path))
+        menu.tk_popup(event.x_root, event.y_root)
+        return 'break'
+
+    def _open_tree_directory(self, row):
+        if row and self.project_tree.exists(row):
+            self.project_tree.item(row, open=not bool(self.project_tree.item(row, 'open')))
+
+    def _create_tree_item(self, directory, kind):
+        name = simpledialog.askstring('New ' + kind.title(), kind.title() + ' name:', parent=self)
+        if not name or Path(name).name != name or name in {'.', '..'}:
+            return
+        target = directory / name
+        try:
+            target.mkdir() if kind == 'folder' else target.touch(exist_ok=False)
+        except OSError as exc:
+            messagebox.showerror('Create ' + kind.title(), str(exc), parent=self)
+            return
+        self.refresh_workspace()
+        if kind == 'file':
+            self._open_path(target)
+
+    def _rename_tree_path(self, path):
+        name = simpledialog.askstring('Rename', 'New name:', initialvalue=path.name, parent=self)
+        if not name or Path(name).name != name or name in {'.', '..'}:
+            return
+        try:
+            path.rename(path.with_name(name))
+        except OSError as exc:
+            messagebox.showerror('Rename', str(exc), parent=self)
+            return
+        self.refresh_workspace()
+
+    def _delete_tree_path(self, path):
+        if not messagebox.askyesno('Delete', 'Delete {!r}? This cannot be undone.'.format(path.name), parent=self):
+            return
+        try:
+            shutil.rmtree(path) if path.is_dir() else path.unlink()
+        except OSError as exc:
+            messagebox.showerror('Delete', str(exc), parent=self)
+            return
+        self.refresh_workspace()
 
     def _on_project_tree_open(self, event=None):
         selection = self.project_tree.selection()
