@@ -297,6 +297,8 @@ python -m pytest -v</pre>
 <h2>۱۸. معماری و ساختار کد</h2>
 <p>ساختار کلی مخزن در نسخه 2.0.1 به‌صورت زیر است. فایل‌های آزمون، ماژول‌های اصلی و تنظیمات پروژه در کنار هم قرار دارند:</p>
 <pre>pylex-studio/
+├── assets/
+│   └── pylex-logo.svg
 ├── main.py
 ├── pylex/
 │   ├── __init__.py
@@ -317,9 +319,13 @@ python -m pytest -v</pre>
 │   │   ├── __init__.py
 │   │   ├── project.py
 │   │   └── file_types.py
-│   └── services/
+│   ├── services/
+│   │   ├── __init__.py
+│   │   └── execution.py
+│   └── ui/
 │       ├── __init__.py
-│       └── execution.py
+│       ├── context_menu.py
+│       └── theme.py
 ├── tests/
 ├── docs/
 │   └── PROJECT_GUIDE.html
@@ -348,6 +354,9 @@ python -m pytest -v</pre>
 <tr><td><code>pylex/quality.py</code></td><td>اجرای Black، Ruff و pytest و تبدیل نتایج به تشخیص‌ها.</td></tr>
 <tr><td><code>pylex/git.py</code></td><td>سرویس Git محدود به Workspace و اجرای shell-free فرمان‌ها.</td></tr>
 <tr><td><code>pylex/git_panel.py</code></td><td>رابط گرافیکی پنل Source Control.</td></tr>
+<tr><td><code>pylex/ui/theme.py</code></td><td>توکن‌ها و رفتارهای تم و ظاهر یکپارچه رابط کاربری.</td></tr>
+<tr><td><code>pylex/ui/context_menu.py</code></td><td>منوی راست‌کلیک سفارشی، منوهای آبشاری و مدیریت رفتار hover.</td></tr>
+<tr><td><code>assets/pylex-logo.svg</code></td><td>نشان برداری اصلی برنامه برای سربرگ و پنجره About.</td></tr>
 <tr><td><code>tests/</code></td><td>آزمون‌های واحد و رگرسیون ماژول‌ها.</td></tr></table>
 <h3>اصول طراحی</h3>
 <ul><li><strong>Separation of concerns:</strong> رابط کاربری، منطق دامنه و اجرای پردازه‌ها در ماژول‌های جدا قرار دارند.</li><li><strong>Explicit context:</strong> سرویس‌های اجرا مسیر کاری، environment و executable را صریح دریافت می‌کنند.</li><li><strong>Non-blocking UI:</strong> کارهای طولانی با thread/queue و پردازه فرزند مدیریت می‌شوند تا Tkinter پاسخ‌گو بماند.</li><li><strong>Testability:</strong> منطق‌های خالص و سرویس‌ها تا حد امکان جدا از پنجره اصلی آزمون‌پذیرند.</li><li><strong>Safe subprocess construction:</strong> فرمان‌ها با آرایه آرگومان و بدون shell=True ساخته می‌شوند.</li></ul>
