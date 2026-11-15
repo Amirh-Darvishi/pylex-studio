@@ -496,7 +496,9 @@ class QualityPanel(ttk.Frame):
                 self._set_status(f"Discovered {len(self._tests)} test(s).")
             elif "No module named pytest" in stderr or "No module named pytest" in stdout:
                 self._tool_missing("pytest")
-                self._set_status("pytest is missing from the selected interpreter. Use Install Tools.")
+                self._set_status(
+                    "pytest is missing from the selected interpreter. Use Install Tools."
+                )
             else:
                 # Keep the collection error visible and make the failure actionable.
                 detail = (stderr or stdout).strip()
@@ -512,7 +514,13 @@ class QualityPanel(ttk.Frame):
             tool_argv(
                 interpreter,
                 "pytest",
-                ("--collect-only", "-q", "--disable-warnings", "--no-header", str(root)),
+                (
+                    "--collect-only",
+                    "-q",
+                    "--disable-warnings",
+                    "--no-header",
+                    str(root),
+                ),
             ),
             root,
             env,
