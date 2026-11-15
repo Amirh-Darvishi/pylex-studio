@@ -17,5 +17,5 @@ jobs:
       - run: python -m pip install -r requirements.txt
       - run: python -m compileall -q pylex main.py
       - run: python -m unittest discover -s tests -v
-      - run: python -m black --diff pylex/quality.py tests/test_quality.py
+      - run: python -m black --check pylex/quality.py tests/test_quality.py
       - run: python -m ruff check pylex/quality.py tests/test_quality.py
