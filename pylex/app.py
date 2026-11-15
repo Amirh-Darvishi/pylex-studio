@@ -22,7 +22,6 @@ from .dependencies import inspect_dependencies, python_environment
 from .core.project import Project
 from .core.file_types import file_type_for, read_text_file
 from .services.execution import ExecutionService
-from .debugger import DebugSession
 from .preferences import DEFAULTS, load_preferences, save_preferences
 from .interpreters import create_virtual_environment, discover_interpreters, ensure_pip, find_project_environment, probe_interpreter
 from .terminal import TerminalPanel, python_file_command
@@ -1530,7 +1529,7 @@ class PyLexApp(tk.Tk):
             path = self._project_for_document(self._active_document()).root / path
         path = path.resolve()
         target = None
-        for editor, document in self.documents.items():
+        for _editor, document in self.documents.items():
             if document.get("path") is not None and Path(document["path"]).resolve() == path:
                 target = editor
                 self.editor_tabs.select(document["frame"])
