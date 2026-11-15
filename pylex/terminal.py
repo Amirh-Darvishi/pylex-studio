@@ -58,7 +58,7 @@ def python_file_command(shell, python_executable, file_path):
     executable = str(python_executable)
     raw_path = str(file_path)
     windows_path = PureWindowsPath(raw_path)
-    if windows_path.is_absolute() and os.name != "nt":
+    if windows_path.is_absolute():
         path = raw_path
     else:
         path = str(Path(file_path).expanduser().resolve())
