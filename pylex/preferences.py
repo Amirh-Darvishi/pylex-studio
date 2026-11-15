@@ -36,7 +36,9 @@ def _normalise(values):
         "Consolas", "Cascadia Mono", "Courier New", "Lucida Console",
     }:
         result["font_family"] = DEFAULTS["font_family"]
-    if result["ui_font_family"] not in {"Segoe UI", "Inter", "Arial", "Tahoma", "TkDefaultFont"}:
+    if result["ui_font_family"] not in {
+        "Segoe UI", "Inter", "Arial", "Tahoma", "TkDefaultFont",
+    }:
         result["ui_font_family"] = DEFAULTS["ui_font_family"]
     try:
         result["ui_font_size"] = max(8, min(14, int(result["ui_font_size"])))
