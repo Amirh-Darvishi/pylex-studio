@@ -194,7 +194,7 @@ class GitService:
         return self._run("commit", "-m", message).stdout
 
     def branches(self):
-        output = self._run("branch", "--format=%(HEAD)%00%(refname:short)%00%(upstream:short)").stdout
+        output = self._run("branch", "--format=%(HEAD)%09%(refname:short)%09%(upstream:short)").stdout
         result = []
         for line in output.splitlines():
             parts = line.split("\x00")
