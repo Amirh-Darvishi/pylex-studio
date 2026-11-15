@@ -1,7 +1,7 @@
 """Integrated shell sessions with asynchronous, non-blocking output capture."""
 from __future__ import annotations
 import os
-from pathlib import Path
+from pathlib import Path, PureWindowsPath
 import queue
 import shutil
 import signal
@@ -55,7 +55,11 @@ def terminal_environment(base=None, python_executable=None):
     env = dict(os.environ if base is None else base)
     env.setdefault("PYTHONUNBUFFERED", "1")
     if python_executable:
-        executable = Path(python_executable).expanduser()
+        raw_executable = str(python_executable)
+        if "\\" in raw_executable or (len(raw_executable) > 1 and raw_executable[1] == ":"):
+            executable = PureWindowsPath(raw_executable)
+        else:
+            executable = Path(raw_executable).expanduser()
         scripts = executable.parent
         env["PATH"] = str(scripts) + os.pathsep + env.get("PATH", "")
         if scripts.name.lower() in {"scripts", "bin"}:
