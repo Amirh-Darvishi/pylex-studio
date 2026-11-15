@@ -2,6 +2,19 @@
 
 All notable changes to PyLex Studio are documented here.
 
+## [1.8.0] - Unreleased
+
+### Added
+- Added Black formatting for the active editor buffer and whole projects, with protection against formatting while editor tabs contain unsaved changes.
+- Added Ruff linting for editor buffers and workspaces, structured diagnostics, and navigation to the reported source location.
+- Added a pytest Test Explorer with discovery, selected-test execution, full-suite execution, and captured tool output.
+- Added background execution and selected-interpreter installation for Black, Ruff, and pytest.
+- Added centralized Black, Ruff, and pytest configuration in pyproject.toml.
+
+### Improved
+- Routed quality tools through the active workspace interpreter and project environment.
+
+
 ## [1.7.0] - 2026-11-15
 
 ### Added

@@ -22,6 +22,7 @@ from .debugger import DebugSession
 from .preferences import load_preferences, save_preferences
 from .interpreters import create_virtual_environment, discover_interpreters, ensure_pip, find_project_environment, probe_interpreter
 from .terminal import TerminalPanel
+from .quality import QualityPanel
 
 
 class PyLexApp(tk.Tk):
@@ -29,7 +30,7 @@ class PyLexApp(tk.Tk):
 
     def __init__(self):
         super().__init__()
-        self.title("PyLex Studio 1.7.0 — Python Editor")
+        self.title("PyLex Studio 1.8.0.dev0 — Python Editor")
         self.geometry("1180x780")
         self.minsize(850, 560)
         self.current_path = None
@@ -85,6 +86,7 @@ class PyLexApp(tk.Tk):
         tools_menu = tk.Menu(menu, tearoff=False)
         tools_menu.add_command(label="Python Interpreter...", command=self.manage_interpreter)
         tools_menu.add_command(label="Integrated Terminal", command=self.open_terminal)
+        tools_menu.add_command(label="Formatter, Linter & Test Explorer", command=self.open_quality_tools)
         tools_menu.add_separator()
         tools_menu.add_command(label="Analyze All", command=self.analyze_all)
         tools_menu.add_command(label="Lexical Analysis", command=self.analyze_lexical)
@@ -145,6 +147,7 @@ class PyLexApp(tk.Tk):
             ("Close Workspace", self.close_workspace),
             ("Python", self.manage_interpreter),
             ("Save", self.save_file), ("▶ Run", self.run_code), ("■ Force Stop", self.stop_execution), ("Terminal", self.open_terminal),
+            ("Quality", self.open_quality_tools),
             ("Debug", self.start_debugging), ("Continue", self.debug_continue),
             ("Step", self.debug_step), ("Next", self.debug_next),
             ("Breakpoint", self.toggle_breakpoint), ("Temp BP", self.debug_temporary_breakpoint), ("Variables", self.debug_variables),
@@ -209,6 +212,13 @@ class PyLexApp(tk.Tk):
             on_shell_change=self._save_terminal_shell,
         )
         self.tabs.add(self.terminal_panel, text="Terminal")
+        self.quality_panel = QualityPanel(
+            lower, self._quality_context, self._quality_document,
+            self._apply_formatted_source, self._navigate_quality_diagnostic,
+            status_callback=lambda message: self.status.configure(text=message),
+            project_format_guard=self._can_format_project,
+        )
+        self.tabs.add(self.quality_panel, text="Quality")
 
         self.status = ttk.Label(self, text="Ready", padding=5)
         self.status.pack(fill="x")
@@ -256,6 +266,87 @@ class PyLexApp(tk.Tk):
         except (OSError, ValueError, TimeoutError):
             interpreter = sys.executable
         return cwd, env, interpreter
+
+    def _quality_context(self):
+        """Return the active workspace root, interpreter, and import environment."""
+        document = self._active_document()
+        project = self._project_for_document(document)
+        info = self._interpreter_for_project(project)
+        env = project.execution_environment()
+        executable_dir = Path(info.executable).parent
+        if executable_dir.name.lower() in {"scripts", "bin"}:
+            env["VIRTUAL_ENV"] = str(executable_dir.parent)
+            env["PATH"] = str(executable_dir) + os.pathsep + env.get("PATH", "")
+        return project.root, info.executable, env
+
+    def _quality_document(self):
+        """Snapshot the active editor so async formatting cannot target another tab."""
+        document = self._active_document()
+        return self.editor, document.get("path") if document else None, self.editor.get_content()
+
+    def _apply_formatted_source(self, editor, source):
+        """Apply Black output only to the editor that initiated the request."""
+        if editor not in self.documents:
+            self.status.configure(text="Formatted output discarded: the originating tab was closed.")
+            return
+        widget = editor.text
+        try:
+            cursor = int(widget.count("1.0", "insert", "chars")[0])
+        except (TypeError, IndexError):
+            cursor = 0
+        widget.edit_separator()
+        widget.delete("1.0", "end")
+        widget.insert("1.0", source)
+        widget.mark_set("insert", f"1.0+{min(cursor, len(source))}c")
+        widget.edit_separator()
+        widget.edit_modified(False)
+        self.mark_dirty(editor)
+        editor.highlight()
+        self.status.configure(text="Current editor buffer formatted with Black. Save to keep the changes.")
+
+    def _navigate_quality_diagnostic(self, diagnostic):
+        """Open the reported file and navigate to the Ruff diagnostic location."""
+        raw_path = diagnostic.get("path", "")
+        if not raw_path or raw_path == "<stdin>":
+            self.status.configure(text="Ruff diagnostic has no navigable file path.")
+            return
+        path = Path(raw_path)
+        if not path.is_absolute():
+            path = self._project_for_document(self._active_document()).root / path
+        path = path.resolve()
+        target = None
+        for editor, document in self.documents.items():
+            if document.get("path") is not None and Path(document["path"]).resolve() == path:
+                target = editor
+                self.editor_tabs.select(document["frame"])
+                break
+        if target is None:
+            if not path.is_file():
+                self.status.configure(text=f"Diagnostic file no longer exists: {path}")
+                return
+            self._open_path(path)
+            target = self.editor
+        target.show_diagnostic(
+            diagnostic.get("line", 1), max(0, diagnostic.get("column", 1) - 1),
+            diagnostic.get("end_line"), diagnostic.get("end_column"),
+        )
+        self.status.configure(text=f"{diagnostic.get('code', 'Ruff')} — {path.name}:{diagnostic.get('line', 1)}")
+
+    def _can_format_project(self):
+        """Protect unsaved editor buffers from whole-project formatting."""
+        if any(document["dirty"] for document in self.documents.values()):
+            messagebox.showwarning(
+                "Format Project",
+                "Save or close all modified editor tabs before formatting the whole project. "
+                "This prevents unsaved buffers from conflicting with files changed on disk.",
+                parent=self,
+            )
+            return False
+        return True
+
+    def open_quality_tools(self):
+        """Show the integrated formatter, linter, and test explorer."""
+        self.tabs.select(self.quality_panel)
 
     def _save_terminal_shell(self, shell):
         self.preferences["terminal_shell"] = shell
@@ -966,7 +1057,7 @@ class PyLexApp(tk.Tk):
 
     def _title(self):
         name = self.current_path.name if self.current_path else "Untitled"
-        self.title(f"{'*' if self.dirty else ''}{name} — PyLex Studio 1.6.0")
+        self.title(f"{'*' if self.dirty else ''}{name} — PyLex Studio 1.8.0.dev0")
 
     def _confirm(self):
         document = self._active_document()
@@ -1724,4 +1815,5 @@ class PyLexApp(tk.Tk):
         if self.debug_session is not None:
             self.debug_session.close()
         self.terminal_panel.close_all()
+        self.quality_panel.close()
         self.destroy()
