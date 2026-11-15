@@ -293,7 +293,9 @@ class ContextMenu:
                 for widget in (row, *row.winfo_children()):
                     widget.bind("<Button-1>", lambda event, fn=choose: fn(), add="+")
             else:
-                callback = lambda entry=item: self._invoke(entry)
+                def callback(entry=item):
+                    return self._invoke(entry)
+
                 for widget in (row, *row.winfo_children()):
                     widget.bind("<Button-1>", lambda event, fn=callback: fn(), add="+")
         self.window.update_idletasks()
