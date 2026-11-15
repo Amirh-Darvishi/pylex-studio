@@ -1966,8 +1966,9 @@ class PyLexApp(tk.Tk):
                 "Consolas", "Cascadia Mono", "Courier New",
             ) if name in available_fonts
         ]
-        if self.preferences["font_family"] not in code_fonts:
-            code_fonts.insert(0, self.preferences["font_family"])
+        for preferred_font in (DEFAULTS["font_family"], self.preferences["font_family"]):
+            if preferred_font not in code_fonts:
+                code_fonts.insert(0, preferred_font)
         code_box = ttk.Combobox(
             editor_page, textvariable=code_font_var, values=code_fonts,
             state="readonly", width=28,
