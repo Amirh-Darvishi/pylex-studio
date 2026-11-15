@@ -371,14 +371,10 @@ class PyLexApp(tk.Tk):
 
                 def show_submenu(item_button, submenu_items):
                     cancel_timer("submenu_id")
-                    for old_popup in state["windows"][len(state["windows"])-1:]:
-                        if old_popup is not popup:
-                            try:
-                                old_popup.destroy()
-                            except tk.TclError:
-                                pass
-                    while state["windows"] and state["windows"][-1] is not popup:
-                        state["windows"].pop()
+                    # A menu can have several nested levels. Destroy every
+                    # descendant of this popup before opening its new child;
+                    # merely popping references leaves orphaned Toplevels visible.
+                    close_descendant_popups(popup)
                     submenu = make_popup(item_button, submenu_items, popup)
                     submenu.update_idletasks()
                     x = popup.winfo_rootx() + popup.winfo_width() - 2
