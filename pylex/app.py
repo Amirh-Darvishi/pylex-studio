@@ -20,7 +20,7 @@ from .core.file_types import file_type_for, read_text_file
 from .services.execution import ExecutionService
 from .debugger import DebugSession
 from .preferences import load_preferences, save_preferences
-from .interpreters import create_virtual_environment, discover_interpreters, find_project_environment, probe_interpreter
+from .interpreters import create_virtual_environment, discover_interpreters, ensure_pip, find_project_environment, probe_interpreter
 
 
 class PyLexApp(tk.Tk):
@@ -308,6 +308,39 @@ class PyLexApp(tk.Tk):
             self._persist_preferences()
             self.status.configure(text="Workspace interpreter set to automatic detection.")
             dialog.destroy()
+        def repair_pip():
+            try:
+                base = selected()
+            except ValueError as exc:
+                messagebox.showerror("Repair pip", str(exc), parent=dialog)
+                return
+            repair_button.configure(state="disabled")
+            status.configure(text="Checking and repairing pip in the selected interpreter...")
+            result = queue.Queue()
+            def worker():
+                try:
+                    ensure_pip(base.executable)
+                    result.put(("ok", probe_interpreter(base.executable)))
+                except Exception as exc:
+                    result.put(("error", exc))
+            threading.Thread(target=worker, daemon=True).start()
+            def poll_repair():
+                try:
+                    kind, value = result.get_nowait()
+                except queue.Empty:
+                    if dialog.winfo_exists():
+                        dialog.after(100, poll_repair)
+                    return
+                if not dialog.winfo_exists():
+                    return
+                repair_button.configure(state="normal")
+                if kind == "error":
+                    status.configure(text="pip repair failed.")
+                    messagebox.showerror("Repair pip", str(value), parent=dialog)
+                    return
+                add(value)
+                status.configure(text="pip is available: " + value.executable)
+            dialog.after(100, poll_repair)
         def create_env():
             try:
                 base = selected()
@@ -354,6 +387,8 @@ class PyLexApp(tk.Tk):
         ttk.Button(buttons, text="Use for Workspace", command=lambda: apply("project")).pack(side="left", padx=3)
         ttk.Button(buttons, text="Use Globally", command=lambda: apply("global")).pack(side="left", padx=3)
         ttk.Button(buttons, text="Auto Detect", command=reset).pack(side="left", padx=3)
+        repair_button = ttk.Button(buttons, text="Repair pip", command=repair_pip)
+        repair_button.pack(side="left", padx=3)
         create_button = ttk.Button(buttons, text="Create Project .venv", command=create_env)
         create_button.pack(side="left", padx=3)
         ttk.Button(buttons, text="Close", command=dialog.destroy).pack(side="right", padx=3)
