@@ -15,12 +15,29 @@ class ThemeDefinitionTests(unittest.TestCase):
 
     def test_both_themes_define_required_classic_widget_colors(self):
         required = {
-            "window_bg", "editor_bg", "editor_fg", "selection_bg",
-            "menu_bg", "menu_fg", "accent", "danger", "surface",
-            "violet", "success", "warning", "danger_hover",
-            "panel_bg", "border",
-            "current_line", "error_line", "bracket_bg",
-            "file_python", "file_web", "file_markup", "file_style", "file_data",
+            "window_bg",
+            "editor_bg",
+            "editor_fg",
+            "selection_bg",
+            "menu_bg",
+            "menu_fg",
+            "accent",
+            "danger",
+            "surface",
+            "violet",
+            "success",
+            "warning",
+            "danger_hover",
+            "panel_bg",
+            "border",
+            "current_line",
+            "error_line",
+            "bracket_bg",
+            "file_python",
+            "file_web",
+            "file_markup",
+            "file_style",
+            "file_data",
         }
         for theme in THEMES.values():
             self.assertTrue(required.issubset(theme))
