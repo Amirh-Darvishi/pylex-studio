@@ -106,12 +106,10 @@ class GitService:
 
     def _pathspec(self, path):
         candidate = Path(path)
-        if candidate.is_absolute():
-            resolved = candidate.resolve()
-        else:
-            resolved = (self.root / candidate).resolve()
+        absolute = Path(os.path.abspath(str(candidate if candidate.is_absolute() else self.root / candidate)))
         try:
-            relative = resolved.relative_to(self.root)
+            relative = absolute.relative_to(self.root)
+            absolute.parent.resolve().relative_to(self.root)
         except ValueError as exc:
             raise GitError("Git operations are restricted to paths inside the workspace.") from exc
         if str(relative) in {"", "."}:
@@ -164,7 +162,13 @@ class GitService:
         return self._run("add", "-A").stdout
 
     def unstage(self, path):
-        return self._run("reset", "-q", "HEAD", "--", self._pathspec(path)).stdout
+        relative = self._pathspec(path)
+        state = next((item for item in self.status().changes if item.path == relative), None)
+        if state is None or state.index_status == " ":
+            raise GitError("The selected file has no staged changes.")
+        if state.status == "??":
+            raise GitError("Untracked files cannot be unstaged.")
+        return self._run("reset", "-q", "HEAD", "--", relative).stdout
 
     def unstage_all(self):
         return self._run("reset", "-q", "HEAD").stdout
@@ -177,7 +181,7 @@ class GitService:
         if state.index_status != " ":
             raise GitError("This file has staged changes. Unstage it before discarding worktree edits.")
         if state.status == "??":
-            target = (self.root / relative).resolve()
+            target = self.root / relative
             if target.is_dir() and not target.is_symlink():
                 raise GitError("Discarding untracked directories is disabled for safety.")
             target.unlink(missing_ok=True)
