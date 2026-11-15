@@ -178,3 +178,17 @@ python -m black .
 python -m ruff check .
 python -m pytest -v
 ```
+
+
+## Git source control (1.9.0 development)
+
+Open **Tools → Git Source Control** or select the **Git** panel while a workspace is open. PyLex uses the Git executable installed on the system and operates on the workspace's repository; it does not require a Python Git package or a GitHub account for local version-control operations.
+
+- Review the current branch, upstream, incoming/outgoing counts, and changed files.
+- Inspect unstaged and staged diffs; stage or unstage selected files.
+- Commit staged changes with a message, create branches, and switch branches.
+- Fetch remote updates, pull with fast-forward-only behavior, and push the current branch.
+- Inspect recent commit history and stash the current working tree, including untracked files.
+- Remote Git commands run in a background thread so the editor remains responsive.
+
+Git commands are invoked with argument lists (never through a shell), scoped to the opened repository, and configured not to wait for interactive terminal prompts. Discard is an explicit, confirmation-gated action; untracked directory deletion is intentionally disabled. Pull uses `--ff-only` to avoid silently creating merge commits or conflict states. Review staged changes before committing and keep a backup of important work.
