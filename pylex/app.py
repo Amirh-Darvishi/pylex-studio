@@ -1574,9 +1574,16 @@ class PyLexApp(tk.Tk):
         self.tabs.select(self.terminal_panel)
         cwd, _env, _interpreter = self._terminal_context()
         desired_cwd = Path(cwd).expanduser().resolve()
+        document = self._active_document()
+        active_path = document.get("path") if document else self.current_path
+        desired_file = Path(active_path).expanduser().resolve() if active_path else None
         frame = self.terminal_panel._current_frame()
         session = self.terminal_panel.sessions.get(frame)
-        if session is None or not session.running or session.cwd != desired_cwd:
+        if (
+            session is None or not session.running
+            or session.cwd != desired_cwd
+            or getattr(session, "active_file", None) != desired_file
+        ):
             self.terminal_panel.create_session(cwd_override=desired_cwd)
             return
         view = self.terminal_panel.views.get(frame)
