@@ -1,11 +1,12 @@
 """Tests for the shell-free Git integration service."""
+
 import subprocess
 import tempfile
 import unittest
 from pathlib import Path
 from unittest.mock import patch
 
-from pylex.git import GitError, GitService, GitChange
+from pylex.git import GitError, GitService
 
 
 class GitServiceTests(unittest.TestCase):
@@ -13,8 +14,14 @@ class GitServiceTests(unittest.TestCase):
         self.temp = tempfile.TemporaryDirectory()
         self.root = Path(self.temp.name)
         subprocess.run(["git", "init", "-q"], cwd=self.root, check=True)
-        subprocess.run(["git", "config", "user.name", "PyLex Tests"], cwd=self.root, check=True)
-        subprocess.run(["git", "config", "user.email", "tests@example.invalid"], cwd=self.root, check=True)
+        subprocess.run(
+            ["git", "config", "user.name", "PyLex Tests"], cwd=self.root, check=True
+        )
+        subprocess.run(
+            ["git", "config", "user.email", "tests@example.invalid"],
+            cwd=self.root,
+            check=True,
+        )
         (self.root / "tracked.txt").write_text("initial\n", encoding="utf-8")
         subprocess.run(["git", "add", "tracked.txt"], cwd=self.root, check=True)
         subprocess.run(["git", "commit", "-qm", "initial"], cwd=self.root, check=True)
@@ -52,12 +59,17 @@ class GitServiceTests(unittest.TestCase):
         self.assertEqual(self.git.status().branch, "feature/git-ui")
         branches = self.git.branches()
         self.assertIn(original, [item["name"] for item in branches])
-        self.assertTrue(any(item["current"] and item["name"] == "feature/git-ui" for item in branches))
+        self.assertTrue(
+            any(
+                item["current"] and item["name"] == "feature/git-ui"
+                for item in branches
+            )
+        )
         self.git.switch_branch(original)
 
     def test_stage_all_and_unstage_all(self):
-        (self.root / "tracked.txt").write_text("changed\\n", encoding="utf-8")
-        (self.root / "new.txt").write_text("new\\n", encoding="utf-8")
+        (self.root / "tracked.txt").write_text("changed\n", encoding="utf-8")
+        (self.root / "new.txt").write_text("new\n", encoding="utf-8")
         self.git.stage_all()
         self.assertTrue(all(item.staged for item in self.git.status().changes))
         self.git.unstage_all()
