@@ -1,6 +1,13 @@
 # Changelog
 
-## [2.0.0] - Unreleased
+## [2.0.1] - Unreleased
+
+### Documentation and release metadata
+- Updated the README to identify 2.0.0 as the latest stable release and link to the complete Persian project guide.
+- Reworked the Persian HTML project guide for the 2.0.x interface, including themes, Activity Bar, Explorer, cascading menus, Command Palette, Quick Open, Status Bar, Account Center, Settings, and current product boundaries.
+- Aligned the package version metadata with the 2.0.1 patch-release target.
+
+## [2.0.0] - 2026-11-15
 
 ### Added
 - Began the modern interface refresh with a unified dark/light theme foundation.

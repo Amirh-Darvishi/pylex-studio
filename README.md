@@ -1,6 +1,8 @@
 # PyLex Studio
 
-**Development version: 2.0.0 — Modern User Interface**
+**Latest stable release: 2.0.0 — Modern Developer Experience**
+
+[View the 2.0.0 release notes](https://github.com/Amirh-Darvishi/pylex-studio/releases/tag/v2.0.0)
 
 A lightweight Python desktop editor with independent lexical and syntax analysis.
 
@@ -218,3 +220,8 @@ Open **Tools → Git Source Control** or select the **Git** panel while a worksp
 - Remote Git commands run in a background thread so the editor remains responsive.
 
 Git commands are invoked with argument lists (never through a shell), scoped to the opened repository, and configured not to wait for interactive terminal prompts. Discard is an explicit, confirmation-gated action; untracked directory deletion is intentionally disabled. Pull uses `--ff-only` to avoid silently creating merge commits or conflict states. Review staged changes before committing and keep a backup of important work.
+
+
+## Project guide
+
+The complete Persian user and developer guide is available at [`docs/PROJECT_GUIDE.html`](docs/PROJECT_GUIDE.html). It covers installation, the modern 2.0.x interface, workspaces, editing, analysis, execution, debugging, terminal, quality tools, Git, architecture, testing, security, and troubleshooting.
