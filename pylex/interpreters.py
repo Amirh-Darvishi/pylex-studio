@@ -99,26 +99,34 @@ def probe_interpreter(executable: os.PathLike | str, timeout: float = 6.0) -> In
 
 
 def _launcher_candidates() -> Iterable[str]:
-    """Yield interpreter paths reported by the Windows Python launcher."""
+    """Yield runtimes from the current Python install manager or legacy launcher."""
     if os.name != "nt":
         return ()
     launcher = shutil.which("py")
     if not launcher:
         return ()
-    try:
-        result = subprocess.run(
-            [launcher, "-0p"], capture_output=True, text=True,
-            encoding="utf-8", errors="replace", timeout=4, check=False,
-        )
-    except (OSError, subprocess.SubprocessError):
-        return ()
-    paths = []
-    for line in result.stdout.splitlines():
-        match = re.search(r"([A-Za-z]:\\.*?python(?:w)?\.exe)\s*$", line, re.I)
-        if match:
-            paths.append(match.group(1).strip())
-    return paths
-
+    commands = ([launcher, "list", "--format=exe"], [launcher, "-0p"])
+    for command in commands:
+        try:
+            result = subprocess.run(
+                command, capture_output=True, text=True,
+                encoding="utf-8", errors="replace", timeout=5, check=False,
+            )
+        except (OSError, subprocess.SubprocessError):
+            continue
+        if result.returncode != 0:
+            continue
+        paths = []
+        for line in result.stdout.splitlines():
+            value = line.strip().strip('"')
+            if command[-1] == "-0p":
+                match = re.search(r"([A-Za-z]:\\.*?python\.exe)\s*$", value, re.I)
+                value = match.group(1) if match else ""
+            if value and Path(value).is_file():
+                paths.append(value)
+        if paths:
+            return paths
+    return ()
 
 def discover_interpreters(extra_paths: Iterable[str] = (), timeout: float = 6.0) -> list[InterpreterInfo]:
     """Discover and verify common PATH, active, and Windows launcher interpreters."""
@@ -215,6 +223,25 @@ def find_project_environment(project_root: os.PathLike | str) -> InterpreterInfo
             if info.is_venv:
                 return info
     return None
+
+
+def ensure_pip(interpreter: os.PathLike | str, timeout: float = 120.0) -> subprocess.CompletedProcess:
+    """Bootstrap or repair pip in the selected interpreter using ensurepip."""
+    info = probe_interpreter(interpreter)
+    if info.pip_available:
+        return subprocess.CompletedProcess([info.executable, "-m", "pip"], 0,
+                                           "pip is already available.\n", "")
+    result = subprocess.run(
+        [info.executable, "-m", "ensurepip", "--upgrade"],
+        capture_output=True, text=True, encoding="utf-8", errors="replace",
+        timeout=timeout, check=False,
+    )
+    if result.returncode != 0:
+        detail = result.stderr.strip() or result.stdout.strip() or "ensurepip failed."
+        raise RuntimeError(detail)
+    if not probe_interpreter(info.executable).pip_available:
+        raise RuntimeError("ensurepip completed but pip is still unavailable.")
+    return result
 
 
 def run_pip(
