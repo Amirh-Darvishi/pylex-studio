@@ -1,4 +1,5 @@
 """Project domain model and filesystem context for PyLex Studio."""
+
 from __future__ import annotations
 import os
 from dataclasses import dataclass, field
@@ -8,6 +9,7 @@ from pathlib import Path
 @dataclass(frozen=True)
 class Project:
     """Represent a project root and provide consistent path/process context."""
+
     root: Path
     name: str = field(init=False)
 
@@ -33,7 +35,9 @@ class Project:
     def resolve(self, path):
         """Resolve a path relative to the project root unless it is absolute."""
         candidate = Path(path).expanduser()
-        return (candidate if candidate.is_absolute() else self.root / candidate).resolve()
+        return (
+            candidate if candidate.is_absolute() else self.root / candidate
+        ).resolve()
 
     def contains(self, path):
         """Return whether a path is located inside this project."""

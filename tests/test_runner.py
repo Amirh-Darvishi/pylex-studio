@@ -1,4 +1,5 @@
 """Tests for streaming, cancellable Python process execution."""
+
 import tempfile
 from pathlib import Path
 import time
@@ -24,23 +25,28 @@ class RunnerTests(unittest.TestCase):
         )
         deadline = time.monotonic() + 2
         events = []
-        while time.monotonic() < deadline and not any("first" in item[1] for item in events):
+        while time.monotonic() < deadline and not any(
+            "first" in item[1] for item in events
+        ):
             events.extend(handle.read_available())
             time.sleep(0.02)
-        self.assertTrue(any(channel == "stdout" and "first" in value
-                            for channel, value in events))
+        self.assertTrue(
+            any(channel == "stdout" and "first" in value for channel, value in events)
+        )
         self.assertFalse(handle.done)
         self.assertEqual(handle.wait(5).status, "finished")
 
     def test_interactive_input_is_sent_and_prompt_streams_without_newline(self):
         handle = start_source(
-            "value = input('Name: ')\nprint('Hello', value)\n", timeout=5,
+            "value = input('Name: ')\nprint('Hello', value)\n",
+            timeout=5,
         )
         output = ""
         deadline = time.monotonic() + 3
         while time.monotonic() < deadline and "Name: " not in output:
             output += "".join(
-                value for channel, value in handle.read_available()
+                value
+                for channel, value in handle.read_available()
                 if channel == "stdout"
             )
             time.sleep(0.01)
@@ -53,13 +59,17 @@ class RunnerTests(unittest.TestCase):
     def test_saved_file_execution_accepts_interactive_input(self):
         with tempfile.TemporaryDirectory() as directory:
             script = Path(directory) / "interactive.py"
-            script.write_text("value = input('File input: ')\nprint('Saved', value)\n", encoding="utf-8")
+            script.write_text(
+                "value = input('File input: ')\nprint('Saved', value)\n",
+                encoding="utf-8",
+            )
             handle = start_file(script, cwd=directory, timeout=5)
             output = ""
             deadline = time.monotonic() + 3
             while time.monotonic() < deadline and "File input: " not in output:
                 output += "".join(
-                    value for channel, value in handle.read_available()
+                    value
+                    for channel, value in handle.read_available()
                     if channel == "stdout"
                 )
                 time.sleep(0.01)
@@ -70,13 +80,15 @@ class RunnerTests(unittest.TestCase):
 
     def test_empty_input_line_is_supported(self):
         handle = start_source(
-            "value = input('Blank: ')\nprint('value=', repr(value))\n", timeout=5,
+            "value = input('Blank: ')\nprint('value=', repr(value))\n",
+            timeout=5,
         )
         output = ""
         deadline = time.monotonic() + 3
         while time.monotonic() < deadline and "Blank: " not in output:
             output += "".join(
-                value for channel, value in handle.read_available()
+                value
+                for channel, value in handle.read_available()
                 if channel == "stdout"
             )
             time.sleep(0.01)

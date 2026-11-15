@@ -1,4 +1,5 @@
 """Tkinter code editor with Pygments highlighting and diagnostic navigation."""
+
 import builtins
 import keyword
 import tkinter as tk
@@ -7,14 +8,23 @@ from tkinter import font as tkfont
 from pygments import lex
 from pygments.lexers import PythonLexer
 from pygments.token import (
-    Comment, Error, Keyword, Name, Number, Operator, Punctuation, String,
+    Comment,
+    Error,
+    Keyword,
+    Name,
+    Number,
+    Operator,
+    Punctuation,
+    String,
 )
 
 from .ui.context_menu import ContextMenu
 
 from .editor_features import (
-    find_matching_bracket, indentation_for_newline,
-    smart_backspace_prefix, toggle_comment_block,
+    find_matching_bracket,
+    indentation_for_newline,
+    smart_backspace_prefix,
+    toggle_comment_block,
 )
 
 
@@ -35,13 +45,27 @@ class CodeEditor(tk.Frame):
         self._breakpoints = set()
 
         self.gutter = tk.Text(
-            self, width=5, padx=5, takefocus=0, state="disabled",
-            font=self.editor_font, wrap="none", borderwidth=0,
-            cursor="arrow", highlightthickness=0, pady=8,
+            self,
+            width=5,
+            padx=5,
+            takefocus=0,
+            state="disabled",
+            font=self.editor_font,
+            wrap="none",
+            borderwidth=0,
+            cursor="arrow",
+            highlightthickness=0,
+            pady=8,
         )
         self.text = tk.Text(
-            self, undo=True, wrap="none", font=self.editor_font,
-            padx=8, pady=8, borderwidth=0, tabs=("4c"),
+            self,
+            undo=True,
+            wrap="none",
+            font=self.editor_font,
+            padx=8,
+            pady=8,
+            borderwidth=0,
+            tabs=("4c"),
             highlightthickness=0,
         )
         # The gutter and source must share identical vertical text metrics.
@@ -85,10 +109,14 @@ class CodeEditor(tk.Frame):
 
     def _configure_tags(self):
         styles = {
-            "py_keyword": "#c586c0", "py_builtin": "#4ec9b0",
-            "py_string": "#ce9178", "py_comment": "#6a9955",
-            "py_number": "#b5cea8", "py_function": "#dcdcaa",
-            "py_class": "#4ec9b0", "py_error": "#f44747",
+            "py_keyword": "#c586c0",
+            "py_builtin": "#4ec9b0",
+            "py_string": "#ce9178",
+            "py_comment": "#6a9955",
+            "py_number": "#b5cea8",
+            "py_function": "#dcdcaa",
+            "py_class": "#4ec9b0",
+            "py_error": "#f44747",
         }
         for name, color in styles.items():
             self.text.tag_configure(name, foreground=color)
@@ -96,7 +124,9 @@ class CodeEditor(tk.Frame):
         self.text.tag_configure("py_error", underline=True)
         self.text.tag_configure("current_line", background="#2a2d2e")
         self.text.tag_configure("error_line", background="#4b2528", underline=True)
-        self.text.tag_configure("matching_bracket", background="#565b63", underline=True)
+        self.text.tag_configure(
+            "matching_bracket", background="#565b63", underline=True
+        )
         self.gutter.tag_configure("gutter_current", foreground="#ffffff")
         self.gutter.tag_configure("gutter_error", foreground="#ff7777")
 
@@ -112,10 +142,14 @@ class CodeEditor(tk.Frame):
             error_bg = "#48252e"
             bracket_bg = "#344b70"
             syntax = {
-                "py_keyword": "#c792ea", "py_builtin": "#82aaff",
-                "py_string": "#c3e88d", "py_comment": "#7f8c9f",
-                "py_number": "#f78c6c", "py_function": "#82aaff",
-                "py_class": "#ffcb6b", "py_error": "#ff6b78",
+                "py_keyword": "#c792ea",
+                "py_builtin": "#82aaff",
+                "py_string": "#c3e88d",
+                "py_comment": "#7f8c9f",
+                "py_number": "#f78c6c",
+                "py_function": "#82aaff",
+                "py_class": "#ffcb6b",
+                "py_error": "#ff6b78",
             }
         else:
             bg = palette.get("editor_bg", "#ffffff")
@@ -126,13 +160,19 @@ class CodeEditor(tk.Frame):
             error_bg = "#ffe8e8"
             bracket_bg = "#d7e5ff"
             syntax = {
-                "py_keyword": "#8e44ad", "py_builtin": "#087f8c",
-                "py_string": "#21834a", "py_comment": "#788392",
-                "py_number": "#b45309", "py_function": "#245fbe",
-                "py_class": "#946200", "py_error": "#c62828",
+                "py_keyword": "#8e44ad",
+                "py_builtin": "#087f8c",
+                "py_string": "#21834a",
+                "py_comment": "#788392",
+                "py_number": "#b45309",
+                "py_function": "#245fbe",
+                "py_class": "#946200",
+                "py_error": "#c62828",
             }
         self.text.configure(
-            bg=bg, fg=fg, insertbackground=fg,
+            bg=bg,
+            fg=fg,
+            insertbackground=fg,
             selectbackground=palette.get("selection_bg", bracket_bg),
             selectforeground=fg,
         )
@@ -145,8 +185,12 @@ class CodeEditor(tk.Frame):
         self.text.tag_configure("current_line", background=current_bg)
         self.text.tag_configure("error_line", background=error_bg)
         self.text.tag_configure("matching_bracket", background=bracket_bg)
-        self.gutter.tag_configure("gutter_current", foreground=palette.get("accent", fg))
-        self.gutter.tag_configure("gutter_error", foreground=palette.get("danger", "#c62828"))
+        self.gutter.tag_configure(
+            "gutter_current", foreground=palette.get("accent", fg)
+        )
+        self.gutter.tag_configure(
+            "gutter_error", foreground=palette.get("danger", "#c62828")
+        )
 
     def _changed(self, event=None):
         if self.text.edit_modified():
@@ -288,9 +332,13 @@ class CodeEditor(tk.Frame):
     def _go_to_line(self, event=None):
         """Prompt for a line number and navigate to it."""
         from tkinter import simpledialog
+
         line = simpledialog.askinteger(
-            "Go to Line", "Line number:", parent=self.winfo_toplevel(),
-            initialvalue=int(self.text.index("insert").split(".")[0]), minvalue=1,
+            "Go to Line",
+            "Line number:",
+            parent=self.winfo_toplevel(),
+            initialvalue=int(self.text.index("insert").split(".")[0]),
+            minvalue=1,
         )
         if line is not None:
             self.text.mark_set("insert", f"{line}.0")
@@ -307,7 +355,9 @@ class CodeEditor(tk.Frame):
         match = find_matching_bracket(source, offset)
         if match:
             for position in match:
-                self.text.tag_add("matching_bracket", f"1.0+{position}c", f"1.0+{position + 1}c")
+                self.text.tag_add(
+                    "matching_bracket", f"1.0+{position}c", f"1.0+{position + 1}c"
+                )
             self.text.tag_raise("matching_bracket")
             self.text.tag_raise("sel")
 
@@ -342,9 +392,11 @@ class CodeEditor(tk.Frame):
         if event is not None:
             try:
                 clicked = self.text.index(f"@{event.x},{event.y}")
-                if not (self.text.tag_ranges("sel") and
-                        self.text.compare(clicked, ">=", "sel.first") and
-                        self.text.compare(clicked, "<=", "sel.last")):
+                if not (
+                    self.text.tag_ranges("sel")
+                    and self.text.compare(clicked, ">=", "sel.first")
+                    and self.text.compare(clicked, "<=", "sel.last")
+                ):
                     self.text.tag_remove("sel", "1.0", "end")
                     self.text.mark_set("insert", clicked)
             except tk.TclError:
@@ -352,9 +404,15 @@ class CodeEditor(tk.Frame):
         root = self.winfo_toplevel()
         palette = getattr(root, "theme_palette", {})
         preferences = getattr(root, "preferences", {})
-        font_family = root._resolved_ui_font() if hasattr(root, "_resolved_ui_font") else "Segoe UI"
+        font_family = (
+            root._resolved_ui_font()
+            if hasattr(root, "_resolved_ui_font")
+            else "Segoe UI"
+        )
         menu = ContextMenu(
-            self, palette=palette, font_family=font_family,
+            self,
+            palette=palette,
+            font_family=font_family,
             font_size=preferences.get("ui_font_size", 9),
         )
         try:
@@ -364,22 +422,45 @@ class CodeEditor(tk.Frame):
         menu.add_command(label="Undo", command=lambda: self._safe_edit_history("undo"))
         menu.add_command(label="Redo", command=lambda: self._safe_edit_history("redo"))
         menu.add_separator()
-        menu.add_command(label="Cut", command=lambda: self.text.event_generate("<<Cut>>"), state="normal" if has_selection else "disabled")
-        menu.add_command(label="Copy Selection", command=lambda: self.text.event_generate("<<Copy>>"), state="normal" if has_selection else "disabled")
+        menu.add_command(
+            label="Cut",
+            command=lambda: self.text.event_generate("<<Cut>>"),
+            state="normal" if has_selection else "disabled",
+        )
+        menu.add_command(
+            label="Copy Selection",
+            command=lambda: self.text.event_generate("<<Copy>>"),
+            state="normal" if has_selection else "disabled",
+        )
         menu.add_command(label="Copy Line", command=self._copy_current_line)
-        menu.add_command(label="Paste", command=lambda: self.text.event_generate("<<Paste>>"))
+        menu.add_command(
+            label="Paste", command=lambda: self.text.event_generate("<<Paste>>")
+        )
         menu.add_command(label="Select All", command=self._select_all)
         menu.add_separator()
-        menu.add_command(label="Duplicate Line / Selection", command=self._duplicate_line)
+        menu.add_command(
+            label="Duplicate Line / Selection", command=self._duplicate_line
+        )
         menu.add_command(label="Delete Line", command=self._delete_current_line)
-        menu.add_command(label="Move Line Up    Alt+Up", command=lambda: self._move_line(-1))
-        menu.add_command(label="Move Line Down    Alt+Down", command=lambda: self._move_line(1))
+        menu.add_command(
+            label="Move Line Up    Alt+Up", command=lambda: self._move_line(-1)
+        )
+        menu.add_command(
+            label="Move Line Down    Alt+Down", command=lambda: self._move_line(1)
+        )
         menu.add_command(label="Select Current Line", command=self._select_current_line)
-        menu.add_command(label="Toggle Line Comment    Ctrl+/", command=self._toggle_comment)
+        menu.add_command(
+            label="Toggle Line Comment    Ctrl+/", command=self._toggle_comment
+        )
         menu.add_separator()
         menu.add_command(label="Go to Line…    Ctrl+G", command=self._go_to_line)
-        menu.add_command(label="Show Completions    Ctrl+Space", command=self.show_completions)
-        menu.add_command(label="Format / Analyze", command=lambda: self.text.event_generate("<<PyLexAnalyze>>"))
+        menu.add_command(
+            label="Show Completions    Ctrl+Space", command=self.show_completions
+        )
+        menu.add_command(
+            label="Format / Analyze",
+            command=lambda: self.text.event_generate("<<PyLexAnalyze>>"),
+        )
         try:
             menu.tk_popup(event.x_root, event.y_root)
         finally:
@@ -426,7 +507,9 @@ class CodeEditor(tk.Frame):
         if not prefix:
             return "break"
         candidates = sorted(set(keyword.kwlist) | set(dir(builtins)))
-        matches = [item for item in candidates if item.startswith(prefix) and item != prefix]
+        matches = [
+            item for item in candidates if item.startswith(prefix) and item != prefix
+        ]
         if not matches:
             self._hide_completions()
             return "break"
@@ -437,7 +520,9 @@ class CodeEditor(tk.Frame):
         self._completion_window = tk.Toplevel(self)
         self._completion_window.wm_overrideredirect(True)
         self._completion_list = tk.Listbox(
-            self._completion_window, height=min(8, len(matches)), exportselection=False,
+            self._completion_window,
+            height=min(8, len(matches)),
+            exportselection=False,
         )
         self._completion_list.pack()
         for item in matches[:100]:
@@ -466,7 +551,9 @@ class CodeEditor(tk.Frame):
             if size:
                 current = self._completion_list.curselection()
                 index = current[0] if current else 0
-                index = max(0, min(size - 1, index + (1 if event.keysym == "Down" else -1)))
+                index = max(
+                    0, min(size - 1, index + (1 if event.keysym == "Down" else -1))
+                )
                 self._completion_list.selection_clear(0, "end")
                 self._completion_list.selection_set(index)
                 self._completion_list.activate(index)
@@ -598,8 +685,15 @@ class CodeEditor(tk.Frame):
         self._highlight_job = None
         source = self.get_content()
         tags = (
-            "py_keyword", "py_builtin", "py_string", "py_comment",
-            "py_number", "py_function", "py_class", "py_operator", "py_error",
+            "py_keyword",
+            "py_builtin",
+            "py_string",
+            "py_comment",
+            "py_number",
+            "py_function",
+            "py_class",
+            "py_operator",
+            "py_error",
         )
         for tag in tags:
             self.text.tag_remove(tag, "1.0", "end")
@@ -624,7 +718,11 @@ class CodeEditor(tk.Frame):
             start = f"{self._diagnostic_location[0]}.0"
         line_number = self._diagnostic_location[0]
         self.text.tag_add("error_line", f"{line_number}.0", f"{line_number}.end+1c")
-        if end_line == line_number and end_column is not None and end_column > self._diagnostic_location[1]:
+        if (
+            end_line == line_number
+            and end_column is not None
+            and end_column > self._diagnostic_location[1]
+        ):
             self.text.tag_add("py_error", start, f"{line_number}.{end_column}")
         self.text.mark_set("insert", start)
         self.text.see(start)
@@ -653,8 +751,11 @@ class CodeEditor(tk.Frame):
             installed = set()
         if installed and family not in installed:
             family = next(
-                (candidate for candidate in ("Cascadia Code", "Consolas", "Courier New")
-                 if candidate in installed),
+                (
+                    candidate
+                    for candidate in ("Cascadia Code", "Consolas", "Courier New")
+                    if candidate in installed
+                ),
                 "TkFixedFont",
             )
         self.editor_font.configure(family=family)

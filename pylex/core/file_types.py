@@ -1,4 +1,5 @@
 """File type detection and safe text-file loading for the workspace."""
+
 from __future__ import annotations
 
 import mimetypes
@@ -9,6 +10,7 @@ from pathlib import Path
 @dataclass(frozen=True)
 class FileType:
     """Describe a workspace file without assuming it is Python source."""
+
     kind: str
     description: str
     icon: str
@@ -43,16 +45,84 @@ _EXTENSION_GROUPS = {
     "web": {".js", ".mjs", ".cjs", ".ts", ".tsx", ".jsx", ".vue", ".svelte"},
     "markup": {".html", ".htm", ".xml", ".xhtml", ".svg", ".md", ".rst", ".ipynb"},
     "style": {".css", ".scss", ".sass", ".less"},
-    "data": {".json", ".jsonc", ".jsonl", ".yaml", ".yml", ".toml", ".ini", ".cfg", ".csv", ".tsv"},
-    "config": {".conf", ".properties", ".env", ".editorconfig", ".gitignore", ".gitattributes"},
+    "data": {
+        ".json",
+        ".jsonc",
+        ".jsonl",
+        ".yaml",
+        ".yml",
+        ".toml",
+        ".ini",
+        ".cfg",
+        ".csv",
+        ".tsv",
+    },
+    "config": {
+        ".conf",
+        ".properties",
+        ".env",
+        ".editorconfig",
+        ".gitignore",
+        ".gitattributes",
+    },
     "shell": {".sh", ".bash", ".zsh", ".ps1", ".bat", ".cmd"},
-    "compiled": {".c", ".h", ".cpp", ".hpp", ".cc", ".cxx", ".java", ".cs", ".go", ".rs", ".rb", ".php", ".swift", ".kt"},
-    "binary": {".class", ".pyc", ".pyo", ".so", ".dll", ".exe", ".bin", ".o", ".obj", ".a", ".lib", ".dylib"},
-    "image": {".png", ".jpg", ".jpeg", ".gif", ".bmp", ".webp", ".ico", ".tif", ".tiff", ".heic", ".avif"},
+    "compiled": {
+        ".c",
+        ".h",
+        ".cpp",
+        ".hpp",
+        ".cc",
+        ".cxx",
+        ".java",
+        ".cs",
+        ".go",
+        ".rs",
+        ".rb",
+        ".php",
+        ".swift",
+        ".kt",
+    },
+    "binary": {
+        ".class",
+        ".pyc",
+        ".pyo",
+        ".so",
+        ".dll",
+        ".exe",
+        ".bin",
+        ".o",
+        ".obj",
+        ".a",
+        ".lib",
+        ".dylib",
+    },
+    "image": {
+        ".png",
+        ".jpg",
+        ".jpeg",
+        ".gif",
+        ".bmp",
+        ".webp",
+        ".ico",
+        ".tif",
+        ".tiff",
+        ".heic",
+        ".avif",
+    },
     "audio": {".mp3", ".wav", ".ogg", ".flac", ".aac", ".m4a", ".wma"},
     "video": {".mp4", ".mkv", ".mov", ".avi", ".webm", ".wmv", ".m4v"},
     "pdf": {".pdf"},
-    "document": {".doc", ".docx", ".odt", ".rtf", ".ppt", ".pptx", ".xls", ".xlsx", ".ods"},
+    "document": {
+        ".doc",
+        ".docx",
+        ".odt",
+        ".rtf",
+        ".ppt",
+        ".pptx",
+        ".xls",
+        ".xlsx",
+        ".ods",
+    },
     "archive": {".zip", ".tar", ".gz", ".bz2", ".xz", ".7z", ".rar", ".whl"},
     "database": {".db", ".sqlite", ".sqlite3", ".mdb"},
     "font": {".ttf", ".otf", ".woff", ".woff2"},
@@ -91,15 +161,32 @@ def file_type_for(path) -> FileType:
     for kind, extensions in _EXTENSION_GROUPS.items():
         if suffix in extensions:
             icon, description = _ICON_GROUPS[kind]
-            return FileType(kind, description, icon, mime_type, kind in {
-                "python", "web", "markup", "style", "data", "config", "shell",
-                "compiled", "text",
-            })
+            return FileType(
+                kind,
+                description,
+                icon,
+                mime_type,
+                kind
+                in {
+                    "python",
+                    "web",
+                    "markup",
+                    "style",
+                    "data",
+                    "config",
+                    "shell",
+                    "compiled",
+                    "text",
+                },
+            )
 
     if mime_type:
         if mime_type.startswith("text/") or mime_type in {
-            "application/json", "application/xml", "application/javascript",
-            "application/x-sh", "application/x-python",
+            "application/json",
+            "application/xml",
+            "application/javascript",
+            "application/x-sh",
+            "application/x-python",
         }:
             return FileType("text", "Text file", "📄", mime_type, True)
         if mime_type.startswith("image/"):

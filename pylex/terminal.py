@@ -1,4 +1,5 @@
 """Integrated shell sessions with asynchronous, non-blocking output capture."""
+
 from __future__ import annotations
 import os
 from pathlib import Path, PurePosixPath, PureWindowsPath
@@ -14,14 +15,17 @@ import time
 
 from .ui.context_menu import ContextMenu
 
+
 def available_shells():
     """Return supported shells available on the current operating system."""
     if os.name == "nt":
         shells = [("PowerShell", "powershell"), ("Command Prompt", "cmd")]
         git_bash = shutil.which("bash")
         if not git_bash:
-            roots = [os.environ.get("ProgramFiles", r"C:\Program Files"),
-                     os.environ.get("ProgramFiles(x86)", r"C:\Program Files (x86)")]
+            roots = [
+                os.environ.get("ProgramFiles", r"C:\Program Files"),
+                os.environ.get("ProgramFiles(x86)", r"C:\Program Files (x86)"),
+            ]
             for root in roots:
                 candidate = Path(root) / "Git" / "bin" / "bash.exe"
                 if candidate.is_file():
@@ -39,19 +43,29 @@ def available_shells():
         shells.append(("POSIX Shell", "sh"))
     return shells or [("System Shell", "sh")]
 
+
 def shell_command(shell):
     """Build a shell launch command without passing user input through a shell."""
     if shell == "powershell":
-        return [shutil.which("pwsh") or shutil.which("powershell") or "powershell.exe",
-                "-NoLogo", "-NoProfile", "-NoExit"]
+        return [
+            shutil.which("pwsh") or shutil.which("powershell") or "powershell.exe",
+            "-NoLogo",
+            "-NoProfile",
+            "-NoExit",
+        ]
     if shell == "cmd":
         return [os.environ.get("COMSPEC", "cmd.exe"), "/Q", "/K"]
     if shell == "git-bash":
         return [shutil.which("bash") or "bash.exe", "--noprofile", "--norc", "-i"]
     if shell in {"bash", "zsh", "sh"}:
         executable = shutil.which(shell) or shell
-        return [executable, "--noprofile", "--norc", "-i"] if shell in {"bash", "zsh"} else [executable]
+        return (
+            [executable, "--noprofile", "--norc", "-i"]
+            if shell in {"bash", "zsh"}
+            else [executable]
+        )
     raise ValueError("Unsupported terminal shell: " + str(shell))
+
 
 def python_file_command(shell, python_executable, file_path):
     """Build a safely quoted command that runs the active editor file."""
@@ -63,6 +77,7 @@ def python_file_command(shell, python_executable, file_path):
     else:
         path = str(Path(file_path).expanduser().resolve())
     if shell == "powershell":
+
         def quote(value):
             return "'" + value.replace("'", "''") + "'"
 
@@ -80,7 +95,9 @@ def terminal_environment(base=None, python_executable=None):
     env.setdefault("PYTHONUNBUFFERED", "1")
     if python_executable:
         raw_executable = str(python_executable)
-        if "\\" in raw_executable or (len(raw_executable) > 1 and raw_executable[1] == ":"):
+        if "\\" in raw_executable or (
+            len(raw_executable) > 1 and raw_executable[1] == ":"
+        ):
             executable = PureWindowsPath(raw_executable)
         else:
             executable = Path(raw_executable).expanduser()
@@ -91,15 +108,20 @@ def terminal_environment(base=None, python_executable=None):
             env.pop("PYTHONHOME", None)
     return env
 
+
 def terminate_process_tree(process):
     """Terminate a shell and its descendants, including child commands."""
     if process.poll() is not None:
         return
     try:
         if os.name == "nt":
-            subprocess.run(["taskkill", "/PID", str(process.pid), "/T", "/F"],
-                           stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
-                           check=False, timeout=5)
+            subprocess.run(
+                ["taskkill", "/PID", str(process.pid), "/T", "/F"],
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+                check=False,
+                timeout=5,
+            )
         else:
             os.killpg(process.pid, signal.SIGKILL)
     except (OSError, subprocess.SubprocessError):
@@ -108,8 +130,10 @@ def terminate_process_tree(process):
         except OSError:
             pass
 
+
 class TerminalProcess:
     """Thread-safe interactive shell process; all UI access stays on the Tk thread."""
+
     def __init__(self, process, shell, cwd):
         self.process = process
         self.shell = shell
@@ -129,13 +153,27 @@ class TerminalProcess:
         """Start a persistent shell in the requested directory and environment."""
         directory = Path(cwd or Path.cwd()).expanduser().resolve()
         if not directory.is_dir():
-            raise NotADirectoryError("Terminal working directory does not exist: " + str(directory))
-        options = ({"creationflags": getattr(subprocess, "CREATE_NEW_PROCESS_GROUP", 0)}
-                   if os.name == "nt" else {"start_new_session": True})
+            raise NotADirectoryError(
+                "Terminal working directory does not exist: " + str(directory)
+            )
+        options = (
+            {"creationflags": getattr(subprocess, "CREATE_NEW_PROCESS_GROUP", 0)}
+            if os.name == "nt"
+            else {"start_new_session": True}
+        )
         process = subprocess.Popen(
-            shell_command(shell), cwd=str(directory), env=env,
-            stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
-            text=True, encoding="utf-8", errors="replace", bufsize=1, **options)
+            shell_command(shell),
+            cwd=str(directory),
+            env=env,
+            stdin=subprocess.PIPE,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+            bufsize=1,
+            **options,
+        )
         return cls(process, shell, directory)
 
     @property
@@ -203,10 +241,16 @@ class TerminalProcess:
             except queue.Empty:
                 return chunks
 
+
 class TerminalPanel(ttk.Frame):
     """Dockable terminal panel with multiple independent shell sessions."""
+
     def __init__(
-        self, master, context_provider, default_shell="", on_shell_change=None,
+        self,
+        master,
+        context_provider,
+        default_shell="",
+        on_shell_change=None,
         on_run_file=None,
     ):
         super().__init__(master)
@@ -215,8 +259,11 @@ class TerminalPanel(ttk.Frame):
         self.on_run_file = on_run_file
         self.shells = available_shells()
         shell_ids = [item[1] for item in self.shells]
-        selected = default_shell if default_shell in shell_ids else (
-            "powershell" if os.name == "nt" else shell_ids[0])
+        selected = (
+            default_shell
+            if default_shell in shell_ids
+            else ("powershell" if os.name == "nt" else shell_ids[0])
+        )
         self.shell_var = tk.StringVar(value=selected)
         self.sessions = {}
         self.views = {}
@@ -225,16 +272,33 @@ class TerminalPanel(ttk.Frame):
         toolbar = ttk.Frame(self, padding=(5, 4))
         toolbar.pack(fill="x")
         ttk.Label(toolbar, text="Shell").pack(side="left", padx=(0, 4))
-        self.shell_box = ttk.Combobox(toolbar, textvariable=self.shell_var,
-                                      values=shell_ids, state="readonly", width=14)
+        self.shell_box = ttk.Combobox(
+            toolbar,
+            textvariable=self.shell_var,
+            values=shell_ids,
+            state="readonly",
+            width=14,
+        )
         self.shell_box.pack(side="left", padx=(0, 6))
         self.shell_box.bind("<<ComboboxSelected>>", self._shell_changed)
-        ttk.Button(toolbar, text="New Terminal", command=self.create_session).pack(side="left", padx=2)
-        ttk.Button(toolbar, text="Run Active File", command=self._run_active_file).pack(side="left", padx=2)
-        ttk.Button(toolbar, text="Interrupt", command=self.interrupt_current).pack(side="left", padx=2)
-        ttk.Button(toolbar, text="Kill", command=self.stop_current).pack(side="left", padx=2)
-        ttk.Button(toolbar, text="Clear", command=self.clear_current).pack(side="left", padx=2)
-        ttk.Button(toolbar, text="Close Session", command=self.close_current).pack(side="left", padx=2)
+        ttk.Button(toolbar, text="New Terminal", command=self.create_session).pack(
+            side="left", padx=2
+        )
+        ttk.Button(toolbar, text="Run Active File", command=self._run_active_file).pack(
+            side="left", padx=2
+        )
+        ttk.Button(toolbar, text="Interrupt", command=self.interrupt_current).pack(
+            side="left", padx=2
+        )
+        ttk.Button(toolbar, text="Kill", command=self.stop_current).pack(
+            side="left", padx=2
+        )
+        ttk.Button(toolbar, text="Clear", command=self.clear_current).pack(
+            side="left", padx=2
+        )
+        ttk.Button(toolbar, text="Close Session", command=self.close_current).pack(
+            side="left", padx=2
+        )
         self.status = ttk.Label(toolbar, text="No terminal session")
         self.status.pack(side="right", padx=6)
         self.notebook = ttk.Notebook(self)
@@ -285,15 +349,28 @@ class TerminalPanel(ttk.Frame):
         frame = ttk.Frame(self.notebook)
         output_frame = ttk.Frame(frame)
         output_frame.pack(fill="both", expand=True)
-        output = tk.Text(output_frame, wrap="none", height=8, font=("Consolas", 10),
-                         undo=False, state="disabled")
+        output = tk.Text(
+            output_frame,
+            wrap="none",
+            height=8,
+            font=("Consolas", 10),
+            undo=False,
+            state="disabled",
+        )
         output.tag_configure("system", foreground="#4b83c3")
         output.tag_configure("error", foreground="#d9534f")
-        output.bind("<Button-3>", lambda event, widget=output: self._show_output_context_menu(widget, event), add="+")
+        output.bind(
+            "<Button-3>",
+            lambda event, widget=output: self._show_output_context_menu(widget, event),
+            add="+",
+        )
         output.grid(row=0, column=0, columnspan=2, sticky="nsew")
         output.bind(
             "<Shift-MouseWheel>",
-            lambda event: (output.xview_scroll(-int(event.delta / 120) * 3, "units"), "break"),
+            lambda event: (
+                output.xview_scroll(-int(event.delta / 120) * 3, "units"),
+                "break",
+            ),
             add="+",
         )
         output_frame.rowconfigure(0, weight=1)
@@ -304,14 +381,22 @@ class TerminalPanel(ttk.Frame):
         entry = ttk.Entry(input_row)
         entry.pack(side="left", fill="x", expand=True)
         entry.bind("<Return>", lambda _event, item=frame: self._send(item))
-        entry.bind("<Button-3>", lambda event, widget=entry: self._show_entry_context_menu(widget, event), add="+")
+        entry.bind(
+            "<Button-3>",
+            lambda event, widget=entry: self._show_entry_context_menu(widget, event),
+            add="+",
+        )
         entry.bind("<Up>", lambda _event, item=frame: self._history_move(item, -1))
         entry.bind("<Down>", lambda _event, item=frame: self._history_move(item, 1))
         entry.bind("<Control-c>", lambda _event: self.interrupt_current())
         self.sessions[frame] = process
         self.views[frame] = {
-            "output": output, "entry": entry, "shell": shell,
-            "history": [], "history_index": 0, "history_draft": "",
+            "output": output,
+            "entry": entry,
+            "shell": shell,
+            "history": [],
+            "history_index": 0,
+            "history_draft": "",
         }
         label = dict((key, name) for name, key in self.shells).get(shell, shell)
         self.notebook.add(frame, text=f"{label} {self._counter}")
@@ -328,10 +413,16 @@ class TerminalPanel(ttk.Frame):
     def _context_menu(self):
         root = self.winfo_toplevel()
         preferences = getattr(root, "preferences", {})
-        font_family = root._resolved_ui_font() if hasattr(root, "_resolved_ui_font") else "Segoe UI"
+        font_family = (
+            root._resolved_ui_font()
+            if hasattr(root, "_resolved_ui_font")
+            else "Segoe UI"
+        )
         return ContextMenu(
-            self, palette=getattr(root, "theme_palette", {}),
-            font_family=font_family, font_size=preferences.get("ui_font_size", 9),
+            self,
+            palette=getattr(root, "theme_palette", {}),
+            font_family=font_family,
+            font_size=preferences.get("ui_font_size", 9),
         )
 
     def _show_output_context_menu(self, widget, event):
@@ -350,8 +441,12 @@ class TerminalPanel(ttk.Frame):
             command=lambda: widget.tag_add("sel", "1.0", "end-1c"),
         )
         menu.add_separator()
-        menu.add_command(label="Clear Terminal Output", command=lambda: self._clear_output(widget))
-        menu.add_command(label="Interrupt Current Command", command=self.interrupt_current)
+        menu.add_command(
+            label="Clear Terminal Output", command=lambda: self._clear_output(widget)
+        )
+        menu.add_command(
+            label="Interrupt Current Command", command=self.interrupt_current
+        )
         try:
             menu.tk_popup(event.x_root, event.y_root)
         finally:
@@ -359,9 +454,9 @@ class TerminalPanel(ttk.Frame):
         return "break"
 
     def _clear_output(self, widget):
-        widget.configure(state='normal')
-        widget.delete('1.0', 'end')
-        widget.configure(state='disabled')
+        widget.configure(state="normal")
+        widget.delete("1.0", "end")
+        widget.configure(state="disabled")
 
     def _show_entry_context_menu(self, widget, event):
         menu = self._context_menu()
@@ -369,12 +464,22 @@ class TerminalPanel(ttk.Frame):
             selected = bool(widget.selection_present())
         except tk.TclError:
             selected = False
-        menu.add_command(label="Cut", command=lambda: widget.event_generate("<<Cut>>"),
-                         state="normal" if selected else "disabled")
-        menu.add_command(label="Copy", command=lambda: widget.event_generate("<<Copy>>"),
-                         state="normal" if selected else "disabled")
-        menu.add_command(label="Paste", command=lambda: widget.event_generate("<<Paste>>"))
-        menu.add_command(label="Select All", command=lambda: widget.select_range(0, "end"))
+        menu.add_command(
+            label="Cut",
+            command=lambda: widget.event_generate("<<Cut>>"),
+            state="normal" if selected else "disabled",
+        )
+        menu.add_command(
+            label="Copy",
+            command=lambda: widget.event_generate("<<Copy>>"),
+            state="normal" if selected else "disabled",
+        )
+        menu.add_command(
+            label="Paste", command=lambda: widget.event_generate("<<Paste>>")
+        )
+        menu.add_command(
+            label="Select All", command=lambda: widget.select_range(0, "end")
+        )
         menu.add_command(label="Clear Input", command=lambda: widget.delete(0, "end"))
         try:
             menu.tk_popup(event.x_root, event.y_root)
@@ -390,8 +495,10 @@ class TerminalPanel(ttk.Frame):
         frame = self._current_frame()
         if frame in self.sessions:
             session = self.sessions[frame]
-            self.status.configure(text=("Running — " if session.running else "Exited — ")
-                                  + str(session.cwd))
+            self.status.configure(
+                text=("Running — " if session.running else "Exited — ")
+                + str(session.cwd)
+            )
 
     def _send(self, frame):
         session = self.sessions.get(frame)
@@ -447,9 +554,13 @@ class TerminalPanel(ttk.Frame):
                 self._append(frame, chunk)
             if session.done and not getattr(session, "_reported_exit", False):
                 session._reported_exit = True
-                self._append(frame, f"\n[Shell exited with code {session.exit_code}]\n", "system")
+                self._append(
+                    frame, f"\n[Shell exited with code {session.exit_code}]\n", "system"
+                )
                 if self._current_frame() == frame:
-                    self.status.configure(text=f"Shell exited — code {session.exit_code}")
+                    self.status.configure(
+                        text=f"Shell exited — code {session.exit_code}"
+                    )
         try:
             self._poll_id = self.after(80, self._poll)
         except tk.TclError:
@@ -495,8 +606,11 @@ class TerminalPanel(ttk.Frame):
         selection = palette.get("selection_bg", "#293b5b" if dark else "#d7e5ff")
         for view in self.views.values():
             view["output"].configure(
-                bg=bg, fg=fg, insertbackground=fg,
-                selectbackground=selection, selectforeground=fg,
+                bg=bg,
+                fg=fg,
+                insertbackground=fg,
+                selectbackground=selection,
+                selectforeground=fg,
             )
 
     def close_all(self):

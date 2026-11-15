@@ -1,4 +1,5 @@
 """Consistent, theme-aware popup and context menus for PyLex Studio."""
+
 from __future__ import annotations
 
 import tkinter as tk
@@ -21,36 +22,60 @@ class ContextMenu:
         self._row_widgets = []
         self._active_row_index = -1
 
-    def add_command(self, *, label, command=None, state="normal", accelerator="", **_kwargs):
-        self.items.append({
-            "kind": "command", "label": label, "command": command,
-            "state": state, "accelerator": accelerator,
-        })
+    def add_command(
+        self, *, label, command=None, state="normal", accelerator="", **_kwargs
+    ):
+        self.items.append(
+            {
+                "kind": "command",
+                "label": label,
+                "command": command,
+                "state": state,
+                "accelerator": accelerator,
+            }
+        )
 
     def add_separator(self):
         self.items.append({"kind": "separator"})
 
     def add_cascade(self, *, label, menu, state="normal", **_kwargs):
-        self.items.append({"kind": "cascade", "label": label, "menu": menu, "state": state})
+        self.items.append(
+            {"kind": "cascade", "label": label, "menu": menu, "state": state}
+        )
 
-    def add_checkbutton(self, *, label, variable, command=None, state="normal", **_kwargs):
-        self.items.append({
-            "kind": "check", "label": label, "variable": variable,
-            "command": command, "state": state,
-        })
+    def add_checkbutton(
+        self, *, label, variable, command=None, state="normal", **_kwargs
+    ):
+        self.items.append(
+            {
+                "kind": "check",
+                "label": label,
+                "variable": variable,
+                "command": command,
+                "state": state,
+            }
+        )
 
-    def add_radiobutton(self, *, label, variable, value, command=None, state="normal", **_kwargs):
-        self.items.append({
-            "kind": "radio", "label": label, "variable": variable,
-            "value": value, "command": command, "state": state,
-        })
+    def add_radiobutton(
+        self, *, label, variable, value, command=None, state="normal", **_kwargs
+    ):
+        self.items.append(
+            {
+                "kind": "radio",
+                "label": label,
+                "variable": variable,
+                "value": value,
+                "command": command,
+                "state": state,
+            }
+        )
 
     def delete(self, first, last=None):
         if first in ("all", 0) and (last in (None, "end", 0) or first == "all"):
             self.items.clear()
         elif isinstance(first, int):
             end = first if last is None or last == "end" else int(last)
-            del self.items[first:end + 1]
+            del self.items[first : end + 1]
 
     def _color(self, name, fallback):
         return self.palette.get(name, fallback)
@@ -171,14 +196,20 @@ class ContextMenu:
         for item in self.items:
             kind = item["kind"]
             if kind == "separator":
-                tk.Frame(body, height=1, background=border).pack(fill="x", padx=8, pady=4)
+                tk.Frame(body, height=1, background=border).pack(
+                    fill="x", padx=8, pady=4
+                )
                 continue
 
             row_bg = surface
             row = tk.Frame(body, background=row_bg, padx=3, pady=1)
             row.pack(fill="x")
             enabled = item.get("state", "normal") != "disabled"
-            fg = self._color("menu_fg", "#D8DEE8") if enabled else self._color("muted", "#8290A2")
+            fg = (
+                self._color("menu_fg", "#D8DEE8")
+                if enabled
+                else self._color("muted", "#8290A2")
+            )
             label = item.get("label", "")
             marker = ""
             if kind == "check":
@@ -189,10 +220,15 @@ class ContextMenu:
                 marker = ""
 
             text_label = tk.Label(
-                row, text=(marker + label), anchor="w",
-                background=surface, foreground=fg,
+                row,
+                text=(marker + label),
+                anchor="w",
+                background=surface,
+                foreground=fg,
                 font=(self.font_family, self.font_size),
-                padx=10, pady=5, cursor="hand2" if enabled else "arrow",
+                padx=10,
+                pady=5,
+                cursor="hand2" if enabled else "arrow",
             )
             text_label.pack(side="left", fill="x", expand=True)
             trailing = item.get("accelerator", "")
@@ -202,7 +238,9 @@ class ContextMenu:
                 trailing = ""
             if trailing:
                 tk.Label(
-                    row, text=trailing, background=surface,
+                    row,
+                    text=trailing,
+                    background=surface,
                     foreground=self._color("muted", "#8290A2"),
                     font=(self.font_family, max(7, self.font_size - 1)),
                     padx=10,
@@ -220,12 +258,23 @@ class ContextMenu:
                     child_widget.configure(background=color)
                     if child_widget is target_label:
                         child_widget.configure(
-                            foreground=self._color("accent", "#8FB7D8")
-                            if color != surface else normal_fg
+                            foreground=(
+                                self._color("accent", "#8FB7D8")
+                                if color != surface
+                                else normal_fg
+                            )
                         )
 
-            def hover(_event, target=row, target_label=text_label, active=enabled,
-                      hover_data=hover_job, normal_fg=fg, index=row_index, entry=item):
+            def hover(
+                _event,
+                target=row,
+                target_label=text_label,
+                active=enabled,
+                hover_data=hover_job,
+                normal_fg=fg,
+                index=row_index,
+                entry=item,
+            ):
                 # Moving onto a sibling command/check/radio row closes the
                 # previous cascade. Cascade rows keep their child navigation
                 # and _open_submenu() replaces it when the next one is hovered.
@@ -238,22 +287,42 @@ class ContextMenu:
                         pass
                     hover_data["id"] = None
                 self._active_row_index = index
-                set_row_hover(target, target_label, active, self._color("elevated", "#303B49"), normal_fg)
+                set_row_hover(
+                    target,
+                    target_label,
+                    active,
+                    self._color("elevated", "#303B49"),
+                    normal_fg,
+                )
 
-            def unhover(_event, target=row, target_label=text_label, active=enabled,
-                        hover_data=hover_job, normal_fg=fg):
+            def unhover(
+                _event,
+                target=row,
+                target_label=text_label,
+                active=enabled,
+                hover_data=hover_job,
+                normal_fg=fg,
+            ):
                 if not active:
                     return
+
                 def settle():
                     hover_data["id"] = None
                     try:
                         x, y = self.window.winfo_pointerxy()
-                        inside = (target.winfo_rootx() <= x < target.winfo_rootx() + target.winfo_width()
-                                  and target.winfo_rooty() <= y < target.winfo_rooty() + target.winfo_height())
+                        inside = (
+                            target.winfo_rootx()
+                            <= x
+                            < target.winfo_rootx() + target.winfo_width()
+                            and target.winfo_rooty()
+                            <= y
+                            < target.winfo_rooty() + target.winfo_height()
+                        )
                     except (tk.TclError, AttributeError):
                         inside = False
                     if not inside:
                         set_row_hover(target, target_label, active, surface, normal_fg)
+
                 hover_data["id"] = self.window.after(45, settle)
 
             for widget in (row, *row.winfo_children()):
@@ -271,35 +340,44 @@ class ContextMenu:
                 for widget in (row, *row.winfo_children()):
                     widget.bind(
                         "<Enter>",
-                        lambda event, r=row, child=child_menu: self._open_submenu(r, child),
+                        lambda event, r=row, child=child_menu: self._open_submenu(
+                            r, child
+                        ),
                         add="+",
                     )
             elif kind == "check":
+
                 def toggle(entry=item):
                     entry["variable"].set(not bool(entry["variable"].get()))
                     callback = entry.get("command")
                     if callback:
                         callback()
                     self._dismiss()
+
                 for widget in (row, *row.winfo_children()):
                     widget.bind("<Button-1>", lambda event, fn=toggle: fn(), add="+")
             elif kind == "radio":
+
                 def choose(entry=item):
                     entry["variable"].set(entry["value"])
                     callback = entry.get("command")
                     if callback:
                         callback()
                     self._dismiss()
+
                 for widget in (row, *row.winfo_children()):
                     widget.bind("<Button-1>", lambda event, fn=choose: fn(), add="+")
             else:
+
                 def callback(entry=item):
                     return self._invoke(entry)
 
                 for widget in (row, *row.winfo_children()):
                     widget.bind("<Button-1>", lambda event, fn=callback: fn(), add="+")
         self.window.update_idletasks()
-        self.window.bind("<Escape>", lambda _event: self._root_menu()._dismiss(), add="+")
+        self.window.bind(
+            "<Escape>", lambda _event: self._root_menu()._dismiss(), add="+"
+        )
         self.window.bind("<Down>", lambda _event: self._move_selection(1), add="+")
         self.window.bind("<Up>", lambda _event: self._move_selection(-1), add="+")
         self.window.bind("<Return>", self._activate_selection, add="+")
@@ -319,15 +397,31 @@ class ContextMenu:
             row, label, enabled, item = self._row_widgets[index]
             if enabled:
                 self._active_row_index = index
-                for current, current_label, current_enabled, _entry in self._row_widgets:
-                    color = self._color("elevated", "#303B49") if current is row else self._color("menu_bg", "#202936")
+                for (
+                    current,
+                    current_label,
+                    current_enabled,
+                    _entry,
+                ) in self._row_widgets:
+                    color = (
+                        self._color("elevated", "#303B49")
+                        if current is row
+                        else self._color("menu_bg", "#202936")
+                    )
                     current.configure(background=color)
                     for child_widget in current.winfo_children():
                         child_widget.configure(background=color)
                         if child_widget is current_label:
                             child_widget.configure(
-                                foreground=self._color("accent", "#8FB7D8") if current is row
-                                else (self._color("menu_fg", "#D8DEE8") if current_enabled else self._color("muted", "#8290A2"))
+                                foreground=(
+                                    self._color("accent", "#8FB7D8")
+                                    if current is row
+                                    else (
+                                        self._color("menu_fg", "#D8DEE8")
+                                        if current_enabled
+                                        else self._color("muted", "#8290A2")
+                                    )
+                                )
                             )
                 break
         return "break"
@@ -401,7 +495,9 @@ class ContextMenu:
             if not getattr(root, "_pylex_context_menu_listener", False):
                 root.bind_all(
                     "<Button-1>",
-                    lambda event, owner=root: ContextMenu._dispatch_global_click(owner, event),
+                    lambda event, owner=root: ContextMenu._dispatch_global_click(
+                        owner, event
+                    ),
                     add="+",
                 )
                 root._pylex_context_menu_listener = True
@@ -430,7 +526,10 @@ class ContextMenu:
                 if window is None or not window.winfo_exists():
                     continue
                 left, top = window.winfo_rootx(), window.winfo_rooty()
-                if left <= x < left + window.winfo_width() and top <= y < top + window.winfo_height():
+                if (
+                    left <= x < left + window.winfo_width()
+                    and top <= y < top + window.winfo_height()
+                ):
                     inside = True
                     break
             except tk.TclError:
