@@ -28,6 +28,7 @@ from .terminal import TerminalPanel
 from .quality import QualityPanel
 from .git_panel import GitPanel
 from .ui.theme import ThemeManager
+from .ui.context_menu import ContextMenu
 
 
 class PyLexApp(tk.Tk):
