@@ -38,6 +38,12 @@ class GitServiceTests(unittest.TestCase):
         self.assertEqual(status.changes[0].path, "tracked.txt")
         self.assertTrue(status.changes[0].unstaged)
 
+    def test_status_preserves_unicode_file_names(self):
+        name = "café.txt"
+        (self.root / name).write_text("unicode\n", encoding="utf-8")
+        self.git.stage(name)
+        self.assertIn(name, [item.path for item in self.git.status().changes])
+
     def test_stage_and_unstage(self):
         (self.root / "tracked.txt").write_text("changed\n", encoding="utf-8")
         self.git.stage("tracked.txt")
