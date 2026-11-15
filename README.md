@@ -46,13 +46,17 @@ PyLex Studio 2.0.0 focuses on a polished, Python-first desktop IDE. The file-typ
 - Multiple terminal tabs, live output streaming, command input with per-session Up/Down history, Ctrl+C interruption, process-tree termination, and per-session working directories
 - Terminal sessions inherit the active workspace environment and selected Python virtual environment
 - Adjustable editor font family and font size
-- Persistent preferences for theme, font, font size, project explorer visibility, execution timeout, and interpreter selection
+- Persistent preferences for theme, UI/code fonts, font sizes, project explorer visibility, execution timeout, interpreter selection, and local account display name
 - Structured error panel with exact exception type and source location
 - Click or double-click a diagnostic to jump to its line and column
 - Current-line emphasis and inline error highlighting
 - Separate Output, Lexical Analysis, Syntax Analysis, and Errors panels
 - Analyze All and Clear Results actions
 - Dark and light application themes, with a dark default
+- VS Code-inspired Activity Bar and an Explorer with Open Editors and Workspace sections
+- Hover-open toolbar menus with cascading Debug groups and persistent themed Run / Stop controls
+- Local Account center with a persistent display name; cloud sign-in and synchronization are not yet enabled
+- Original PyLex Studio vector brand mark in the application header and About window
 - Modern grouped toolbar and consistent application styling
 
 ## Requirements
