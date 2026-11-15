@@ -1019,9 +1019,6 @@ class PyLexApp(tk.Tk):
 
         status_row = ttk.Frame(self, style="PyLex.Toolbar.TFrame", padding=(10, 3))
         status_row.pack(fill="x", side="bottom")
-        ttk.Separator(self, orient="horizontal").place(
-            relx=0, rely=1, relwidth=1, anchor="sw"
-        )
         self.status = ttk.Label(
             status_row, text="Ready", style="PyLex.Status.TLabel",
             anchor="w", padding=(6, 3),
@@ -1041,6 +1038,7 @@ class PyLexApp(tk.Tk):
             )
             label.pack(side="left")
             self._editor_status_items[key] = label
+        ttk.Separator(self, orient="horizontal").pack(fill="x", side="bottom")
         self._update_editor_status()
 
     def _update_editor_status(self, editor=None):
