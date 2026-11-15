@@ -67,5 +67,31 @@ class ExecutionServiceTests(unittest.TestCase):
             self.assertEqual(handle.wait(5).stdout.strip(), "buffer")
 
 
+    def test_saved_file_process_inherits_workspace_directory_and_import_path(self):
+        with tempfile.TemporaryDirectory() as folder:
+            root = Path(folder)
+            nested = root / "src"
+            nested.mkdir()
+            script = nested / "main.py"
+            source = (
+                "import os\\n"
+                "from pathlib import Path\\n"
+                "print(Path.cwd())\\n"
+                "print(os.environ['PYTHONPATH'].split(os.pathsep)[0])\\n"
+            )
+            script.write_text(source, encoding="utf-8")
+
+            handle = ExecutionService().start_document(
+                source, script, Project.open(root), timeout=5,
+            )
+            result = handle.wait(5)
+
+            self.assertEqual(result.status, "finished")
+            self.assertEqual(
+                result.stdout.splitlines(),
+                [str(root.resolve()), str(root.resolve())],
+            )
+
+
 if __name__ == "__main__":
     unittest.main()
