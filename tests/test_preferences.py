@@ -86,31 +86,31 @@ class PreferencesTests(unittest.TestCase):
 
     def test_status_bar_preferences_round_trip(self):
         with tempfile.TemporaryDirectory() as folder:
-            with patch('pylex.preferences.Path.home', return_value=Path(folder)):
+            with patch("pylex.preferences.Path.home", return_value=Path(folder)):
                 values = dict(DEFAULTS)
-                values['status_bar_items'] = ['position', 'encoding']
-                values['status_bar_indent'] = 'Tabs'
-                values['status_bar_encoding'] = 'UTF-8 with BOM'
-                values['status_bar_eol'] = 'CRLF'
+                values["status_bar_items"] = ["position", "encoding"]
+                values["status_bar_indent"] = "Tabs"
+                values["status_bar_encoding"] = "UTF-8 with BOM"
+                values["status_bar_eol"] = "CRLF"
                 save_preferences(values)
                 loaded = load_preferences()
-                self.assertEqual(loaded['status_bar_items'], ['position', 'encoding'])
-                self.assertEqual(loaded['status_bar_indent'], 'Tabs')
-                self.assertEqual(loaded['status_bar_encoding'], 'UTF-8 with BOM')
-                self.assertEqual(loaded['status_bar_eol'], 'CRLF')
+                self.assertEqual(loaded["status_bar_items"], ["position", "encoding"])
+                self.assertEqual(loaded["status_bar_indent"], "Tabs")
+                self.assertEqual(loaded["status_bar_encoding"], "UTF-8 with BOM")
+                self.assertEqual(loaded["status_bar_eol"], "CRLF")
 
     def test_invalid_status_bar_preferences_are_normalized(self):
         with tempfile.TemporaryDirectory() as folder:
-            with patch('pylex.preferences.Path.home', return_value=Path(folder)):
-                path = Path(folder) / '.pylex_studio.json'
+            with patch("pylex.preferences.Path.home", return_value=Path(folder)):
+                path = Path(folder) / ".pylex_studio.json"
                 path.write_text(json.dumps({
-                    'status_bar_items': ['position', 'unknown', 'position'],
-                    'status_bar_indent': 'Huge',
-                    'status_bar_encoding': 'UTF-16',
-                    'status_bar_eol': 'CR',
-                }), encoding='utf-8')
+                    "status_bar_items": ["position", "unknown", "position"],
+                    "status_bar_indent": "Huge",
+                    "status_bar_encoding": "UTF-16",
+                    "status_bar_eol": "CR",
+                }), encoding="utf-8")
                 loaded = load_preferences()
-                self.assertEqual(loaded['status_bar_items'], ['position'])
+                self.assertEqual(loaded["status_bar_items"], ["position"])
                 self.assertEqual(
                     loaded["status_bar_indent"], DEFAULTS["status_bar_indent"]
                 )
