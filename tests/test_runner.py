@@ -47,6 +47,8 @@ class RunnerTests(unittest.TestCase):
             if any("Name:" in chunk for channel, chunk in output if channel == "stdout"):
                 break
             time.sleep(0.02)
+        self.assertTrue(any(channel == "stdout" and "Name:" in chunk
+                                for channel, chunk in output))
         self.assertTrue(handle.send_input("PyLex"))
         result = handle.wait(5)
         self.assertEqual(result.status, "finished")
