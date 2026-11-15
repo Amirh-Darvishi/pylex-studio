@@ -79,15 +79,22 @@ class ExecutionHandle:
             return self._result
 
     def _read_stream(self, stream, channel):
-        """Stream characters so prompts without a trailing newline appear immediately."""
+        """Read raw pipe chunks so flushed prompts appear without waiting for a newline."""
         parts = self._stdout_parts if channel == "stdout" else self._stderr_parts
+        decoder = codecs.getincrementaldecoder("utf-8")(errors="replace")
         try:
             while True:
-                chunk = stream.read(1)
-                if chunk == "":
+                data = os.read(stream.fileno(), 4096)
+                if not data:
                     break
-                parts.append(chunk)
-                self._events.put((channel, chunk))
+                chunk = decoder.decode(data)
+                if chunk:
+                    parts.append(chunk)
+                    self._events.put((channel, chunk))
+            tail = decoder.decode(b"", final=True)
+            if tail:
+                parts.append(tail)
+                self._events.put((channel, tail))
         except (OSError, ValueError):
             pass
         finally:
