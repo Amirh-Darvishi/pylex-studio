@@ -79,23 +79,27 @@ class DebugSession:
 
     def _read_output(self):
         """Collect output and close pdb after normal completion or an uncaught exception."""
-        tail = ""
+        line_buffer = ""
         try:
             while True:
                 chunk = self.process.stdout.read(1)
                 if not chunk:
                     break
                 self._output.put(chunk)
-                tail = (tail + chunk)[-256:]
-                if not self._completion_sent:
-                    if "Uncaught exception" in tail:
-                        self.completion_status = "error"
-                        self._completion_sent = True
-                        self.command("q")
-                    elif "The program finished" in tail or "The program exited" in tail:
+                line_buffer = (line_buffer + chunk)[-512:]
+                if chunk == "\n" and not self._completion_sent:
+                    line = line_buffer.strip()
+                    if line == "The program finished and will be restarted" or line == "The program exited":
                         self.completion_status = "finished"
                         self._completion_sent = True
                         self.command("q")
+                    elif "(Pdb)" in line and line.endswith(
+                        "Uncaught exception. Entering post mortem debugging"
+                    ):
+                        self.completion_status = "error"
+                        self._completion_sent = True
+                        self.command("q")
+                    line_buffer = ""
         finally:
             self._output.put(None)
 
