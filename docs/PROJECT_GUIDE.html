@@ -3,8 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="description" content="راهنمای کامل کاربری، معماری، نصب، تحلیل کد، اجرا، دیباگ، کیفیت، Git و توسعه PyLex Studio نسخه 2.0.2">
-<title>راهنمای جامع PyLex Studio 2.0.2</title>
+<meta name="description" content="راهنمای کامل کاربری، معماری، نصب، تحلیل کد، اجرا، دیباگ، کیفیت، Git و توسعه PyLex Studio؛ توسعه 2.1.0 بر پایه نسخه پایدار 2.0.2">
+<title>راهنمای جامع PyLex Studio · توسعه 2.1.0</title>
 <style>
 :root{color-scheme:light;--ink:#202938;--muted:#5d6879;--paper:#fff;--bg:#f2f5fa;--line:#dce3ed;--blue:#2854a5;--soft:#edf4ff;--code:#111827}
 *{box-sizing:border-box}html{scroll-behavior:smooth}body{margin:0;background:var(--bg);color:var(--ink);font:16px/2 Tahoma,Arial,sans-serif}
@@ -29,7 +29,7 @@ footer{text-align:center;padding:26px;color:var(--muted)}
 <header>
 <h1>PyLex Studio</h1>
 <p>راهنمای جامع کاربری و فنی پروژه؛ از نصب و کار با ویرایشگر تا معماری، اجرا، اشکال‌زدایی و توسعه</p>
-<p class="version">نسخه مستندات: 2.0.2 · Python 3.10+ · Tkinter · Pygments</p>
+<p class="version">نسخه مستندات: مسیر توسعه 2.1.0 · نسخه پایدار مبنا: 2.0.2 · Python 3.10+ · Tkinter · Pygments</p>
 </header>
 <div class="layout">
 <nav aria-label="فهرست راهنما">
@@ -565,6 +565,14 @@ if __name__ == "__main__":
 <p>ابتدا نسخه برنامه، سیستم‌عامل، نسخه Python انتخاب‌شده و مراحل بازتولید خطا را ثبت کنید. اگر خطا traceback دارد، متن کامل آن را نگه دارید. سپس در مخزن GitHub پروژه یک Issue با عنوان روشن، مراحل بازتولید، نتیجه مورد انتظار و نتیجه واقعی ایجاد کنید. پیش از انتشار اطلاعات شخصی، مسیرهای خصوصی، tokenها و محتوای محرمانه را از گزارش حذف کنید.</p>
 </section>
 
-<footer>PyLex Studio · راهنمای فارسی نسخه 2.0.2 · منبع: مخزن رسمی پروژه · نسخه پایدار مبنا: 2.0.2</footer>
+<section id="architecture-210">
+<h2>معماری و کیفیت توسعه نسخه 2.1.0</h2>
+<p>در مسیر توسعه 2.1.0، منطق کشف و اجرای فرمان‌ها از رابط گرافیکی جدا شده است. ماژول <code>pylex.commands</code> فرمان‌ها را با شناسه پایدار، عنوان، میانبر و callback ثبت می‌کند. جست‌وجو روی عنوان، شناسه و میانبر بدون نیاز به ساخت پنجره Tk انجام می‌شود؛ بنابراین رفتار registry با تست واحد قابل بررسی است.</p>
+<p>نمایش Command Palette در ماژول مستقل <code>pylex.ui.command_palette</code> قرار دارد. برنامه اصلی فقط فرمان‌های قابل دسترس و زمینه ظاهری را به این مؤلفه می‌دهد. این جداسازی نخستین گام برای کوچک‌تر شدن مسئولیت کلاس اصلی و توسعه تدریجی UI به اجزای مستقل است؛ هنوز به معنی بازنویسی کامل رابط یا تغییر رفتار اجرای برنامه نیست.</p>
+<p>در CI، آزمون‌ها روی Windows و Ubuntu با Python 3.10، 3.11 و 3.13 اجرا می‌شوند. Ruff کل پوشه‌های <code>pylex</code> و <code>tests</code> را بررسی می‌کند و Black روی ماژول‌های جدید و فایل‌هایی که از قبل تحت کنترل قالب‌بندی هستند اجرا می‌شود. سبز شدن CI نیز جای تست دستی رابط Tkinter روی Windows را نمی‌گیرد.</p>
+<div class="note">نسخه پایدار منتشرشده همچنان 2.0.2 است. قابلیت‌های این بخش تا زمان بررسی و ادغام Pull Request و انتشار رسمی، در شاخه توسعه 2.1.0 قرار دارند.</div>
+</section>
+
+<footer>PyLex Studio · راهنمای فارسی مسیر توسعه 2.1.0 · منبع: مخزن رسمی پروژه · نسخه پایدار مبنا: 2.0.2</footer>
 </body>
 </html>
