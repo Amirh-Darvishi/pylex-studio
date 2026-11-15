@@ -157,6 +157,19 @@ class CommandPalette:
             if active is None:
                 return
             try:
+                # The launcher's instance binding runs before the application-wide
+                # binding. Ignore that same click after it has opened/reopened the
+                # popup, otherwise the newly created window would close instantly.
+                if self.anchor is not None and self.anchor.winfo_exists():
+                    anchor_left = self.anchor.winfo_rootx()
+                    anchor_top = self.anchor.winfo_rooty()
+                    anchor_right = anchor_left + self.anchor.winfo_width()
+                    anchor_bottom = anchor_top + self.anchor.winfo_height()
+                    if (
+                        anchor_left <= event.x_root < anchor_right
+                        and anchor_top <= event.y_root < anchor_bottom
+                    ):
+                        return
                 if not active.winfo_exists():
                     root._pylex_command_palette_window = None
                     return
