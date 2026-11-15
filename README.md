@@ -1,8 +1,8 @@
 # PyLex Studio
 
-**Latest stable release: 2.0.0 — Modern Developer Experience**
+**Latest stable release: 2.0.1 — Documentation and version alignment**
 
-[View the 2.0.0 release notes](https://github.com/Amirh-Darvishi/pylex-studio/releases/tag/v2.0.0)
+[View the 2.0.1 release notes](https://github.com/Amirh-Darvishi/pylex-studio/releases/tag/v2.0.1)
 
 A lightweight Python desktop editor with independent lexical and syntax analysis.
 
@@ -18,6 +18,8 @@ PyLex Studio 2.0.0 focuses on a polished, Python-first desktop IDE. The file-typ
 - Syntax analysis using Python's `ast` module
 - Run Python code asynchronously without freezing the editor
 - Live streaming stdout and stderr with separate console colors
+- Interactive program input in Output, including prompts without a trailing newline
+- Run the active saved Python file directly in the integrated terminal with the workspace interpreter
 - Force-stop a running program and its child processes with the Stop control or Shift+F5
 - Clear or save execution output; inspect exit code, execution status, and duration
 - Dependency inspector classifying standard-library, local, installed, and missing imports; reports package versions and locations
