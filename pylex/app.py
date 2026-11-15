@@ -258,7 +258,7 @@ class PyLexApp(tk.Tk):
             self._toolbar_icon_bindings.append((button, icon_name, color_key))
 
             state = {"windows": [], "open_id": None, "poll_id": None,
-                     "submenu_id": None, "closed": True}
+                     "submenu_id": None, "closed": True, "outside_polls": 0}
 
             def cancel_timer(key):
                 timer_id = state.get(key)
@@ -284,13 +284,15 @@ class PyLexApp(tk.Tk):
                 if getattr(self, "_toolbar_menu_close", None) is destroy_popups:
                     self._toolbar_menu_close = None
 
-            def pointer_inside(widget, x, y):
+            def pointer_inside(widget, x, y, margin=5):
                 try:
-                    if not widget.winfo_exists() or not widget.winfo_ismapped():
+                    if not widget.winfo_exists():
                         return False
                     left, top = widget.winfo_rootx(), widget.winfo_rooty()
-                    return (left <= x < left + widget.winfo_width()
-                            and top <= y < top + widget.winfo_height())
+                    right = left + widget.winfo_width()
+                    bottom = top + widget.winfo_height()
+                    return (left - margin <= x <= right + margin
+                            and top - margin <= y <= bottom + margin)
                 except tk.TclError:
                     return False
 
@@ -303,12 +305,31 @@ class PyLexApp(tk.Tk):
                 except tk.TclError:
                     destroy_popups()
                     return
+                # Treat the toolbar button, every open popup and the tiny
+                # transition corridor between them as one continuous menu area.
                 inside = pointer_inside(button, x, y) or any(
                     pointer_inside(popup, x, y) for popup in state["windows"]
                 )
-                if not inside:
-                    destroy_popups()
-                    return
+                if not inside and state["windows"]:
+                    try:
+                        first = state["windows"][0]
+                        bx1, by1 = button.winfo_rootx(), button.winfo_rooty()
+                        bx2, by2 = bx1 + button.winfo_width(), by1 + button.winfo_height()
+                        px1, py1 = first.winfo_rootx(), first.winfo_rooty()
+                        px2, py2 = px1 + first.winfo_width(), py1 + first.winfo_height()
+                        inside = (min(bx1, px1) - 7 <= x <= max(bx2, px2) + 7
+                                  and min(by1, py1) - 7 <= y <= max(by2, py2) + 7)
+                    except tk.TclError:
+                        inside = False
+                if inside:
+                    state["outside_polls"] = 0
+                else:
+                    state["outside_polls"] += 1
+                    # Ignore transient geometry/focus reports while the pointer
+                    # is moving between the toolbar anchor and its popup.
+                    if state["outside_polls"] >= 5:
+                        destroy_popups()
+                        return
                 state["poll_id"] = self.after(70, poll_pointer)
 
             def schedule_poll():
