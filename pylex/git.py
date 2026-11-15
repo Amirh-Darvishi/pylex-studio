@@ -79,6 +79,8 @@ class GitService:
 
     def _run(self, *args, check=True, timeout=None):
         env = dict(os.environ)
+        for key in ("GIT_DIR", "GIT_WORK_TREE", "GIT_INDEX_FILE", "GIT_COMMON_DIR"):
+            env.pop(key, None)
         env.update(
             {
                 "GIT_TERMINAL_PROMPT": "0",
@@ -90,7 +92,7 @@ class GitService:
         )
         try:
             result = subprocess.run(
-                ["git", *map(str, args)],
+                ["git", "-c", "core.quotepath=false", *map(str, args)],
                 cwd=str(self.root),
                 env=env,
                 stdin=subprocess.DEVNULL,
