@@ -294,7 +294,7 @@ class QualityPanel(ttk.Frame):
         ):
             return
         self._start(
-            tool_argv(interpreter, "black", ("--", str(root))),
+            tool_argv(interpreter, "black", (str(root),)),
             root, env, label="Formatting project with Black",
         )
 
