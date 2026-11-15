@@ -254,6 +254,7 @@ class PyLexApp(tk.Tk):
                 compound="left",
             )
             button.pack(side="left", padx=(0, 3), ipady=1)
+            button.configure(takefocus=False)
             self._toolbar_icon_bindings.append((button, icon_name, color_key))
             pending = {"id": None}
 
@@ -279,6 +280,35 @@ class PyLexApp(tk.Tk):
 
             button.bind("<Enter>", open_on_hover, add="+")
             button.bind("<Leave>", lambda _event: cancel_pending(), add="+")
+            def dismiss_if_outside():
+                pending["dismiss_id"] = None
+                try:
+                    px, py = button.winfo_pointerxy()
+                    bx, by = button.winfo_rootx(), button.winfo_rooty()
+                    in_button = bx <= px < bx + button.winfo_width() and by <= py < by + button.winfo_height()
+                    mx, my = menu.winfo_rootx(), menu.winfo_rooty()
+                    in_menu = menu.winfo_ismapped() and mx <= px < mx + menu.winfo_width() and my <= py < my + menu.winfo_height()
+                    if not in_button and not in_menu:
+                        menu.unpost()
+                except tk.TclError:
+                    pass
+
+            def schedule_dismiss(_event=None):
+                current = pending.get("dismiss_id")
+                if current is not None:
+                    try:
+                        button.after_cancel(current)
+                    except tk.TclError:
+                        pass
+                pending["dismiss_id"] = button.after(260, dismiss_if_outside)
+
+            pending["dismiss_id"] = None
+            button.bind("<Leave>", schedule_dismiss, add="+")
+            menu.bind("<Leave>", schedule_dismiss, add="+")
+            menu.bind("<Enter>", lambda _event: (
+                button.after_cancel(pending["dismiss_id"]) if pending.get("dismiss_id") is not None else None,
+                pending.update({"dismiss_id": None}),
+            ), add="+")
             button.bind("<Button-1>", lambda _event: (
                 menu.post(button.winfo_rootx(), button.winfo_rooty() + button.winfo_height()),
                 "break",
@@ -395,6 +425,7 @@ class PyLexApp(tk.Tk):
                     compound="left",
                 )
                 button.pack(side="left", padx=1)
+                button.configure(takefocus=False)
                 self._toolbar_icon_bindings.append((button, icon_name, color_key))
 
         spacer = ttk.Frame(action_row, style="PyLex.Toolbar.TFrame")
@@ -402,10 +433,11 @@ class PyLexApp(tk.Tk):
         self.run_button = ttk.Button(
             action_row, text="Run  F5", command=self.run_code,
             style="PyLex.Run.TButton",
-            image=self._icon("play-fill", "#ffffff"),
+            image=self._icon("play-fill", self.theme_palette.get("accent")),
             compound="left", width=11,
         )
         self.run_button.pack(side="left", padx=(8, 5), ipady=2)
+        self.run_button.configure(takefocus=False)
         self.stop_button = ttk.Button(
             action_row, text="Stop  Shift+F5", command=self.stop_execution,
             style="PyLex.Stop.TButton",
@@ -413,8 +445,9 @@ class PyLexApp(tk.Tk):
             compound="left", width=13,
         )
         self.stop_button.pack(side="left", padx=(0, 8), ipady=2)
+        self.stop_button.configure(takefocus=False)
         self._toolbar_icon_bindings.extend([
-            (self.run_button, "play-fill", "run"),
+            (self.run_button, "play-fill", "accent"),
             (self.stop_button, "stop-fill", "danger"),
         ])
         self.theme_button = ttk.Button(
@@ -426,6 +459,7 @@ class PyLexApp(tk.Tk):
             ), compound="left",
         )
         self.theme_button.pack(side="right", padx=(4, 0))
+        self.theme_button.configure(takefocus=False)
         self._toolbar_icon_bindings.append((
             self.theme_button, "sun" if self.dark else "moon-stars", "warning"
         ))
@@ -2863,7 +2897,7 @@ class PyLexApp(tk.Tk):
                     kind, foreground=palette.get(f"file_{kind}", palette["editor_fg"])
                 )
         if hasattr(self, "run_button"):
-            self.run_button.configure(image=self._icon("play-fill", "#ffffff"))
+            self.run_button.configure(image=self._icon("play-fill", palette["accent"]))
             self.stop_button.configure(image=self._icon("stop-fill", palette["danger"]))
         if hasattr(self, "theme_button"):
             self.theme_button.configure(
