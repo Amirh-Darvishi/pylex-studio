@@ -183,6 +183,13 @@ class ExecutionHandle:
                 self.process.wait()
                 exit_code = self.process.returncode
         finally:
+            # Close the parent's stdin pipe after the child exits to avoid
+            # leaking a TextIOWrapper across repeated Run operations.
+            try:
+                if self.process.stdin is not None and not self.process.stdin.closed:
+                    self.process.stdin.close()
+            except OSError:
+                pass
             if self.cleanup_script:
                 try:
                     self.script_path.unlink(missing_ok=True)
