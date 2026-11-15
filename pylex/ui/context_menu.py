@@ -113,8 +113,10 @@ class ContextMenu:
         self.window.transient(root)
         border = self._color("border", "#394657")
         surface = self._color("menu_bg", "#202936")
-        self.window.configure(background=border, padx=1, pady=1)
-        body = tk.Frame(self.window, background=surface, padx=4, pady=5)
+        self.window.configure(background=border)
+        shell = tk.Frame(self.window, background=border, padx=1, pady=1)
+        shell.pack(fill="both", expand=True)
+        body = tk.Frame(shell, background=surface, padx=4, pady=5)
         body.pack(fill="both", expand=True)
 
         for item in self.items:
