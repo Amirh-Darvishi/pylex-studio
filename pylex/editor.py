@@ -10,6 +10,11 @@ from pygments.token import (
     Comment, Error, Keyword, Name, Number, Operator, Punctuation, String,
 )
 
+from .editor_features import (
+    find_matching_bracket, indentation_for_newline,
+    smart_backspace_prefix, toggle_comment_block,
+)
+
 
 class CodeEditor(tk.Frame):
     """Text editor with line numbers, current-line emphasis, and error markers."""
@@ -48,6 +53,14 @@ class CodeEditor(tk.Frame):
         self.text.bind("<ButtonRelease-1>", self._cursor_changed)
         self.text.bind("<MouseWheel>", self._cursor_changed, add="+")
         self.text.bind("<Tab>", self._tab)
+        self.text.bind("<Shift-Tab>", self._dedent)
+        self.text.bind("<Return>", self._smart_newline)
+        self.text.bind("<BackSpace>", self._smart_backspace)
+        self.text.bind("<Control-slash>", self._toggle_comment)
+        self.text.bind("<Control-d>", self._duplicate_line)
+        self.text.bind("<Alt-Up>", lambda event: self._move_line(-1))
+        self.text.bind("<Alt-Down>", lambda event: self._move_line(1))
+        self.text.bind("<Control-g>", self._go_to_line)
         self.text.bind("<KeyPress>", self._auto_pair, add="+")
         self.text.bind("<Control-space>", self.show_completions)
         self.text.bind("<Control-a>", self._select_all)
@@ -69,6 +82,7 @@ class CodeEditor(tk.Frame):
         self.text.tag_configure("py_error", underline=True)
         self.text.tag_configure("current_line", background="#2a2d2e")
         self.text.tag_configure("error_line", background="#4b2528", underline=True)
+        self.text.tag_configure("matching_bracket", background="#565b63", underline=True)
         self.gutter.tag_configure("gutter_current", foreground="#ffffff")
         self.gutter.tag_configure("gutter_error", foreground="#ff7777")
 
@@ -84,6 +98,7 @@ class CodeEditor(tk.Frame):
         self.text.tag_configure("py_operator", foreground=fg)
         self.text.tag_configure("current_line", background=current_bg)
         self.text.tag_configure("error_line", background=error_bg)
+        self.text.tag_configure("matching_bracket", background="#565b63" if dark else "#d8e8ff")
 
     def _changed(self, event=None):
         if self.text.edit_modified():
