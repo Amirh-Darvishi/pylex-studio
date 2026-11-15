@@ -706,26 +706,9 @@ class PyLexApp(tk.Tk):
 
         spacer = ttk.Frame(action_row, style="PyLex.Toolbar.TFrame")
         spacer.pack(side="left", fill="x", expand=True)
-        self.run_button = ttk.Button(
-            action_row, text="Run  F5", command=self.run_code,
-            style="PyLex.Run.TButton",
-            image=self._icon("play-fill", self.theme_palette.get("accent")),
-            compound="left", width=11,
-        )
-        self.run_button.pack(side="left", padx=(8, 5), ipady=2)
-        self.run_button.configure(takefocus=False)
-        self.stop_button = ttk.Button(
-            action_row, text="Stop  Shift+F5", command=self.stop_execution,
-            style="PyLex.Stop.TButton",
-            image=self._icon("stop-fill", self.theme_palette.get("danger")),
-            compound="left", width=13,
-        )
-        self.stop_button.pack(side="left", padx=(0, 8), ipady=2)
-        self.stop_button.configure(takefocus=False)
-        self._toolbar_icon_bindings.extend([
-            (self.run_button, "play-fill", "accent"),
-            (self.stop_button, "stop-fill", "danger"),
-        ])
+        # Keep the command launcher and execution controls together in a
+        # compact right-hand stack. The launcher is an outlined, transparent
+        # surface rather than a filled toolbar button.
         self.theme_button = ttk.Button(
             action_row, text="Theme", command=self.toggle_theme,
             style="PyLex.Toolbar.TButton",
@@ -740,20 +723,73 @@ class PyLexApp(tk.Tk):
             self.theme_button, "sun" if self.dark else "moon-stars", "warning"
         ))
 
-        # Keep the command launcher permanently visible at the far right.
-        self.command_palette_button = ttk.Button(
-            action_row,
-            text="Command Palette",
-            command=self.open_command_palette,
-            style="PyLex.Primary.TButton",
-            image=self._icon("search", self.theme_palette.get("accent")),
-            compound="left",
+        self.execution_controls = ttk.Frame(
+            action_row, style="PyLex.Toolbar.TFrame"
         )
-        self.command_palette_button.pack(side="right", padx=(6, 0), ipady=2)
-        self.command_palette_button.configure(takefocus=False)
-        self._toolbar_icon_bindings.append((
-            self.command_palette_button, "search", "accent"
-        ))
+        self.execution_controls.pack(side="right", padx=(8, 0))
+
+        self.command_palette_frame = tk.Frame(
+            self.execution_controls,
+            background=self.theme_palette["surface"],
+            highlightthickness=1,
+            highlightbackground=self.theme_palette["border"],
+            highlightcolor=self.theme_palette["accent"],
+            cursor="hand2",
+            width=250,
+            height=31,
+        )
+        self.command_palette_frame.pack(fill="x", pady=(0, 4))
+        self.command_palette_frame.pack_propagate(False)
+        self.command_palette_label = tk.Label(
+            self.command_palette_frame,
+            text="⌕   Command Palette",
+            anchor="w",
+            padx=10,
+            background=self.theme_palette["surface"],
+            foreground=self.theme_palette["muted"],
+            font=(self._resolved_ui_font(), self.preferences.get("ui_font_size", 9)),
+            cursor="hand2",
+        )
+        self.command_palette_label.pack(fill="both", expand=True)
+        for widget in (self.command_palette_frame, self.command_palette_label):
+            widget.bind("<Button-1>", lambda _event: self.open_command_palette())
+            widget.bind(
+                "<Enter>",
+                lambda _event: self.command_palette_frame.configure(
+                    highlightbackground=self.theme_palette["accent"]
+                ),
+            )
+            widget.bind(
+                "<Leave>",
+                lambda _event: self.command_palette_frame.configure(
+                    highlightbackground=self.theme_palette["border"]
+                ),
+            )
+
+        self.execution_button_row = ttk.Frame(
+            self.execution_controls, style="PyLex.Toolbar.TFrame"
+        )
+        self.execution_button_row.pack(fill="x")
+        self.run_button = ttk.Button(
+            self.execution_button_row, text="Run  F5", command=self.run_code,
+            style="PyLex.Run.TButton",
+            image=self._icon("play-fill", self.theme_palette.get("accent")),
+            compound="left", width=11,
+        )
+        self.run_button.pack(side="left", padx=(0, 5), ipady=2)
+        self.run_button.configure(takefocus=False)
+        self.stop_button = ttk.Button(
+            self.execution_button_row, text="Stop  Shift+F5", command=self.stop_execution,
+            style="PyLex.Stop.TButton",
+            image=self._icon("stop-fill", self.theme_palette.get("danger")),
+            compound="left", width=13,
+        )
+        self.stop_button.pack(side="left", ipady=2)
+        self.stop_button.configure(takefocus=False)
+        self._toolbar_icon_bindings.extend([
+            (self.run_button, "play-fill", "accent"),
+            (self.stop_button, "stop-fill", "danger"),
+        ])
 
     def _build_logo(self, parent, size=40):
         """Draw the original PyLex emblem with native vector canvas primitives."""
@@ -3909,6 +3945,7 @@ class PyLexApp(tk.Tk):
             registry,
             palette=self.theme_palette,
             font_family=self._resolved_ui_font(),
+            anchor=self.command_palette_frame,
         ).show()
 
     def toggle_theme(self):
