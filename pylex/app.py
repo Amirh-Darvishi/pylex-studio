@@ -1135,6 +1135,17 @@ class PyLexApp(tk.Tk):
             return "break"
         self._open_path(path)
 
+    def _resolved_code_font(self, available_fonts=None):
+        """Choose the best installed coding font with reliable cross-platform fallbacks."""
+        available = set(available_fonts or tkfont.families(self))
+        requested = self.preferences.get("font_family", DEFAULTS["font_family"])
+        candidates = (
+            requested, "JetBrains Mono", "Cascadia Code", "Fira Code",
+            "Consolas", "Cascadia Mono", "DejaVu Sans Mono",
+            "Liberation Mono", "Courier New", "TkFixedFont",
+        )
+        return next((family for family in candidates if family in available), "TkFixedFont")
+
     def _tab_label(self, document):
         name = document["path"].name if document["path"] else "Untitled"
         return f"{'*' if document['dirty'] else ''}{name}  ×"
@@ -1202,7 +1213,7 @@ class PyLexApp(tk.Tk):
         )
         self.editor_tabs.select(frame)
         self.editor = editor
-        editor.set_font_family(self.preferences["font_family"])
+        editor.set_font_family(self._resolved_code_font())
         editor.set_font_size(self.preferences["font_size"])
         editor.set_theme(self.dark, self.theme_palette)
         self._sync_active_document()
@@ -1957,7 +1968,12 @@ class PyLexApp(tk.Tk):
         ui_size_var = tk.IntVar(value=self.preferences.get("ui_font_size", 9))
         ttk.Label(appearance, text="Interface font").grid(row=3, column=0, sticky="w", pady=(0, 5))
         available_fonts = sorted(tkfont.families(dialog), key=str.casefold)
-        ui_fonts = [name for name in ("Segoe UI", "Inter", "Arial", "Tahoma") if name in available_fonts]
+        ui_fonts = [
+            name for name in (
+                "Segoe UI", "Inter", "Noto Sans", "Ubuntu",
+                "DejaVu Sans", "Arial", "Tahoma",
+            ) if name in available_fonts
+        ]
         if not ui_fonts:
             ui_fonts = ["TkDefaultFont"]
         ui_box = ttk.Combobox(
@@ -1970,18 +1986,20 @@ class PyLexApp(tk.Tk):
             row=4, column=1, sticky="w", padx=(24, 0)
         )
 
-        code_font_var = tk.StringVar(value=self.preferences["font_family"])
-        code_size_var = tk.IntVar(value=self.preferences["font_size"])
-        ttk.Label(editor_page, text="Code font family").grid(row=0, column=0, sticky="w", pady=(0, 5))
         code_fonts = [
             name for name in (
                 "JetBrains Mono", "Cascadia Code", "Fira Code",
-                "Consolas", "Cascadia Mono", "Courier New",
+                "Consolas", "Cascadia Mono", "DejaVu Sans Mono",
+                "Liberation Mono", "Courier New", "TkFixedFont",
             ) if name in available_fonts
         ]
-        for preferred_font in (DEFAULTS["font_family"], self.preferences["font_family"]):
-            if preferred_font not in code_fonts:
-                code_fonts.insert(0, preferred_font)
+        if not code_fonts:
+            code_fonts = ["TkFixedFont"]
+        code_font_var = tk.StringVar(
+            value=self._resolved_code_font(available_fonts)
+        )
+        code_size_var = tk.IntVar(value=self.preferences["font_size"])
+        ttk.Label(editor_page, text="Code font family").grid(row=0, column=0, sticky="w", pady=(0, 5))
         code_box = ttk.Combobox(
             editor_page, textvariable=code_font_var, values=code_fonts,
             state="readonly", width=28,
@@ -2073,7 +2091,15 @@ class PyLexApp(tk.Tk):
                 if DEFAULTS["ui_font_family"] in ui_fonts else ui_fonts[0]
             )
             ui_size_var.set(DEFAULTS["ui_font_size"])
-            code_font_var.set(DEFAULTS["font_family"])
+            default_font = next(
+                (name for name in (
+                    "JetBrains Mono", "Cascadia Code", "Fira Code",
+                    "Consolas", "Cascadia Mono", "DejaVu Sans Mono",
+                    "Liberation Mono", "Courier New", "TkFixedFont",
+                ) if name in code_fonts),
+                code_fonts[0],
+            )
+            code_font_var.set(default_font)
             code_size_var.set(DEFAULTS["font_size"])
             explorer_var.set(DEFAULTS["show_project_explorer"])
             timeout_var.set(
