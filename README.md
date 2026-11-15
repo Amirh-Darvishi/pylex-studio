@@ -1,6 +1,6 @@
 # PyLex Studio
 
-**Current development target: 1.3.0** (in development)
+**Current development target: 1.4.0** (in development)
 
 A lightweight Python desktop editor with independent lexical and syntax analysis.
 
@@ -15,7 +15,10 @@ A lightweight Python desktop editor with independent lexical and syntax analysis
 - Force-stop a running program and its child processes with the Stop control or Shift+F5
 - Clear or save execution output; inspect exit code, execution status, and duration
 - Dependency inspector classifying standard-library, local, installed, and missing imports; reports package versions and locations
-- Interpreter-aware installation commands and active virtual-environment details
+- Discover and validate installed Python interpreters, including Windows Python launcher installations
+- Select a global or per-workspace Python interpreter and automatically detect project virtual environments
+- Create a project .venv without overwriting existing files
+- Run, debug, inspect dependencies, and generate pip commands with the exact selected interpreter
 - Preflight dependency checks before execution, plus runtime missing-module diagnostics
 - Open and save multiple files in independent editor tabs
 - Per-tab unsaved-change indicators and save confirmation
@@ -27,7 +30,7 @@ A lightweight Python desktop editor with independent lexical and syntax analysis
 - Find and replace with Ctrl+H
 - pdb-backed debugging with breakpoints, Continue, Step Into, Step Over, variables, and stack inspection
 - Adjustable editor font family and font size
-- Persistent preferences for theme, font, font size, project explorer visibility, and execution timeout
+- Persistent preferences for theme, font, font size, project explorer visibility, execution timeout, and interpreter selection
 - Structured error panel with exact exception type and source location
 - Click or double-click a diagnostic to jump to its line and column
 - Current-line emphasis and inline error highlighting
@@ -115,3 +118,17 @@ explicit working-directory, environment, and interpreter parameters to support
 future interpreter and virtual-environment management.
 
 Code execution is not sandboxed and uses the current user's permissions.
+
+## Python interpreter and virtual environments (1.4.0 development)
+
+Open **Tools → Python Interpreter** (also available from the toolbar or Dependencies panel) to inspect detected Python installations. Each candidate is probed by running that executable in isolated mode; PyLex displays its implementation, version, architecture, executable path, and whether it is a virtual environment.
+
+You can select an interpreter globally or for the current workspace. Workspace-specific selections take precedence. When no explicit workspace selection exists, PyLex automatically checks the conventional .venv, venv, and env folders before falling back to the global interpreter. On Windows, discovery checks PATH and the Python launcher; on other platforms it checks the active interpreter and common PATH names.
+
+Use **Create Project .venv** to create an isolated environment inside the workspace. PyLex refuses to overwrite a non-empty target folder and performs creation in the background so the editor remains responsive. The environment is selected for that workspace when creation succeeds.
+
+Run, debug, static dependency inspection, and generated pip commands all use the same selected interpreter. Package operations are invoked as `<selected-python> -m pip`, never through an unrelated global pip executable. No shell activation is required for PyLex to run a program with the selected environment.
+
+Virtual environments are machine-local and generally not portable because installed script entry points can contain absolute interpreter paths. Do not commit .venv to Git. Recreate it on another machine with `python -m venv .venv`, then install project dependencies with `python -m pip install -r requirements.txt`.
+
+Interpreter probing and dependency inspection are not a security sandbox. Programs still run with the current user's operating-system permissions.
