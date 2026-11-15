@@ -837,8 +837,6 @@ class PyLexApp(tk.Tk):
                 self.toggle_project_explorer()
             self.project_tree.focus_set()
             self.status.configure(text="Explorer ready — choose a recent workspace or open a folder.")
-            self.project_tree.focus_set()
-            self.status.configure(text="Explorer ready — choose a recent workspace or open a folder.")
         elif view == "search":
             self.open_quick_file()
         elif view == "source":
@@ -1006,6 +1004,7 @@ class PyLexApp(tk.Tk):
         self.recent_workspaces_list.pack(fill="x", padx=6, pady=(0, 7))
         self.recent_workspaces_list.bind("<Double-1>", self._select_recent_workspace)
         self.recent_workspaces_list.bind("<Button-3>", self._show_recent_workspace_context_menu, add="+")
+        self._refresh_recent_workspace_list()
         ttk.Label(self.explorer_frame, text="WORKSPACE", style="PyLex.Group.TLabel", padding=(9, 4)).pack(fill="x")
         self.workspace_path_label = ttk.Label(
             self.explorer_frame, text="No folder opened", style="PyLex.Muted.TLabel", padding=(9, 4),
@@ -1107,21 +1106,16 @@ class PyLexApp(tk.Tk):
             self._editor_status_items[key].configure(text=value)
 
     def _apply_status_bar_visibility(self):
-        visible = set(self.preferences.get("status_bar_items", DEFAULTS["status_bar_items"]))
-        previous = None
-        for key, label in self._editor_status_items.items():
-            if key in visible:
-                if not label.winfo_manager():
-                    label.pack(side="left")
-                if previous is not None and not self._editor_status_separators[list(self._editor_status_items).index(key)-1].winfo_manager():
-                    self._editor_status_separators[list(self._editor_status_items).index(key)-1].pack(side="left", fill="y", padx=2, pady=3)
-                previous = key
-            else:
-                label.pack_forget()
-        for index, separator in enumerate(self._editor_status_separators):
-            keys = list(self._editor_status_items)
-            if keys[index] not in visible or keys[index+1] not in visible:
-                separator.pack_forget()
+        visible = set(self.preferences.get('status_bar_items', DEFAULTS['status_bar_items']))
+        for label in self._editor_status_items.values():
+            label.pack_forget()
+        for separator in self._editor_status_separators:
+            separator.pack_forget()
+        visible_keys = [key for key in self._editor_status_items if key in visible]
+        for index, key in enumerate(visible_keys):
+            if index:
+                self._editor_status_separators[index - 1].pack(side='left', fill='y', padx=2, pady=3)
+            self._editor_status_items[key].pack(side='left')
 
     def _configure_status_bar(self):
         dialog = tk.Toplevel(self)
