@@ -2,7 +2,7 @@
 import os
 import unittest
 from unittest.mock import patch
-from pylex.terminal import shell_command, terminal_environment
+from pylex.terminal import shell_command, terminal_environment, python_file_command
 
 class TerminalHelperTests(unittest.TestCase):
     def test_rejects_unknown_shell(self):
