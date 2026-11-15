@@ -1,6 +1,6 @@
 # PyLex Studio
 
-**Current version: 1.9.0 — Git Source Control**
+**Development version: 1.10.0 — Final Quality & Documentation**
 
 A lightweight Python desktop editor with independent lexical and syntax analysis.
 
