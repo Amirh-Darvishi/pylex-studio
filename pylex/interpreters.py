@@ -126,7 +126,7 @@ def _launcher_candidates() -> Iterable[str]:
                     value = match.group(1) if match else ""
                 if value and Path(value).is_file() and value not in paths:
                     paths.append(value)
-            if paths and command[-1] == "list":
+            if paths and command[1] == "list":
                 break
     return paths
 
