@@ -93,7 +93,10 @@ def probe_interpreter(executable: os.PathLike | str, timeout: float = 6.0) -> In
         raise ValueError(f"Interpreter returned invalid metadata: {resolved}") from exc
     # Use the executable reported by Python, not a launcher alias or symlink.
     return InterpreterInfo(
-        executable=os.path.realpath(os.path.abspath(info.executable)),
+        # Keep the verified path used to launch the interpreter. On Windows,
+        # sys.executable may report an 8.3 short path even when the caller
+        # supplied the canonical venv path.
+        executable=os.path.abspath(resolved),
         version=info.version, implementation=info.implementation,
         prefix=info.prefix, base_prefix=info.base_prefix,
         is_venv=info.is_venv, architecture=info.architecture,
