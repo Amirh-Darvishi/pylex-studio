@@ -881,6 +881,31 @@ class PyLexApp(tk.Tk):
         self._tool_tab_icon_bindings.append((child, icon_name, color_key))
 
     def _workspace(self):
+        # Pack the status bar before the expanding workspace so it always reserves bottom space.
+        status_row = ttk.Frame(self, style="PyLex.Toolbar.TFrame", padding=(10, 3))
+        status_row.pack(fill="x", side="bottom")
+        self.status = ttk.Label(
+            status_row, text="Ready", style="PyLex.Status.TLabel",
+            anchor="w", padding=(6, 3),
+        )
+        self.status.pack(side="left", fill="x", expand=True)
+        self.editor_status = ttk.Frame(status_row, style="PyLex.Toolbar.TFrame")
+        self.editor_status.pack(side="right")
+        self._editor_status_items = {}
+        for index, key in enumerate(("position", "indent", "encoding", "eol", "language", "mode")):
+            if index:
+                ttk.Separator(
+                    self.editor_status, orient="vertical",
+                ).pack(side="left", fill="y", padx=2, pady=3)
+            label = ttk.Label(
+                self.editor_status, text="", style="PyLex.Status.TLabel",
+                padding=(7, 3), anchor="center",
+            )
+            label.pack(side="left")
+            self._editor_status_items[key] = label
+        ttk.Separator(self, orient="horizontal").pack(fill="x", side="bottom")
+        self._update_editor_status()
+
         shell = ttk.Frame(self)
         shell.pack(fill="both", expand=True, padx=8, pady=(2, 8))
         self.workspace_shell = shell
@@ -1017,29 +1042,7 @@ class PyLexApp(tk.Tk):
         )
         self._add_tool_tab(self.git_panel, "Git", "git", "violet")
 
-        status_row = ttk.Frame(self, style="PyLex.Toolbar.TFrame", padding=(10, 3))
-        status_row.pack(fill="x", side="bottom")
-        self.status = ttk.Label(
-            status_row, text="Ready", style="PyLex.Status.TLabel",
-            anchor="w", padding=(6, 3),
-        )
-        self.status.pack(side="left", fill="x", expand=True)
-        self.editor_status = ttk.Frame(status_row, style="PyLex.Toolbar.TFrame")
-        self.editor_status.pack(side="right")
-        self._editor_status_items = {}
-        for index, key in enumerate(("position", "indent", "encoding", "eol", "language", "mode")):
-            if index:
-                ttk.Separator(
-                    self.editor_status, orient="vertical",
-                ).pack(side="left", fill="y", padx=2, pady=3)
-            label = ttk.Label(
-                self.editor_status, text="", style="PyLex.Status.TLabel",
-                padding=(7, 3), anchor="center",
-            )
-            label.pack(side="left")
-            self._editor_status_items[key] = label
-        ttk.Separator(self, orient="horizontal").pack(fill="x", side="bottom")
-        self._update_editor_status()
+
 
     def _update_editor_status(self, editor=None):
         """Refresh compact, editor-specific indicators in the bottom status strip."""
