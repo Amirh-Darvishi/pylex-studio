@@ -1,8 +1,8 @@
 # PyLex Studio
 
-**Latest stable release: 2.0.0 — Modern Developer Experience**
+**Latest stable release: 2.0.1 — Maintenance and documentation alignment**
 
-[View the 2.0.0 release notes](https://github.com/Amirh-Darvishi/pylex-studio/releases/tag/v2.0.0)
+[View the 2.0.1 release notes](https://github.com/Amirh-Darvishi/pylex-studio/releases/tag/v2.0.1)
 
 A lightweight Python desktop editor with independent lexical and syntax analysis.
 
