@@ -209,7 +209,7 @@ class ThemeManager:
         self.style.configure(
             "TNotebook.Tab",
             padding=(12, 7),
-            font=("Segoe UI", 9),
+            font=ui_font,
         )
         self.style.configure(
             "TPanedwindow",
