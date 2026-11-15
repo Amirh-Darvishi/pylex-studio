@@ -1,6 +1,6 @@
 """Main graphical interface for PyLex Studio."""
 import tkinter as tk
-from tkinter import ttk, filedialog, messagebox
+from tkinter import ttk, filedialog, messagebox, simpledialog
 import queue
 import threading
 from pathlib import Path
@@ -28,7 +28,7 @@ class PyLexApp(tk.Tk):
 
     def __init__(self):
         super().__init__()
-        self.title("PyLex Studio 1.5.0 — Python Editor")
+        self.title("PyLex Studio 1.6.0 — Python Editor")
         self.geometry("1180x780")
         self.minsize(850, 560)
         self.current_path = None
@@ -98,6 +98,13 @@ class PyLexApp(tk.Tk):
         tools_menu.add_command(label="Toggle Breakpoint", command=self.toggle_breakpoint)
         tools_menu.add_command(label="Inspect Variables", command=self.debug_variables)
         tools_menu.add_command(label="Show Stack", command=self.debug_stack)
+        tools_menu.add_command(label="Show Function Arguments", command=self.debug_arguments)
+        tools_menu.add_command(label="Run Until Line", command=self.debug_until)
+        tools_menu.add_command(label="Run Until Return", command=self.debug_return)
+        tools_menu.add_command(label="Jump to Line", command=self.debug_jump)
+        tools_menu.add_command(label="Evaluate Expression...", command=self.debug_evaluate)
+        tools_menu.add_command(label="Conditional Breakpoint...", command=self.debug_conditional_breakpoint)
+        tools_menu.add_command(label="Clear All Breakpoints", command=self.debug_clear_breakpoints)
         tools_menu.add_command(label="Stop Debugging", command=self.stop_debugging)
         menu.add_cascade(label="Tools", menu=tools_menu)
 
@@ -130,6 +137,10 @@ class PyLexApp(tk.Tk):
             ("Step", self.debug_step), ("Next", self.debug_next),
             ("Breakpoint", self.toggle_breakpoint), ("Variables", self.debug_variables),
             ("Stack", self.debug_stack),
+            ("Arguments", self.debug_arguments),
+            ("Until", self.debug_until),
+            ("Return", self.debug_return),
+            ("Evaluate", self.debug_evaluate),
             ("Analyze All", self.analyze_all),
             ("Lexical", self.analyze_lexical), ("Syntax", self.analyze_syntax),
             ("Clear Results", self.clear_results),
@@ -904,7 +915,7 @@ class PyLexApp(tk.Tk):
 
     def _title(self):
         name = self.current_path.name if self.current_path else "Untitled"
-        self.title(f"{'*' if self.dirty else ''}{name} — PyLex Studio 1.5.0")
+        self.title(f"{'*' if self.dirty else ''}{name} — PyLex Studio 1.6.0")
 
     def _confirm(self):
         document = self._active_document()
@@ -1282,6 +1293,93 @@ class PyLexApp(tk.Tk):
             return
         self.debug_session.command("where")
         self.status.configure(text="Requested current stack trace.")
+
+    def _active_debug_session(self):
+        session = self.debug_session
+        if session is None or session.done:
+            self.status.configure(text="No active debugging session.")
+            return None
+        return session
+
+    def debug_arguments(self):
+        session = self._active_debug_session()
+        if session is not None:
+            session.show_arguments()
+            self.status.configure(text="Requested current function arguments.")
+
+    def debug_until(self):
+        session = self._active_debug_session()
+        if session is None:
+            return
+        line = int(self.editor.text.index("insert").split(".")[0])
+        session.until(line)
+        self.status.configure(text=f"Running until line {line}.")
+
+    def debug_return(self):
+        session = self._active_debug_session()
+        if session is not None:
+            session.return_from_frame()
+            self.status.configure(text="Running until the current function returns.")
+
+    def debug_jump(self):
+        session = self._active_debug_session()
+        if session is None:
+            return
+        line = simpledialog.askinteger(
+            "Debugger — Jump to Line", "Target line:",
+            parent=self, minvalue=1,
+        )
+        if line is not None:
+            try:
+                session.jump(line)
+                self.status.configure(text=f"Requested jump to line {line} (pdb frame restrictions apply).")
+            except ValueError as exc:
+                messagebox.showerror("Debugger", str(exc))
+
+    def debug_evaluate(self):
+        session = self._active_debug_session()
+        if session is None:
+            return
+        expression = simpledialog.askstring(
+            "Debugger — Evaluate", "Python expression in the selected frame:",
+            parent=self,
+        )
+        if expression is None:
+            return
+        try:
+            session.pretty_print(expression)
+            self.status.configure(text="Expression evaluation requested; see Output.")
+        except ValueError as exc:
+            messagebox.showerror("Debugger", str(exc))
+
+    def debug_conditional_breakpoint(self):
+        session = self._active_debug_session()
+        if session is None:
+            return
+        line = int(self.editor.text.index("insert").split(".")[0])
+        condition = simpledialog.askstring(
+            "Conditional Breakpoint",
+            f"Stop at line {line} only when this expression is true:",
+            parent=self,
+        )
+        if condition is None:
+            return
+        try:
+            session.set_conditional_breakpoint(line, condition)
+            self.breakpoints.setdefault(self.editor, set()).add(line)
+            self.editor.set_breakpoints(self.breakpoints[self.editor])
+            self.status.configure(text=f"Conditional breakpoint requested at line {line}.")
+        except ValueError as exc:
+            messagebox.showerror("Debugger", str(exc))
+
+    def debug_clear_breakpoints(self):
+        points = self.breakpoints.setdefault(self.editor, set())
+        points.clear()
+        self.editor.set_breakpoints(points)
+        session = self._active_debug_session()
+        if session is not None:
+            session.clear_all_breakpoints()
+        self.status.configure(text="All breakpoints cleared.")
 
     def stop_debugging(self):
         if self.debug_session is None:
