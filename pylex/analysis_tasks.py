@@ -42,9 +42,7 @@ def analyze_source(source, mode="all", is_cancelled=None):
         if syntax.details:
             result["syntax_report"] += f"\n{syntax.details}"
         if syntax.line is not None:
-            result["syntax_report"] += (
-                f"\nLine: {syntax.line} | Column: {syntax.column}"
-            )
+            result["syntax_report"] += f"\nLine: {syntax.line} | Column: {syntax.column}"
 
     if cancelled():
         return None
