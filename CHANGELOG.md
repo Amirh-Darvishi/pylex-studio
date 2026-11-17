@@ -1,5 +1,21 @@
 # Changelog
 
+## [2.3.0] - Unreleased
+
+### Architecture
+- Decomposed the large `PyLexApp` implementation into focused UI responsibility mixins for shell/layout, workspace, documents, analysis, execution, debugging, and preferences.
+- Kept `PyLexApp` as the Tkinter composition root and preserved existing callbacks, widgets, themes, shortcuts, and lifecycle behavior during extraction.
+- Centralized shared application imports in `pylex/app_support.py` to keep the extracted modules consistent.
+
+### Dependencies and tests
+- Split runtime dependencies (`requirements.txt`) from contributor/test tooling (`requirements-dev.txt`).
+- Added application composition tests and a display-aware Tk startup smoke test.
+- Updated CI to install the development dependency set while retaining the Windows/Ubuntu Python 3.10, 3.11, and 3.13 matrix and Ruff/Black checks.
+
+### Documentation
+- Updated installation, development, and architecture guidance for the modular application layout.
+
+
 ## [2.2.0] - 2026-11-15
 
 ### Architecture
