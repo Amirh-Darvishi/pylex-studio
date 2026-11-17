@@ -23,7 +23,9 @@ def analyze_source(source, mode="all", is_cancelled=None):
     result = {"mode": mode}
     if mode in {"lexical", "all"}:
         try:
-            tokens = lexical_analysis(source)
+            tokens = lexical_analysis(source, is_cancelled)
+            if tokens is None:
+                return None
             result["lexical_report"] = format_tokens(tokens)
             result["lexical_count"] = len(tokens)
             result["lexical_error"] = None
@@ -47,5 +49,5 @@ def analyze_source(source, mode="all", is_cancelled=None):
     if cancelled():
         return None
 
-    result["diagnostics"] = collect_diagnostics(source)
+    result["diagnostics"] = collect_diagnostics(source, is_cancelled)
     return None if cancelled() else result
