@@ -584,6 +584,26 @@ if __name__ == "__main__":
 <div class="note">نسخه 2.2.0 منتشر شده و معماری آن Controllerهای مستقل برای Workspace، Documents، Execution و Debugger را معرفی می‌کند.</div>
 </section>
 
-<footer>PyLex Studio · راهنمای فارسی مسیر نسخه پایدار 2.2.0 · منبع: مخزن رسمی پروژه · نسخه پایدار مبنا: 2.1.0</footer>
+
+<section id="architecture-230">
+<h2>معماری ماژولار رابط برنامه در نسخه 2.3.0</h2>
+<p>در مسیر توسعه نسخه 2.3.0، پیاده‌سازی بزرگ پنجره اصلی به چند ماژول مسئولیت‌محور تقسیم شده است. هدف این تغییر، آسان‌تر شدن نگهداری و توسعه مستقل بخش‌هاست؛ نه بازطراحی رابط کاربری. کلاس <code>PyLexApp</code> همچنان پنجره اصلی و Composition Root است و ساخت ویجت‌ها، callbackها، زمان‌بندی رویدادها و هماهنگی میان بخش‌ها را حفظ می‌کند.</p>
+<h3>تقسیم مسئولیت‌ها</h3>
+<ul>
+<li><strong>ShellMixin</strong> در <code>pylex.app_parts.shell</code>: منوها، نوار ابزار، Activity Bar، پنل‌ها، status bar، زمینه‌های UI و اجزای اصلی پوسته.</li>
+<li><strong>WorkspaceMixin</strong> در <code>pylex.app_parts.workspace</code>: باز و بسته‌کردن Workspace، فایل‌ها، درخت پروژه، مسیرهای اخیر و عملیات فایل/پوشه.</li>
+<li><strong>DocumentsMixin</strong> در <code>pylex.app_parts.documents</code>: تب‌ها، سند فعال، ایجاد/بازکردن/ذخیره فایل و تنظیمات نمایش ویرایشگر.</li>
+<li><strong>AnalysisMixin</strong> در <code>pylex.app_parts.analysis</code>: تحلیل لغوی و نحوی و پاک‌سازی نتایج.</li>
+<li><strong>ExecutionMixin</strong> و <strong>DebuggerMixin</strong>: اجرای برنامه، خروجی و ورودی تعاملی، و چرخه فرمان‌های Debugger.</li>
+<li><strong>PreferencesMixin</strong> در <code>pylex.app_parts.preferences</code>: تنظیمات، پنجره‌های ترجیحات، تغییر تم و بستن برنامه.</li>
+</ul>
+<h3>مرز معماری و سازگاری</h3>
+<p>ماژول‌های جدید به شکل mixinهای بدون state مستقل ترکیب می‌شوند و از طریق <code>self</code> به همان رابط داخلی موجود دسترسی دارند. در این مرحله نام callbackها و قراردادهای متصل به ویجت‌ها تغییر نکرده‌اند؛ این روش، استخراج کد را بدون بازنویسی رفتارهای رابط انجام می‌دهد. Controllerهای مستقل معرفی‌شده در نسخه 2.2.0 همچنان مالک چرخه عمر Workspace، Documents، Execution و Debugger باقی می‌مانند.</p>
+<h3>وابستگی‌ها و اعتبارسنجی</h3>
+<p><code>requirements.txt</code> فقط بسته‌های زمان اجرا را نگه می‌دارد. ابزارهای توسعه و کنترل کیفیت مانند pytest، Black و Ruff در <code>requirements-dev.txt</code> قرار دارند. تست‌های معماری ترکیب مسئولیت‌ها را بررسی می‌کنند و تست GUI در محیط دارای نمایشگر، راه‌اندازی واقعی پنجره و وجود اجزای اصلی را کنترل می‌کند؛ در runnerهای headless این تست GUI با وضعیت skip مشخص می‌شود. ماتریس Windows و Ubuntu با Python 3.10، 3.11 و 3.13 و کنترل‌های Ruff و Black حفظ می‌شود.</p>
+<div class="note">این بخش تغییرات شاخه توسعه 2.3.0 را توصیف می‌کند؛ نسخه پایدار منتشرشده همچنان 2.2.0 است تا انتشار رسمی نسخه جدید.</div>
+</section>
+
+<footer>PyLex Studio · راهنمای فارسی مسیر نسخه پایدار 2.2.0 · منبع: مخزن رسمی پروژه · نسخه پایدار مبنا: 2.2.0</footer>
 </body>
 </html>
