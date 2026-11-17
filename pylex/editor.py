@@ -417,9 +417,7 @@ class CodeEditor(tk.Frame):
             if not cancel_event.is_set():
                 result_queue.put(match)
 
-        threading.Thread(
-            target=scan, name="pylex-bracket-matcher", daemon=True
-        ).start()
+        threading.Thread(target=scan, name="pylex-bracket-matcher", daemon=True).start()
         self._poll_matching_bracket(
             generation, source, offset, cancel_event, result_queue
         )
