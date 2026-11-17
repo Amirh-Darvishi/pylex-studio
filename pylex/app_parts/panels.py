@@ -28,14 +28,24 @@ class PanelsMixin:
             document = self.documents.get(editor, {})
             path = document.get("path")
             language = file_type_for(path).description if path else "Python"
-            content = editor.get_content()
-            eol = "CRLF" if "\r\n" in content else "LF"
-            leading = next((line for line in content.splitlines() if line.strip()), "")
-            indent = "Tabs" if leading.startswith("\t") else "Spaces: 4"
+            encoding = document.get("encoding") or self.preferences.get(
+                "status_bar_encoding", "UTF-8"
+            )
+            encoding_labels = {
+                "utf-8": "UTF-8",
+                "utf-8-sig": "UTF-8 BOM",
+                "ascii": "ASCII",
+                "cp1252": "Windows-1252",
+            }
+            encoding = encoding_labels.get(encoding.lower(), encoding)
+            newline = document.get("newline", "\n")
+            eol = {"\r\n": "CRLF", "\r": "CR", "\n": "LF"}.get(
+                newline, "LF"
+            )
             values = {
                 "position": f"Ln {line}, Col {int(column) + 1}",
-                "indent": indent,
-                "encoding": "UTF-8",
+                "indent": self.preferences.get("status_bar_indent", "Spaces: 4"),
+                "encoding": encoding,
                 "eol": eol,
                 "language": language,
                 "mode": "INS",
