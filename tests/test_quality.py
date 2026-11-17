@@ -1,9 +1,19 @@
 """Tests for quality-tool command construction and output parsing."""
 
 import json
+import queue
+import threading
 import unittest
+from pathlib import Path
+from types import SimpleNamespace
+from unittest.mock import patch
 
-from pylex.quality import parse_pytest_nodeids, parse_ruff_diagnostics, tool_argv
+from pylex.quality import (
+    QualityPanel,
+    parse_pytest_nodeids,
+    parse_ruff_diagnostics,
+    tool_argv,
+)
 
 
 class QualityToolTests(unittest.TestCase):
@@ -36,6 +46,48 @@ class QualityToolTests(unittest.TestCase):
 
     def test_ruff_parser_handles_invalid_output(self):
         self.assertEqual(parse_ruff_diagnostics("not json"), [])
+
+    def test_close_cancels_quality_worker_that_has_not_published_process_yet(self):
+        entered = threading.Event()
+        release = threading.Event()
+        process = SimpleNamespace(
+            returncode=0,
+            communicate=lambda input=None: ("", ""),
+        )
+        cancelled = []
+
+        def delayed_popen(*_args, **_kwargs):
+            entered.set()
+            release.wait(3)
+            return process
+
+        panel = SimpleNamespace(
+            _events=queue.Queue(),
+            _worker=None,
+            _process=None,
+            _process_lock=threading.Lock(),
+            _cancel_requested=threading.Event(),
+            _closed=False,
+            _poll_id="poll-id",
+            _busy=False,
+            _set_status=lambda _message: None,
+            _clear_output=lambda: None,
+            after_cancel=lambda job: cancelled.append(job),
+        )
+        with (
+            patch("pylex.quality.subprocess.Popen", side_effect=delayed_popen),
+            patch("pylex.quality.terminate_process_tree") as terminate,
+        ):
+            self.assertTrue(QualityPanel._start(panel, ["python"], Path.cwd(), {}))
+            self.assertTrue(entered.wait(2))
+            QualityPanel.close(panel)
+            release.set()
+            panel._worker.join(3)
+
+        self.assertFalse(panel._worker.is_alive())
+        self.assertEqual(cancelled, ["poll-id"])
+        terminate.assert_called_once_with(process)
+        self.assertTrue(panel._cancel_requested.is_set())
 
     def test_pytest_collection_parser_keeps_node_ids_and_deduplicates(self):
         output = (
