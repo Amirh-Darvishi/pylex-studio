@@ -192,8 +192,9 @@ class ExecutionHandle:
                         self.process.stdin.close()
                     except (OSError, ValueError):
                         pass
+            reader_deadline = time.monotonic() + 1
             for reader in self._readers:
-                reader.join(timeout=1)
+                reader.join(timeout=max(0, reader_deadline - time.monotonic()))
             if any(reader.is_alive() for reader in self._readers):
                 # A child may inherit the pipes and outlive the Python process.
                 _terminate_process_tree(self.process)
