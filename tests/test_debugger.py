@@ -1,7 +1,11 @@
 """Tests for the pdb-backed interactive debugger."""
 
+import os
+import sys
+import tempfile
 import time
 import unittest
+from pathlib import Path
 
 from pylex.debugger import DebugSession
 
@@ -102,6 +106,31 @@ class DebuggerTests(unittest.TestCase):
             self.assertTrue(session.done)
         finally:
             session.close()
+
+    @unittest.skipIf(os.name == "nt", "POSIX process-group semantics")
+    def test_close_stops_child_holding_debugger_output_pipe(self):
+        with tempfile.TemporaryDirectory() as directory:
+            marker = Path(directory) / "debugger-child-survived"
+            child = (
+                "import time; from pathlib import Path; "
+                "time.sleep(2); Path(" + repr(str(marker)) + ").write_text('alive')"
+            )
+            source = (
+                "import subprocess, sys\n"
+                "subprocess.Popen([sys.executable, '-c', " + repr(child) + "])\n"
+            )
+            session = DebugSession.start(source, cwd=directory)
+            try:
+                self.assertTrue(session.continue_execution())
+                deadline = time.monotonic() + 5
+                while time.monotonic() < deadline and not session.done:
+                    session.read_available()
+                    time.sleep(0.02)
+                self.assertTrue(session.done)
+            finally:
+                session.close()
+            time.sleep(2.2)
+            self.assertFalse(marker.exists())
 
     def test_breakpoint_and_step_commands_are_available(self):
         session = DebugSession.start("value = 1\nvalue += 1\nprint(value)\n")
