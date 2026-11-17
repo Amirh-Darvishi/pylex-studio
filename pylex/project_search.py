@@ -6,7 +6,6 @@ import fnmatch
 import re
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Iterable
 
 
 DEFAULT_EXCLUDES = (
