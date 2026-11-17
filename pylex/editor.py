@@ -50,6 +50,9 @@ class CodeEditor(tk.Frame):
         self._highlight_apply_job = None
         self._line_refresh_job = None
         self._bracket_job = None
+        self._bracket_generation = 0
+        self._bracket_cancel = None
+        self._bracket_poll_job = None
         self._diagnostic_location = None
         self._completion_window = None
         self._completion_list = None
@@ -367,22 +370,84 @@ class CodeEditor(tk.Frame):
         return "break"
 
     def _schedule_matching_bracket(self):
-        """Debounce full-source bracket matching while the caret is moving."""
+        """Debounce bracket matching and invalidate work for the previous caret."""
         if self.large_file_mode:
             return
+        self._cancel_bracket_work()
         if self._bracket_job is not None:
-            self.after_cancel(self._bracket_job)
+            try:
+                self.after_cancel(self._bracket_job)
+            except tk.TclError:
+                pass
         self._bracket_job = self.after(90, self._update_matching_bracket)
 
+    def _cancel_bracket_work(self):
+        """Invalidate a bracket scan and cancel its pending UI poll."""
+        self._bracket_generation += 1
+        if self._bracket_cancel is not None:
+            self._bracket_cancel.set()
+            self._bracket_cancel = None
+        if self._bracket_poll_job is not None:
+            try:
+                self.after_cancel(self._bracket_poll_job)
+            except tk.TclError:
+                pass
+            self._bracket_poll_job = None
+
     def _update_matching_bracket(self):
+        """Find matching brackets in a worker; apply tags only on the Tk thread."""
         self._bracket_job = None
         if self.large_file_mode:
             return
-        self.text.tag_remove("matching_bracket", "1.0", "end")
+        self._cancel_bracket_work()
+        generation = self._bracket_generation
         source = self.get_content()
         cursor_count = self.text.count("1.0", "insert", "chars")
         offset = cursor_count[0] if cursor_count else 0
-        match = find_matching_bracket(source, offset)
+        cancel_event = threading.Event()
+        result_queue = queue.Queue(maxsize=1)
+        self._bracket_cancel = cancel_event
+        self.text.tag_remove("matching_bracket", "1.0", "end")
+
+        def scan():
+            try:
+                match = find_matching_bracket(source, offset, cancel_event.is_set)
+            except Exception:
+                match = None
+            if not cancel_event.is_set():
+                result_queue.put(match)
+
+        threading.Thread(target=scan, name="pylex-bracket-matcher", daemon=True).start()
+        self._poll_matching_bracket(
+            generation, source, offset, cancel_event, result_queue
+        )
+
+    def _poll_matching_bracket(
+        self, generation, source, offset, cancel_event, result_queue
+    ):
+        if generation != self._bracket_generation or cancel_event.is_set():
+            return
+        try:
+            match = result_queue.get_nowait()
+        except queue.Empty:
+            try:
+                self._bracket_poll_job = self.after(
+                    20,
+                    lambda: self._poll_matching_bracket(
+                        generation, source, offset, cancel_event, result_queue
+                    ),
+                )
+            except tk.TclError:
+                cancel_event.set()
+            return
+        self._bracket_poll_job = None
+        self._bracket_cancel = None
+        if self.large_file_mode or self.get_content() != source:
+            return
+        cursor_count = self.text.count("1.0", "insert", "chars")
+        current_offset = cursor_count[0] if cursor_count else 0
+        if current_offset != offset:
+            return
         if match:
             for position in match:
                 self.text.tag_add(
@@ -690,6 +755,13 @@ class CodeEditor(tk.Frame):
             self.after_cancel(self._highlight_job)
             self._highlight_job = None
         self._cancel_highlight_work()
+        self._cancel_bracket_work()
+        if self._bracket_job is not None:
+            try:
+                self.after_cancel(self._bracket_job)
+            except tk.TclError:
+                pass
+            self._bracket_job = None
         self.clear_diagnostic()
         if self._content_job is not None:
             self.after_cancel(self._content_job)
@@ -783,6 +855,7 @@ class CodeEditor(tk.Frame):
         if self.large_file_mode:
             return
         self._cancel_highlight_work()
+        self._cancel_bracket_work()
         if self._highlight_job is not None:
             self.after_cancel(self._highlight_job)
         self._highlight_job = self.after(120, self.highlight)
@@ -878,6 +951,7 @@ class CodeEditor(tk.Frame):
         if event.widget is not self:
             return
         self._cancel_highlight_work()
+        self._cancel_bracket_work()
         if self._highlight_job is not None:
             try:
                 self.after_cancel(self._highlight_job)

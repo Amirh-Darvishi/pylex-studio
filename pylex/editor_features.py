@@ -71,13 +71,15 @@ def toggle_comment_block(source):
     return "".join(result)
 
 
-def find_matching_bracket(source, cursor_offset):
+def find_matching_bracket(source, cursor_offset, is_cancelled=None):
     """Return matching delimiter offsets around the cursor, ignoring strings/comments."""
     pairs = {"(": ")", "[": "]", "{": "}"}
     reverse = {value: key for key, value in pairs.items()}
     delimiters = []
     offset = 0
     for token_type, value in lex(source, PythonLexer()):
+        if is_cancelled is not None and is_cancelled():
+            return None
         if token_type in Punctuation:
             for index, char in enumerate(value):
                 if char in pairs or char in reverse:
@@ -95,6 +97,8 @@ def find_matching_bracket(source, cursor_offset):
     if char in pairs:
         stack = []
         for candidate, value in delimiters:
+            if is_cancelled is not None and is_cancelled():
+                return None
             if candidate < position:
                 continue
             if value in pairs:
@@ -108,6 +112,8 @@ def find_matching_bracket(source, cursor_offset):
     else:
         stack = []
         for candidate, value in reversed(delimiters):
+            if is_cancelled is not None and is_cancelled():
+                return None
             if candidate > position:
                 continue
             if value in reverse:

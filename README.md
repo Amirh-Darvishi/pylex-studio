@@ -1,26 +1,25 @@
 # PyLex Studio
 
-**Latest stable release: 2.3.1 — Editor Performance & Large File Handling**
+**Latest stable release: 2.4.0 — Stability, Reliability & Responsiveness**
 
-[View the 2.3.1 release notes](https://github.com/Amirh-Darvishi/pylex-studio/releases/tag/2.3.1)
+[View the 2.4.0 release notes](https://github.com/Amirh-Darvishi/pylex-studio/releases/tag/2.4.0)
 
 A lightweight Python desktop editor with independent lexical and syntax analysis.
 
-## 2.3.1 release
+## 2.4.0 release
 
-PyLex Studio 2.3.1 improves editor responsiveness when opening large text files. Files of 512 KiB or larger are read on a background worker and inserted in bounded chunks. Large documents use a lightweight editing mode that skips full-document syntax highlighting, whole-document bracket scans, and line-number gutter generation. Pygments lexers are selected by file extension, including JSON and JavaScript. The release passed the Windows and Ubuntu CI matrix with Python 3.10, 3.11, and 3.13.
+PyLex Studio 2.4.0 improves stability and responsiveness during workspace and editor operations. Large-file reads and workspace scans run off the Tkinter event loop, project-tree updates are incremental, and document saves are atomic while preserving detected encoding and newline conventions. Pygments highlighting runs in a cancellable worker and applies token tags in bounded UI batches. The release passed the Windows and Ubuntu CI matrix with Python 3.10, 3.11, and 3.13.
 
-## 2.4.0 development — Stability, Reliability & Responsiveness
+## 2.4.1 development — Background Analysis & UI Responsiveness
 
-The 2.4.0 work-in-progress focuses on preserving responsiveness and correctness during asynchronous editor and workspace operations:
+The 2.4.1 follow-up moves the remaining full-source analysis and bracket-matching work away from the Tkinter event loop:
 
-- Perform syntax tokenization away from the Tkinter event loop, then apply highlighting on the UI thread in bounded batches.
-- Cancel obsolete highlighting jobs when the document changes or the editor is destroyed; ignore stale results.
-- Debounce line-gutter refreshes and matching-bracket updates to avoid redundant UI work.
-- Keep status-bar encoding and newline indicators based on document metadata rather than repeatedly reading the full editor buffer.
-- Expand CI quality gates so Black and Ruff run on all six Windows/Ubuntu and Python 3.10/3.11/3.13 matrix combinations.
+- Run lexical analysis, syntax analysis, and diagnostic collection on a cancellable background worker.
+- Apply analysis results only on the UI thread and discard stale results after edits, tab switches, tab closure, or application shutdown.
+- Move matching-bracket scans to a cancellable worker while retaining the existing debounce.
+- Add regression tests for background analysis modes, syntax diagnostics, and cancellation.
 
-This section describes unreleased development work. **The latest stable release remains 2.3.1** until 2.4.0 is reviewed, merged, and published.
+This section describes unreleased follow-up work. **The latest stable release is 2.4.0.**
 
 ## 2.3.0 release — Modular Application UI
 

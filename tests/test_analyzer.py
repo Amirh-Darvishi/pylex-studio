@@ -25,6 +25,12 @@ class AnalyzerTests(unittest.TestCase):
             [token.token_type for token in lexical_analysis("if True:\n    pass")],
         )
 
+    def test_lexical_analysis_can_be_cancelled(self):
+        self.assertIsNone(lexical_analysis("value = 1", lambda: True))
+
+    def test_diagnostic_collection_can_be_cancelled(self):
+        self.assertIsNone(collect_diagnostics("value = 1", lambda: True))
+
     def test_builtin(self):
         self.assertIn(
             "BUILTIN",

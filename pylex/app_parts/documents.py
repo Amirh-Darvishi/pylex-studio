@@ -98,7 +98,7 @@ class DocumentsMixin:
         frame = ttk.Frame(self.editor_tabs)
         editor = CodeEditor(
             frame,
-            on_change=lambda: self.mark_dirty(editor),
+            on_change=lambda: self._on_document_changed(editor),
             on_cursor_change=lambda: self._update_editor_status(editor),
         )
         editor.pack(fill="both", expand=True)
@@ -162,6 +162,8 @@ class DocumentsMixin:
             return
         for editor, document in self.documents.items():
             if str(document["frame"]) == selected:
+                if editor is not self.editor:
+                    self._cancel_analysis()
                 self.editor = editor
                 self._sync_active_document()
                 self.editor.set_breakpoints(self.breakpoints.get(self.editor, set()))
