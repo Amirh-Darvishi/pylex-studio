@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import fnmatch
+import hashlib
 import re
 from dataclasses import dataclass
 from pathlib import Path
@@ -38,6 +39,7 @@ class FileSnapshot:
     newline: str
     mtime_ns: int
     size: int
+    digest: str
 
 
 def compile_search_pattern(query: str, *, regex=False, case_sensitive=False,
@@ -56,16 +58,20 @@ def compile_search_pattern(query: str, *, regex=False, case_sensitive=False,
 
 
 def iter_search_files(root, *, include_glob="*", excluded_dirs=DEFAULT_EXCLUDES,
-                      max_file_bytes=MAX_FILE_BYTES):
+                      max_file_bytes=MAX_FILE_BYTES, cancel_event=None):
     """Yield supported, bounded-size regular files beneath a workspace."""
     root = Path(root).expanduser().resolve()
     excluded = set(excluded_dirs)
     for directory, dirs, filenames in __import__("os").walk(root):
+        if cancel_event is not None and cancel_event.is_set():
+            break
         dirs[:] = sorted(
             name for name in dirs
             if name not in excluded and (not name.startswith(".") or name == ".github")
         )
         for filename in sorted(filenames):
+            if cancel_event is not None and cancel_event.is_set():
+                return
             path = Path(directory) / filename
             if not fnmatch.fnmatch(path.name, include_glob):
                 continue
@@ -108,7 +114,7 @@ def read_text_snapshot(path, *, max_file_bytes=MAX_FILE_BYTES):
     normalized = content.replace("\r\n", "\n").replace("\r", "\n")
     after = path.stat()
     return FileSnapshot(path.resolve(), normalized, encoding, newline,
-                        after.st_mtime_ns, after.st_size)
+                        after.st_mtime_ns, after.st_size, hashlib.sha256(raw).hexdigest())
 
 
 def search_text(root, query, *, regex=False, case_sensitive=False, whole_word=False,
@@ -123,7 +129,8 @@ def search_text(root, query, *, regex=False, case_sensitive=False, whole_word=Fa
     overlays = {Path(path).resolve(): text for path, text in (overlays or {}).items()}
     candidates = set(iter_search_files(root, include_glob=include_glob,
                                        excluded_dirs=excluded_dirs,
-                                       max_file_bytes=max_file_bytes))
+                                       max_file_bytes=max_file_bytes,
+                                       cancel_event=cancel_event))
     candidates.update(path for path in overlays if path.is_file() and path.is_relative_to(root))
     results = []
     snapshots = {}
@@ -166,7 +173,9 @@ def write_replacements(changes, snapshots):
         if snapshot is None:
             raise ValueError(f"No original snapshot exists for {path}.")
         current = Path(path).stat()
-        if current.st_mtime_ns != snapshot.mtime_ns or current.st_size != snapshot.size:
+        current_digest = hashlib.sha256(Path(path).read_bytes()).hexdigest()
+        if (current.st_mtime_ns != snapshot.mtime_ns or current.st_size != snapshot.size
+                or current_digest != snapshot.digest):
             raise RuntimeError(f"{path} changed after search; run the search again.")
         prepared.append((Path(path), new_content.replace("\n", snapshot.newline), snapshot))
     written = []
