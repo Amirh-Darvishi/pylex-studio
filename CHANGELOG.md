@@ -1,6 +1,6 @@
 # Changelog
 
-## [2.5.0] - Unreleased
+## [2.5.0] - 2026-11-17
 
 ### Workspace search and replacement
 - Add a UI-independent workspace search service with literal and regular-expression matching, case sensitivity, whole-word matching, and filename glob filtering.
@@ -10,6 +10,16 @@
 - Preview replacements before applying them; preserve encoding and newline conventions and use atomic writes for disk files.
 - Reject replacement when a target file has changed since its search snapshot.
 - Add regression tests for matching modes, exclusions, overlays, cancellation, encoding/newline preservation, and stale-file protection.
+
+### User experience and compatibility
+- Add the `Ctrl+Shift+F` shortcut and Tools menu entry for Workspace Search.
+- Handle equivalent Windows paths when resolving replacement targets.
+
+### Validation and release
+- Pass all six Windows/Ubuntu × Python 3.10/3.11/3.13 CI jobs on the merged `main` commit.
+- Pass pytest, compileall, Black, and Ruff checks in every CI matrix job.
+- Publish the stable 2.5.0 release: https://github.com/Amirh-Darvishi/pylex-studio/releases/tag/2.5.0
+- Merge implementation through PR #25: https://github.com/Amirh-Darvishi/pylex-studio/pull/25
 
 
 ## [2.4.1] - 2026-11-17
