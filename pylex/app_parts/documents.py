@@ -113,7 +113,7 @@ class DocumentsMixin:
                 "path": Path(path) if path else None,
                 "dirty": False,
                 "encoding": encoding,
-                "newline": newline or "\\n",
+                "newline": newline or "\n",
             },
         )
         self._refresh_open_editors()
@@ -217,15 +217,15 @@ class DocumentsMixin:
                 "ASCII": "ascii",
             }.get(encoding, encoding)
             if eol == "CRLF":
-                line_ending = "\\r\\n"
+                line_ending = "\r\n"
             elif eol == "LF":
-                line_ending = "\\n"
+                line_ending = "\n"
             else:
-                line_ending = document.get("newline", "\\n")
-            if line_ending == "\\r\\n":
-                source = source.replace("\\n", "\\r\\n")
-            elif line_ending == "\\r":
-                source = source.replace("\\n", "\\r")
+                line_ending = document.get("newline", "\n")
+            if line_ending == "\r\n":
+                source = source.replace("\n", "\r\n")
+            elif line_ending == "\r":
+                source = source.replace("\n", "\r")
             atomic_write_text(document["path"], source, encoding=codec, newline="")
             document["encoding"] = codec
             document["newline"] = line_ending

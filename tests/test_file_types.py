@@ -69,24 +69,24 @@ class FileTypeTests(unittest.TestCase):
     def test_read_text_preserves_utf8_bom_and_newline_metadata(self):
         with tempfile.TemporaryDirectory() as folder:
             path = Path(folder) / "bom.txt"
-            path.write_bytes(b"\\xef\\xbb\\xbffirst\\r\\nsecond\\r\\n")
+            path.write_bytes(b"\xef\xbb\xbffirst\r\nsecond\r\n")
             from pylex.core.file_types import read_text_file_details
 
             content, encoding, newline = read_text_file_details(path)
-            self.assertEqual(content, "first\\r\\nsecond\\r\\n")
+            self.assertEqual(content, "first\r\nsecond\r\n")
             self.assertEqual(encoding, "utf-8-sig")
-            self.assertEqual(newline, "\\r\\n")
+            self.assertEqual(newline, "\r\n")
 
     def test_read_text_falls_back_to_windows_1252(self):
         with tempfile.TemporaryDirectory() as folder:
             path = Path(folder) / "legacy.txt"
-            path.write_bytes("caf\\xe9".encode("cp1252"))
+            path.write_bytes("caf\xe9".encode("cp1252"))
             from pylex.core.file_types import read_text_file_details
 
             content, encoding, newline = read_text_file_details(path)
-            self.assertEqual(content, "caf\\xe9")
+            self.assertEqual(content, "caf\xe9")
             self.assertEqual(encoding, "cp1252")
-            self.assertEqual(newline, "\\n")
+            self.assertEqual(newline, "\n")
 
 
 if __name__ == "__main__":
