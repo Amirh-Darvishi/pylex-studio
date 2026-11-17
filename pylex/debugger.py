@@ -11,7 +11,6 @@ import threading
 
 from .process_control import (
     attach_process_job,
-    close_process_job,
     terminate_process_tree,
 )
 
