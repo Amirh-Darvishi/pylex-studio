@@ -367,10 +367,11 @@ class WorkspaceMixin:
         return coordinator
 
     def _invalidate_file_loads(self):
-        """Invalidate pending reads when their workspace or window is leaving."""
+        """Invalidate pending reads and scans when their UI context is leaving."""
         coordinator = getattr(self, "_load_coordinator", None)
         if coordinator is not None:
             coordinator.invalidate()
+        self._cancel_workspace_tree_scan()
 
     def _load_large_file_async(self, path, info, file_size):
         """Read large text files off-thread and ignore results from stale contexts."""

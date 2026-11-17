@@ -1,5 +1,13 @@
 # Changelog
 
+## Unreleased — PyLex Studio 2.4.0
+
+### Reliability
+- Guard asynchronous large-file loading against stale workspace and window lifecycles.
+- Move workspace filesystem scanning off the Tk event loop and populate the project tree incrementally.
+- Add regression coverage for stale load completions and workspace scanning.
+
+
 ## [2.3.1] - 2026-11-17
 
 ### Performance
