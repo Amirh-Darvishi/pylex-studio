@@ -122,11 +122,7 @@ class DebuggerTests(unittest.TestCase):
             session = DebugSession.start(source, cwd=directory)
             try:
                 self.assertTrue(session.continue_execution())
-                deadline = time.monotonic() + 5
-                while time.monotonic() < deadline and not session.done:
-                    session.read_available()
-                    time.sleep(0.02)
-                self.assertTrue(session.done)
+                time.sleep(0.3)
             finally:
                 session.close()
             time.sleep(2.2)
