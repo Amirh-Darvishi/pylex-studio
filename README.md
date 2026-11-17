@@ -10,6 +10,18 @@ A lightweight Python desktop editor with independent lexical and syntax analysis
 
 PyLex Studio 2.3.1 improves editor responsiveness when opening large text files. Files of 512 KiB or larger are read on a background worker and inserted in bounded chunks. Large documents use a lightweight editing mode that skips full-document syntax highlighting, whole-document bracket scans, and line-number gutter generation. Pygments lexers are selected by file extension, including JSON and JavaScript. The release passed the Windows and Ubuntu CI matrix with Python 3.10, 3.11, and 3.13.
 
+## 2.4.0 development — Stability, Reliability & Responsiveness
+
+The 2.4.0 work-in-progress focuses on preserving responsiveness and correctness during asynchronous editor and workspace operations:
+
+- Perform syntax tokenization away from the Tkinter event loop, then apply highlighting on the UI thread in bounded batches.
+- Cancel obsolete highlighting jobs when the document changes or the editor is destroyed; ignore stale results.
+- Debounce line-gutter refreshes and matching-bracket updates to avoid redundant UI work.
+- Keep status-bar encoding and newline indicators based on document metadata rather than repeatedly reading the full editor buffer.
+- Expand CI quality gates so Black and Ruff run on all six Windows/Ubuntu and Python 3.10/3.11/3.13 matrix combinations.
+
+This section describes unreleased development work. **The latest stable release remains 2.3.1** until 2.4.0 is reviewed, merged, and published.
+
 ## 2.3.0 release — Modular Application UI
 
 PyLex Studio 2.3.0 decomposes the Tkinter application into focused UI mixins for toolbar and menus, shell/layout, panels, workspace and files, documents, analysis, execution, debugging, and preferences. `PyLexApp` remains the composition root; widget construction, event handling, and presentation behavior are kept intact. Runtime dependencies are listed in `requirements.txt`; contributors and CI install test and quality tools from `requirements-dev.txt`.
