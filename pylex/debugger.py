@@ -333,6 +333,13 @@ class DebugSession:
             self.process.kill()
             self.process.wait()
         self._reader.join(timeout=1)
+        if self._reader.is_alive() and os.name != "nt":
+            # The debuggee may have spawned a child that inherited pdb's pipe.
+            try:
+                os.killpg(self.process.pid, signal.SIGKILL)
+            except OSError:
+                pass
+            self._reader.join(timeout=2)
         with self._stdin_lock:
             if self.process.stdin is not None:
                 try:
