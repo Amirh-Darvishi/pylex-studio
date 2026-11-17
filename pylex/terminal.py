@@ -13,6 +13,7 @@ import tkinter as tk
 from tkinter import ttk
 import time
 
+from .process_control import attach_process_job, close_process_job
 from .ui.context_menu import ContextMenu
 
 
@@ -112,6 +113,8 @@ def terminal_environment(base=None, python_executable=None):
 def terminate_process_tree(process):
     """Terminate a shell process group, even if its leader has already exited."""
     if os.name == "nt":
+        if close_process_job(process):
+            return
         if process.poll() is not None:
             return
         try:
@@ -188,6 +191,7 @@ class TerminalProcess:
             bufsize=1,
             **options,
         )
+        attach_process_job(process)
         return cls(process, shell, directory)
 
     @property
@@ -214,11 +218,8 @@ class TerminalProcess:
         try:
             self.exit_code = self.process.wait()
         finally:
-            self._reader.join(timeout=1)
-            if self._reader.is_alive():
-                # A command may leave descendants holding the shell output pipe.
-                terminate_process_tree(self.process)
-                self._reader.join(timeout=2)
+            terminate_process_tree(self.process)
+            self._reader.join(timeout=2)
             self.done.set()
 
     def send(self, command):
@@ -247,9 +248,7 @@ class TerminalProcess:
     def stop(self):
         """Force-stop the shell and every child process in its process group."""
         if self.done.is_set():
-            return False
-        if os.name == "nt" and self.process.poll() is not None:
-            return False
+            return close_process_job(self.process)
         terminate_process_tree(self.process)
         return True
 
