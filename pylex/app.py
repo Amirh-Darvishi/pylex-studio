@@ -153,7 +153,6 @@ class PyLexApp(
         self.protocol("WM_DELETE_WINDOW", self.close)
         self._title()
 
-
     def close(self):
         for editor, document in list(self.documents.items()):
             if not document["dirty"]:
@@ -172,4 +171,3 @@ class PyLexApp(
         self.quality_panel.close()
         self.git_panel.close()
         self.destroy()
-
