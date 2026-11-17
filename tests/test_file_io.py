@@ -29,6 +29,7 @@ def test_failed_replace_preserves_original_file_and_cleans_temp(tmp_path):
     assert target.read_text(encoding="utf-8") == "original"
     assert list(tmp_path.glob(".notes.txt.*.tmp")) == []
 
+
 def test_atomic_write_respects_read_only_destination(tmp_path):
     target = tmp_path / "readonly.txt"
     target.write_text("original", encoding="utf-8")
