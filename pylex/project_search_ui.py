@@ -66,11 +66,13 @@ class ProjectSearchWindow(tk.Toplevel):
         self.cancel_button = ttk.Button(options, text="Cancel", command=self.cancel,
                                         state="disabled")
         self.cancel_button.pack(side="right", padx=5)
-        self.results = ttk.Treeview(shell, columns=("location", "line"), show="tree headings")
+        self.results = ttk.Treeview(shell, columns=("location", "replacement"), show="tree headings")
         self.results.heading("#0", text="File and matching line")
         self.results.heading("location", text="Line / Column")
+        self.results.heading("replacement", text="Replacement preview")
         self.results.column("#0", width=690)
-        self.results.column("location", width=130, anchor="center")
+        self.results.column("location", width=110, anchor="center")
+        self.results.column("replacement", width=260)
         self.results.pack(fill="both", expand=True, pady=(8, 4))
         self.results.bind("<Double-1>", self._open_match)
         footer = ttk.Frame(shell)
@@ -193,6 +195,13 @@ class ProjectSearchWindow(tk.Toplevel):
             updated, count = build_replacements(original, pattern, self.replacement.get())
             if count:
                 preview[path] = (updated, count)
+                new_lines = updated.splitlines()
+                for index, match in enumerate(self._matches):
+                    if match.path == path:
+                        replacement_line = new_lines[match.line - 1] if match.line <= len(new_lines) else ""
+                        self.results.item(str(index), values=(
+                            f"{match.line}:{match.column}", replacement_line
+                        ))
         self._preview = preview
         total = sum(count for _, count in preview.values())
         self.status.configure(text=f"Preview ready: {total} replacements across "
