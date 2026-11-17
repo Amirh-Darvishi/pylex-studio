@@ -8,7 +8,10 @@ import tkinter as tk
 from tkinter import messagebox, ttk
 
 from .project_search import (
-    build_replacements, compile_search_pattern, search_text, write_replacements,
+    build_replacements,
+    compile_search_pattern,
+    search_text,
+    write_replacements,
 )
 
 
@@ -55,18 +58,29 @@ class ProjectSearchWindow(tk.Toplevel):
         self.regex = tk.BooleanVar()
         self.case = tk.BooleanVar()
         self.word = tk.BooleanVar()
-        ttk.Checkbutton(options, text="Regular expression", variable=self.regex).pack(side="left")
-        ttk.Checkbutton(options, text="Match case", variable=self.case).pack(side="left", padx=10)
-        ttk.Checkbutton(options, text="Whole word", variable=self.word).pack(side="left")
+        ttk.Checkbutton(options, text="Regular expression", variable=self.regex).pack(
+            side="left"
+        )
+        ttk.Checkbutton(options, text="Match case", variable=self.case).pack(
+            side="left", padx=10
+        )
+        ttk.Checkbutton(options, text="Whole word", variable=self.word).pack(
+            side="left"
+        )
         ttk.Label(options, text="File pattern").pack(side="left", padx=(20, 5))
         self.glob = tk.StringVar(value="*")
         ttk.Entry(options, textvariable=self.glob, width=16).pack(side="left")
-        self.search_button = ttk.Button(options, text="Search", command=self.start_search)
+        self.search_button = ttk.Button(
+            options, text="Search", command=self.start_search
+        )
         self.search_button.pack(side="right")
-        self.cancel_button = ttk.Button(options, text="Cancel", command=self.cancel,
-                                        state="disabled")
+        self.cancel_button = ttk.Button(
+            options, text="Cancel", command=self.cancel, state="disabled"
+        )
         self.cancel_button.pack(side="right", padx=5)
-        self.results = ttk.Treeview(shell, columns=("location", "replacement"), show="tree headings")
+        self.results = ttk.Treeview(
+            shell, columns=("location", "replacement"), show="tree headings"
+        )
         self.results.heading("#0", text="File and matching line")
         self.results.heading("location", text="Line / Column")
         self.results.heading("replacement", text="Replacement preview")
@@ -79,11 +93,16 @@ class ProjectSearchWindow(tk.Toplevel):
         footer.pack(fill="x")
         self.status = ttk.Label(footer, text="Ready")
         self.status.pack(side="left", fill="x", expand=True)
-        self.preview_button = ttk.Button(footer, text="Preview Replace All",
-                                         command=self.preview_replacements)
+        self.preview_button = ttk.Button(
+            footer, text="Preview Replace All", command=self.preview_replacements
+        )
         self.preview_button.pack(side="right", padx=4)
-        self.apply_button = ttk.Button(footer, text="Apply Reviewed Changes",
-                                       command=self.apply_replacements, state="disabled")
+        self.apply_button = ttk.Button(
+            footer,
+            text="Apply Reviewed Changes",
+            command=self.apply_replacements,
+            state="disabled",
+        )
         self.apply_button.pack(side="right", padx=4)
 
     def _overlays(self):
@@ -97,16 +116,23 @@ class ProjectSearchWindow(tk.Toplevel):
     def start_search(self):
         query = self.query.get()
         if not query.strip():
-            messagebox.showinfo("Workspace Search", "Enter text to search for.", parent=self)
+            messagebox.showinfo(
+                "Workspace Search", "Enter text to search for.", parent=self
+            )
             return
         self.cancel()
         self._generation += 1
         generation = self._generation
         self._cancel = threading.Event()
         overlays = self._overlays()
-        options = dict(regex=self.regex.get(), case_sensitive=self.case.get(),
-                       whole_word=self.word.get(), include_glob=self.glob.get() or "*",
-                       overlays=overlays, cancel_event=self._cancel)
+        options = dict(
+            regex=self.regex.get(),
+            case_sensitive=self.case.get(),
+            whole_word=self.word.get(),
+            include_glob=self.glob.get() or "*",
+            overlays=overlays,
+            cancel_event=self._cancel,
+        )
         self.search_button.configure(state="disabled")
         self.cancel_button.configure(state="normal")
         self.status.configure(text="Searching workspace…")
@@ -123,7 +149,9 @@ class ProjectSearchWindow(tk.Toplevel):
             except Exception as exc:
                 self._events.put((generation, "error", str(exc)))
 
-        self._worker = threading.Thread(target=worker, name="PyLexProjectSearch", daemon=True)
+        self._worker = threading.Thread(
+            target=worker, name="PyLexProjectSearch", daemon=True
+        )
         self._worker.start()
 
     def cancel(self):
@@ -149,13 +177,24 @@ class ProjectSearchWindow(tk.Toplevel):
                         if parent is None:
                             parent = f"file:{len(file_nodes)}"
                             file_nodes[match.path] = parent
-                            self.results.insert("", "end", iid=parent,
-                                                 text=str(relative), values=("", ""))
-                        self.results.insert(parent, "end", iid=f"match:{index}",
-                                             text=match.text.strip(),
-                                             values=(f"{match.line}:{match.column}", ""))
-                    self.status.configure(text=f"{len(self._matches)} matches in "
-                                                f"{len(file_nodes)} files")
+                            self.results.insert(
+                                "",
+                                "end",
+                                iid=parent,
+                                text=str(relative),
+                                values=("", ""),
+                            )
+                        self.results.insert(
+                            parent,
+                            "end",
+                            iid=f"match:{index}",
+                            text=match.text.strip(),
+                            values=(f"{match.line}:{match.column}", ""),
+                        )
+                    self.status.configure(
+                        text=f"{len(self._matches)} matches in "
+                        f"{len(file_nodes)} files"
+                    )
                 self.search_button.configure(state="normal")
                 self.cancel_button.configure(state="disabled")
         except queue.Empty:
@@ -178,13 +217,17 @@ class ProjectSearchWindow(tk.Toplevel):
 
     def preview_replacements(self):
         if not self._matches:
-            messagebox.showinfo("Replace", "Run a search and review its results first.",
-                                parent=self)
+            messagebox.showinfo(
+                "Replace", "Run a search and review its results first.", parent=self
+            )
             return
         try:
-            pattern = compile_search_pattern(self.query.get(), regex=self.regex.get(),
-                                             case_sensitive=self.case.get(),
-                                             whole_word=self.word.get())
+            pattern = compile_search_pattern(
+                self.query.get(),
+                regex=self.regex.get(),
+                case_sensitive=self.case.get(),
+                whole_word=self.word.get(),
+            )
         except ValueError as exc:
             messagebox.showerror("Invalid Search", str(exc), parent=self)
             return
@@ -201,20 +244,29 @@ class ProjectSearchWindow(tk.Toplevel):
                 if snapshot is None:
                     continue
                 original = snapshot.content
-            updated, count = build_replacements(original, pattern, self.replacement.get())
+            updated, count = build_replacements(
+                original, pattern, self.replacement.get()
+            )
             if count:
                 preview[path] = (updated, count)
                 new_lines = updated.splitlines()
                 for index, match in enumerate(self._matches):
                     if match.path == path:
-                        replacement_line = new_lines[match.line - 1] if match.line <= len(new_lines) else ""
-                        self.results.item(f"match:{index}", values=(
-                            f"{match.line}:{match.column}", replacement_line
-                        ))
+                        replacement_line = (
+                            new_lines[match.line - 1]
+                            if match.line <= len(new_lines)
+                            else ""
+                        )
+                        self.results.item(
+                            f"match:{index}",
+                            values=(f"{match.line}:{match.column}", replacement_line),
+                        )
         self._preview = preview
         total = sum(count for _, count in preview.values())
-        self.status.configure(text=f"Preview ready: {total} replacements across "
-                                   f"{len(preview)} files. No files changed yet.")
+        self.status.configure(
+            text=f"Preview ready: {total} replacements across "
+            f"{len(preview)} files. No files changed yet."
+        )
         self.apply_button.configure(state="normal" if total else "disabled")
 
     def apply_replacements(self):
@@ -230,8 +282,11 @@ class ProjectSearchWindow(tk.Toplevel):
             return
         overlays = self._overlays()
         dirty_paths = {path.resolve() for path in overlays}
-        disk_changes = {path: content for path, (content, _count) in self._preview.items()
-                        if path.resolve() not in dirty_paths}
+        disk_changes = {
+            path: content
+            for path, (content, _count) in self._preview.items()
+            if path.resolve() not in dirty_paths
+        }
         try:
             if disk_changes:
                 write_replacements(disk_changes, self._snapshots)
@@ -253,10 +308,12 @@ class ProjectSearchWindow(tk.Toplevel):
                     document["dirty"] = False
                     document["encoding"] = snapshot.encoding
                     document["newline"] = snapshot.newline
-                    self.app.editor_tabs.tab(document["frame"],
-                                             text=self.app._tab_label(document))
-            self.status.configure(text=f"Applied {total} replacements in "
-                                       f"{len(self._preview)} files.")
+                    self.app.editor_tabs.tab(
+                        document["frame"], text=self.app._tab_label(document)
+                    )
+            self.status.configure(
+                text=f"Applied {total} replacements in " f"{len(self._preview)} files."
+            )
             self.apply_button.configure(state="disabled")
             self._preview = {}
             self.start_search()
