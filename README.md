@@ -1,18 +1,18 @@
 # PyLex Studio
 
-**Latest stable release: 2.3.1 — Editor Performance & Large File Handling**
+**Latest stable release: 2.4.0 — Stability, Reliability & Responsiveness**
 
-[View the 2.3.1 release notes](https://github.com/Amirh-Darvishi/pylex-studio/releases/tag/2.3.1)
+[View the 2.4.0 release notes](https://github.com/Amirh-Darvishi/pylex-studio/releases/tag/2.4.0)
 
 A lightweight Python desktop editor with independent lexical and syntax analysis.
 
-## 2.3.1 release
+## 2.4.0 release
 
-PyLex Studio 2.3.1 improves editor responsiveness when opening large text files. Files of 512 KiB or larger are read on a background worker and inserted in bounded chunks. Large documents use a lightweight editing mode that skips full-document syntax highlighting, whole-document bracket scans, and line-number gutter generation. Pygments lexers are selected by file extension, including JSON and JavaScript. The release passed the Windows and Ubuntu CI matrix with Python 3.10, 3.11, and 3.13.
+PyLex Studio 2.4.0 improves stability and responsiveness during workspace and editor operations. Files of 512 KiB or larger are read on a background worker and inserted in bounded chunks. Large documents use a lightweight editing mode that skips full-document syntax highlighting, whole-document bracket scans, and line-number gutter generation. Pygments lexers are selected by file extension, including JSON and JavaScript. The release passed the Windows and Ubuntu CI matrix with Python 3.10, 3.11, and 3.13.
 
-## 2.4.0 development — Stability, Reliability & Responsiveness
+## 2.4.1 development — Background Analysis & UI Responsiveness
 
-The 2.4.0 work-in-progress focuses on preserving responsiveness and correctness during asynchronous editor and workspace operations:
+The 2.4.1 follow-up focuses on moving the remaining source-analysis and bracket-matching work away from the Tkinter event loop:
 
 - Perform syntax tokenization away from the Tkinter event loop, then apply highlighting on the UI thread in bounded batches.
 - Cancel obsolete highlighting jobs when the document changes or the editor is destroyed; ignore stale results.
