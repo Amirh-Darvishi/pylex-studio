@@ -206,8 +206,6 @@ class DocumentsMixin:
         try:
             source = self.editor.get_content().replace("\r\n", "\n").replace("\r", "\n")
             eol = self.preferences.get("status_bar_eol", "Auto")
-            if eol == "CRLF":
-                source = source.replace("\n", "\r\n")
             encoding = document.get("encoding")
             if encoding is None:
                 encoding = self.preferences.get("status_bar_encoding", "UTF-8")
