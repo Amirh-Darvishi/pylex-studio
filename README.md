@@ -1,10 +1,10 @@
 # PyLex Studio
 
-**Latest stable release: 2.5.0 — Workspace Search & Replace**
+**Latest stable release: 2.6.0 — Process Lifecycle Stability**
 
-The 2.6.0 stability work has been merged into `main`; its GitHub release is pending.
+PyLex Studio 2.6.0 is the latest published stable release, focused on reliable process ownership, termination, and shutdown across the Runner, Terminal, Debugger, and Quality panel.
 
-[View the 2.5.0 release notes](https://github.com/Amirh-Darvishi/pylex-studio/releases/tag/2.5.0)
+[View the 2.6.0 release notes](https://github.com/Amirh-Darvishi/pylex-studio/releases/tag/2.6.0)
 
 A lightweight Python desktop editor with independent lexical and syntax analysis.
 
@@ -16,7 +16,7 @@ The 2.4.1 feature branch passed all six Windows/Ubuntu × Python 3.10/3.11/3.13 
 
 The release includes the stability and file-handling improvements from 2.4.0: cancellable large-file loading, background workspace scanning, incremental project-tree updates, atomic saves that preserve encoding/newline conventions, and cancellable Pygments highlighting.
 
-## 2.6.0 development update — Process lifecycle stability (merged; release pending)
+## 2.6.0 release — Process lifecycle stability
 
 The 2.6.0 stability update hardens process ownership and shutdown across the Runner, integrated Terminal, Debugger, and Quality panel. POSIX sessions now clean up their isolated process groups even when the original process exits before a child. On Windows, processes are attached to a kill-on-close Job Object when permitted by the host process policy, with the existing process-tree fallback retained.
 
@@ -28,7 +28,7 @@ Validation passed on all six Windows/Ubuntu × Python 3.10/3.11/3.13 CI jobs. Ev
 - [CI matrix run](https://github.com/Amirh-Darvishi/pylex-studio/actions/runs/44183746021)
 - Merged into `main` at commit `3d5a97aebd7a76fac03666f1a07def4f3ef62fd3`
 
-The 2.6.0 GitHub Release and tag have not yet been published.
+[View the 2.6.0 release notes](https://github.com/Amirh-Darvishi/pylex-studio/releases/tag/2.6.0)
 
 ## 2.5.0 release — Workspace Search & Replace
 
