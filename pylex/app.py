@@ -24,6 +24,7 @@ from .app_parts import (
     WorkspaceMixin,
 )
 
+
 class PyLexApp(
     ToolbarMixin,
     ShellMixin,
