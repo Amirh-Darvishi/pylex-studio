@@ -41,7 +41,7 @@ def iter_workspace_entries(root):
         directories = []
         files = []
         for entry in entries:
-            if entry.name in IGNORED_DIRECTORY_NAMES or entry.is_symlink():
+            if entry.name.casefold() in IGNORED_DIRECTORY_NAMES or entry.is_symlink():
                 continue
             try:
                 if entry.is_dir(follow_symlinks=False):
