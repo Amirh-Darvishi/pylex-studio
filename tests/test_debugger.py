@@ -107,7 +107,6 @@ class DebuggerTests(unittest.TestCase):
         finally:
             session.close()
 
-    @unittest.skipIf(os.name == "nt", "POSIX process-group semantics")
     def test_close_stops_child_holding_debugger_output_pipe(self):
         with tempfile.TemporaryDirectory() as directory:
             marker = Path(directory) / "debugger-child-survived"
@@ -116,6 +115,7 @@ class DebuggerTests(unittest.TestCase):
                 "time.sleep(2); Path(" + repr(str(marker)) + ").write_text('alive')"
             )
             source = (
+                "import time; time.sleep(0.1)\n"
                 "import subprocess, sys\n"
                 "subprocess.Popen([sys.executable, '-c', " + repr(child) + "])\n"
             )
