@@ -12,6 +12,8 @@ import tempfile
 import threading
 import time
 
+from .process_control import attach_process_job, close_process_job
+
 
 @dataclass(frozen=True)
 class ExecutionResult:
@@ -27,6 +29,8 @@ class ExecutionResult:
 def _terminate_process_tree(process):
     """Terminate the isolated process group, including children of an exited parent."""
     if os.name == "nt":
+        if close_process_job(process):
+            return
         if process.poll() is not None:
             return
         try:
@@ -186,6 +190,8 @@ class ExecutionHandle:
                 status = "timed_out"
                 _terminate_process_tree(self.process)
                 self.process.wait()
+            # The main program has ended; no descendant should outlive this run.
+            _terminate_process_tree(self.process)
             if self.process.stdin is not None:
                 with self._stdin_lock:
                     try:
@@ -269,6 +275,7 @@ def start_source(source, timeout=10, cwd=None, env=None, python_executable=None)
             bufsize=1,
             **_process_options(),
         )
+        attach_process_job(process)
         return ExecutionHandle(process, script_path, timeout)
     except Exception:
         if script_path is not None:
@@ -294,6 +301,7 @@ def start_file(path, timeout=10, cwd=None, env=None, python_executable=None):
         bufsize=1,
         **_process_options(),
     )
+    attach_process_job(process)
     return ExecutionHandle(process, script_path, timeout, cleanup_script=False)
 
 
