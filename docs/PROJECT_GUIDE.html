@@ -3,8 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="description" content="راهنمای کاربری، معماری، نصب، تحلیل کد، اجرا، دیباگ، کیفیت، Git و توسعه PyLex Studio؛ راهنمای نسخه پایدار 2.5.0">
-<title>راهنمای جامع PyLex Studio · نسخه پایدار 2.5.0</title>
+<meta name="description" content="راهنمای کاربری، معماری، نصب، تحلیل کد، اجرا، دیباگ، کیفیت، Git و توسعه PyLex Studio؛ راهنمای نسخه پایدار 2.5.0 و تغییرات ادغام‌شده 2.6.0">
+<title>راهنمای جامع PyLex Studio · نسخه پایدار 2.5.0 و تغییرات 2.6.0</title>
 <style>
 :root{color-scheme:light;--ink:#202938;--muted:#5d6879;--paper:#fff;--bg:#f2f5fa;--line:#dce3ed;--blue:#2854a5;--soft:#edf4ff;--code:#111827}
 *{box-sizing:border-box}html{scroll-behavior:smooth}body{margin:0;background:var(--bg);color:var(--ink);font:16px/2 Tahoma,Arial,sans-serif}
@@ -35,6 +35,7 @@ footer{text-align:center;padding:26px;color:var(--muted)}
 <nav aria-label="فهرست راهنما">
 <strong>فهرست مطالب</strong>
 <a href="#overview">۱. معرفی و دامنه پروژه</a>
+<a href="#process-stability-260">۱۶. پایداری چرخه عمر فرایندها (2.6.0)</a>
 <a href="#project-search-250">۱۵. جستجوی سراسری Workspace (2.5.0)</a>
 <a href="#features">۲. قابلیت‌های نسخه 2.3.1</a>
 <a href="#requirements">۳. نیازمندی‌ها و نصب</a>
@@ -663,6 +664,27 @@ if __name__ == "__main__":
 <div class="note">نسخه 2.4.1 در تاریخ 17 نوامبر 2026 به‌عنوان نسخه پایدار منتشر شده است. یادداشت انتشار: <a href="https://github.com/Amirh-Darvishi/pylex-studio/releases/tag/2.4.1">PyLex Studio 2.4.1</a>.</div>
 </section>
 
+<section id="process-stability-260">
+<h2>پایداری چرخه عمر فرایندها در نسخه 2.6.0 (ادغام‌شده؛ انتشار در انتظار)</h2>
+<p>تغییرات شاخه 2.6.0 با هدف جلوگیری از باقی‌ماندن فرایندهای فرزند پس از پایان یا بسته‌شدن نشست اجرا انجام شده‌اند. این تغییرات در PR شماره 26 به شاخه <code>main</code> ادغام شده‌اند؛ با این حال تا زمان انتشار Tag و GitHub Release، نسخه پایدار منتشرشده همچنان 2.5.0 است.</p>
+<h3>Runner، ترمینال و Debugger</h3>
+<ul>
+<li>در سیستم‌های POSIX، هر اجرا در process group مستقل قرار می‌گیرد و پاک‌سازی گروه حتی پس از خروج فرایند اصلی نیز انجام می‌شود.</li>
+<li>در Windows، در صورت اجازه سیاست‌های فرایند والد، فرایندها به Job Object با پرچم <code>KILL_ON_JOB_CLOSE</code> متصل می‌شوند؛ اگر سیستم اتصال را رد کند، مسیر جایگزین مبتنی بر <code>taskkill /T</code> برای والد فعال باقی می‌ماند.</li>
+<li>پایان Runner، نشست Terminal و Debugger فرایندهای فرزند باقی‌مانده را پاک‌سازی می‌کند تا pipeهای خروجی یا پردازش‌های پس‌زمینه رها نشوند.</li>
+</ul>
+<h3>پنل کیفیت و خاموش‌شدن برنامه</h3>
+<ul>
+<li>Race condition شروع فرایندهای Black، Ruff یا pytest هم‌زمان با بسته‌شدن پنجره اصلاح شده است.</li>
+<li>اگر فرایند هنگام بسته‌شدن هنوز از <code>Popen</code> بازنگشته باشد، پس از ایجاد نیز لغو و متوقف می‌شود.</li>
+<li>فرایند فعال متوقف و callback زمان‌بندی‌شده polling هنگام بستن پنل لغو می‌شود.</li>
+</ul>
+<h3>آزمون و اعتبارسنجی</h3>
+<p>آزمون‌های Regression برای باقی‌نماندن فرایند فرزند در Runner و Debugger، پاک‌سازی فرزند Terminal در POSIX، رقابت شروع فرایند پنل کیفیت با close و هم‌خوانی نسخه بسته اضافه شده‌اند. هر شش job ماتریس Windows و Ubuntu با Pythonهای 3.10، 3.11 و 3.13 موفق بوده‌اند و pytest، compileall، Black و Ruff در همه jobها موفق شده‌اند. در Linux تعداد 184 تست موفق و یک تست GUI به‌دلیل headless بودن runner رد شده است؛ در Windows تعداد 183 تست موفق و دو تست وابسته به پلتفرم/نمایشگر skip شده‌اند.</p>
+<p>Commit ادغام: <code>3d5a97aebd7a76fac03666f1a07def4f3ef62fd3</code> · <a href="https://github.com/Amirh-Darvishi/pylex-studio/pull/26">PR شماره 26</a> · <a href="https://github.com/Amirh-Darvishi/pylex-studio/actions/runs/44183746021">گزارش CI</a>.</p>
+<div class="note">این تغییرات در main ادغام شده‌اند، اما Tag و GitHub Release نسخه 2.6.0 هنوز منتشر نشده‌اند؛ بنابراین آخرین نسخه پایدار منتشرشده 2.5.0 است.</div>
+</section>
+
 <section id="project-search-250">
 <h2>جست‌وجو و جایگزینی سراسری Workspace در نسخه 2.5.0</h2>
 <p>نسخه پایدار 2.5.0 قابلیت جست‌وجو و جایگزینی سراسری در Workspace را اضافه می‌کند. این قابلیت برای پیدا کردن متن در چندین فایل پروژه طراحی شده و جست‌وجو را بدون متوقف کردن رابط Tkinter در worker پس‌زمینه انجام می‌دهد. پنجره جست‌وجو از میانبر <code>Ctrl+Shift+F</code> و منوی <strong>Tools</strong> در دسترس است.</p>
@@ -691,6 +713,6 @@ if __name__ == "__main__":
 <div class="note">نسخه 2.5.0 در تاریخ 17 نوامبر 2026 منتشر شده است. <a href="https://github.com/Amirh-Darvishi/pylex-studio/releases/tag/2.5.0">یادداشت انتشار PyLex Studio 2.5.0</a> · <a href="https://github.com/Amirh-Darvishi/pylex-studio/pull/25">تغییرات PR شماره 25</a>.</div>
 </section>
 
-<footer>PyLex Studio · مستندات نسخه پایدار 2.5.0 · منبع: مخزن رسمی پروژه</footer>
+<footer>PyLex Studio · مستندات نسخه پایدار 2.5.0 و تغییرات ادغام‌شده 2.6.0 · منبع: مخزن رسمی پروژه</footer>
 </body>
 </html>
