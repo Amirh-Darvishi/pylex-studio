@@ -167,6 +167,7 @@ class PyLexApp(
             self._sync_active_document()
             if not self._confirm():
                 return
+        self._cancel_analysis()
         self._invalidate_file_loads()
         if self.execution_controller.stop():
             handle = self.execution
