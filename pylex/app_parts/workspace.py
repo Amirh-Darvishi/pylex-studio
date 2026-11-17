@@ -5,6 +5,7 @@
 
 from ..app_support import *  # noqa: F403
 from ..editor_performance import LARGE_FILE_THRESHOLD
+from ..file_loading import FileLoadCoordinator
 
 
 class WorkspaceMixin:
@@ -227,6 +228,7 @@ class WorkspaceMixin:
         if not self._confirm_all_dirty_documents():
             self.status.configure(text="Workspace change cancelled.")
             return False
+        self._invalidate_file_loads()
         self.workspace_controller.open(candidate)
         self.project_root = candidate.root
         self._remember_workspace(candidate.root)
@@ -255,6 +257,7 @@ class WorkspaceMixin:
             self.status.configure(text="Close workspace cancelled.")
             return
         closed = self.project.root
+        self._invalidate_file_loads()
         self.workspace_controller.close()
         self.project_root = None
         self.project_tree.delete(*self.project_tree.get_children())
@@ -354,15 +357,29 @@ class WorkspaceMixin:
         self.clear_results()
         self.status.configure(text=f"Opened {path.name} ({info.description}).")
 
+    def _file_load_coordinator(self):
+        """Return the UI-thread-owned coordinator for outstanding file loads."""
+        coordinator = getattr(self, "_load_coordinator", None)
+        if coordinator is None:
+            coordinator = FileLoadCoordinator()
+            self._load_coordinator = coordinator
+        return coordinator
+
+    def _invalidate_file_loads(self):
+        """Invalidate pending reads when their workspace or window is leaving."""
+        coordinator = getattr(self, "_load_coordinator", None)
+        if coordinator is not None:
+            coordinator.invalidate()
+
     def _load_large_file_async(self, path, info, file_size):
-        """Read large text files off the UI thread and deliver the result safely."""
-        resolved = str(path)
-        pending = getattr(self, "_pending_file_loads", set())
-        if resolved in pending:
+        """Read large text files off-thread and ignore results from stale contexts."""
+        resolved = str(path.resolve())
+        coordinator = self._file_load_coordinator()
+        ticket = coordinator.begin(resolved)
+        if ticket is None:
             self.status.configure(text=f"Already loading {path.name}…")
             return
-        pending.add(resolved)
-        self._pending_file_loads = pending
+
         result_queue = queue.Queue(maxsize=1)
         size_mb = file_size / (1024 * 1024)
         self.status.configure(
@@ -372,7 +389,7 @@ class WorkspaceMixin:
         def read_file():
             try:
                 result_queue.put((True, read_text_file(path)))
-            except (OSError, UnicodeError) as exc:
+            except Exception as exc:
                 result_queue.put((False, exc))
 
         threading.Thread(
@@ -380,12 +397,27 @@ class WorkspaceMixin:
         ).start()
 
         def poll_result():
+            if not coordinator.is_current(ticket):
+                coordinator.complete(ticket)
+                return
+            try:
+                if not self.winfo_exists():
+                    coordinator.complete(ticket)
+                    return
+            except tk.TclError:
+                coordinator.complete(ticket)
+                return
+
             try:
                 succeeded, result = result_queue.get_nowait()
             except queue.Empty:
-                self.after(40, poll_result)
+                try:
+                    self.after(40, poll_result)
+                except tk.TclError:
+                    coordinator.complete(ticket)
                 return
-            self._pending_file_loads.discard(resolved)
+
+            coordinator.complete(ticket)
             if not succeeded:
                 messagebox.showerror(
                     "Open Error", f"Could not read {path.name}: {result}"
@@ -398,7 +430,10 @@ class WorkspaceMixin:
                 text=f"Opened {path.name} in large-file mode ({info.description})."
             )
 
-        self.after(40, poll_result)
+        try:
+            self.after(40, poll_result)
+        except tk.TclError:
+            coordinator.complete(ticket)
 
     def _populate_project_tree(self):
         self.project_tree.delete(*self.project_tree.get_children())
