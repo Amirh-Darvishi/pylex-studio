@@ -671,7 +671,7 @@ class CodeEditor(tk.Frame):
             self._content_job = None
         self.text.configure(state="normal")
         self.text.delete("1.0", "end")
-        self.large_file_mode = is_large_document(value)
+        self.large_file_mode = is_large_document(value, self.file_path)
         self._loading_content = self.large_file_mode
         if self.large_file_mode:
             self.gutter.pack_forget()
