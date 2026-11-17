@@ -1,6 +1,5 @@
 """Tests for the pdb-backed interactive debugger."""
 
-import os
 import sys
 import tempfile
 import time
