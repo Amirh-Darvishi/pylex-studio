@@ -143,6 +143,27 @@ class RunnerTests(unittest.TestCase):
         self.assertEqual(stderr, "")
         self.assertEqual(exit_code, 0)
 
+    @unittest.skipIf(__import__("os").name == "nt", "POSIX process-group semantics")
+    def test_exited_parent_cannot_leave_pipe_holding_child_behind(self):
+        with tempfile.TemporaryDirectory() as directory:
+            marker = Path(directory) / "orphan-survived"
+            child = (
+                "import time; from pathlib import Path; "
+                "time.sleep(2); Path(" + repr(str(marker)) + ").write_text('alive')"
+            )
+            source = (
+                "import subprocess, sys\\n"
+                "subprocess.Popen([sys.executable, '-c', " + repr(child) + "])\\n"
+                "print('parent-finished', flush=True)\\n"
+            )
+            handle = start_source(source, cwd=directory, timeout=5)
+            result = handle.wait(5)
+            self.assertIsNotNone(result)
+            self.assertEqual(result.status, "finished")
+            self.assertIn("parent-finished", result.stdout)
+            time.sleep(2.2)
+            self.assertFalse(marker.exists())
+
     def test_temporary_script_is_removed(self):
         handle = start_source("print('cleanup')")
         script_path = handle.script_path
