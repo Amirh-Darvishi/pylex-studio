@@ -365,7 +365,9 @@ class WorkspaceMixin:
         self._pending_file_loads = pending
         result_queue = queue.Queue(maxsize=1)
         size_mb = file_size / (1024 * 1024)
-        self.status.configure(text=f"Loading large file {path.name} ({size_mb:.1f} MB)…")
+        self.status.configure(
+            text=f"Loading large file {path.name} ({size_mb:.1f} MB)…"
+        )
 
         def read_file():
             try:
@@ -373,7 +375,9 @@ class WorkspaceMixin:
             except (OSError, UnicodeError) as exc:
                 result_queue.put((False, exc))
 
-        threading.Thread(target=read_file, name="pylex-file-loader", daemon=True).start()
+        threading.Thread(
+            target=read_file, name="pylex-file-loader", daemon=True
+        ).start()
 
         def poll_result():
             try:
@@ -383,12 +387,16 @@ class WorkspaceMixin:
                 return
             self._pending_file_loads.discard(resolved)
             if not succeeded:
-                messagebox.showerror("Open Error", f"Could not read {path.name}: {result}")
+                messagebox.showerror(
+                    "Open Error", f"Could not read {path.name}: {result}"
+                )
                 self.status.configure(text=f"Failed to load {path.name}.")
                 return
             self._create_document(path=path, content=result)
             self.clear_results()
-            self.status.configure(text=f"Opened {path.name} in large-file mode ({info.description}).")
+            self.status.configure(
+                text=f"Opened {path.name} in large-file mode ({info.description})."
+            )
 
         self.after(40, poll_result)
 
