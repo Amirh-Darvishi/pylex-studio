@@ -12,6 +12,8 @@ import tempfile
 import threading
 import time
 
+from .process_control import attach_process_job, close_process_job
+
 
 @dataclass(frozen=True)
 class ExecutionResult:
@@ -25,11 +27,13 @@ class ExecutionResult:
 
 
 def _terminate_process_tree(process):
-    """Terminate the process and descendants, not only the Python parent."""
-    if process.poll() is not None:
-        return
-    try:
-        if os.name == "nt":
+    """Terminate the isolated process group, including children of an exited parent."""
+    if os.name == "nt":
+        if close_process_job(process):
+            return
+        if process.poll() is not None:
+            return
+        try:
             subprocess.run(
                 ["taskkill", "/PID", str(process.pid), "/T", "/F"],
                 stdout=subprocess.DEVNULL,
@@ -37,13 +41,28 @@ def _terminate_process_tree(process):
                 check=False,
                 timeout=5,
             )
-        else:
-            os.killpg(process.pid, signal.SIGKILL)
-    except (OSError, subprocess.SubprocessError):
-        try:
-            process.kill()
-        except OSError:
-            pass
+        except (OSError, subprocess.SubprocessError):
+            try:
+                process.kill()
+            except OSError:
+                pass
+        return
+
+    # The group can outlive its leader when a child inherits stdout/stderr.
+    try:
+        os.killpg(process.pid, signal.SIGKILL)
+    except ProcessLookupError:
+        if process.poll() is None:
+            try:
+                process.kill()
+            except OSError:
+                pass
+    except OSError:
+        if process.poll() is None:
+            try:
+                process.kill()
+            except OSError:
+                pass
 
 
 class ExecutionHandle:
@@ -171,14 +190,22 @@ class ExecutionHandle:
                 status = "timed_out"
                 _terminate_process_tree(self.process)
                 self.process.wait()
+            # The main program has ended; no descendant should outlive this run.
+            _terminate_process_tree(self.process)
             if self.process.stdin is not None:
                 with self._stdin_lock:
                     try:
                         self.process.stdin.close()
                     except (OSError, ValueError):
                         pass
+            reader_deadline = time.monotonic() + 1
             for reader in self._readers:
-                reader.join(timeout=3)
+                reader.join(timeout=max(0, reader_deadline - time.monotonic()))
+            if any(reader.is_alive() for reader in self._readers):
+                # A child may inherit the pipes and outlive the Python process.
+                _terminate_process_tree(self.process)
+                for reader in self._readers:
+                    reader.join(timeout=2)
             with self._lock:
                 if self._stop_requested:
                     status = "stopped"
@@ -248,6 +275,7 @@ def start_source(source, timeout=10, cwd=None, env=None, python_executable=None)
             bufsize=1,
             **_process_options(),
         )
+        attach_process_job(process)
         return ExecutionHandle(process, script_path, timeout)
     except Exception:
         if script_path is not None:
@@ -273,6 +301,7 @@ def start_file(path, timeout=10, cwd=None, env=None, python_executable=None):
         bufsize=1,
         **_process_options(),
     )
+    attach_process_job(process)
     return ExecutionHandle(process, script_path, timeout, cleanup_script=False)
 
 

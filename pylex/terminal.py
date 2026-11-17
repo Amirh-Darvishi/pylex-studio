@@ -13,6 +13,7 @@ import tkinter as tk
 from tkinter import ttk
 import time
 
+from .process_control import attach_process_job, close_process_job
 from .ui.context_menu import ContextMenu
 
 
@@ -110,11 +111,13 @@ def terminal_environment(base=None, python_executable=None):
 
 
 def terminate_process_tree(process):
-    """Terminate a shell and its descendants, including child commands."""
-    if process.poll() is not None:
-        return
-    try:
-        if os.name == "nt":
+    """Terminate a shell process group, even if its leader has already exited."""
+    if os.name == "nt":
+        if close_process_job(process):
+            return
+        if process.poll() is not None:
+            return
+        try:
             subprocess.run(
                 ["taskkill", "/PID", str(process.pid), "/T", "/F"],
                 stdout=subprocess.DEVNULL,
@@ -122,13 +125,27 @@ def terminate_process_tree(process):
                 check=False,
                 timeout=5,
             )
-        else:
-            os.killpg(process.pid, signal.SIGKILL)
-    except (OSError, subprocess.SubprocessError):
-        try:
-            process.kill()
-        except OSError:
-            pass
+        except (OSError, subprocess.SubprocessError):
+            try:
+                process.kill()
+            except OSError:
+                pass
+        return
+
+    try:
+        os.killpg(process.pid, signal.SIGKILL)
+    except ProcessLookupError:
+        if process.poll() is None:
+            try:
+                process.kill()
+            except OSError:
+                pass
+    except OSError:
+        if process.poll() is None:
+            try:
+                process.kill()
+            except OSError:
+                pass
 
 
 class TerminalProcess:
@@ -174,6 +191,7 @@ class TerminalProcess:
             bufsize=1,
             **options,
         )
+        attach_process_job(process)
         return cls(process, shell, directory)
 
     @property
@@ -200,6 +218,7 @@ class TerminalProcess:
         try:
             self.exit_code = self.process.wait()
         finally:
+            terminate_process_tree(self.process)
             self._reader.join(timeout=2)
             self.done.set()
 
@@ -227,9 +246,9 @@ class TerminalProcess:
             return False
 
     def stop(self):
-        """Force-stop the shell and every child process."""
-        if not self.running:
-            return False
+        """Force-stop the shell and every child process in its process group."""
+        if self.done.is_set():
+            return close_process_job(self.process)
         terminate_process_tree(self.process)
         return True
 
@@ -594,6 +613,7 @@ class TerminalPanel(ttk.Frame):
             session.process.wait(timeout=2)
         except subprocess.TimeoutExpired:
             terminate_process_tree(session.process)
+        session.done.wait(timeout=2)
         self.views.pop(frame, None)
         self.notebook.forget(frame)
         frame.destroy()
@@ -627,5 +647,6 @@ class TerminalPanel(ttk.Frame):
                 session.process.wait(timeout=2)
             except subprocess.TimeoutExpired:
                 terminate_process_tree(session.process)
+            session.done.wait(timeout=2)
         self.sessions.clear()
         self.views.clear()

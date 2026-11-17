@@ -4,11 +4,15 @@ from pathlib import Path
 import codecs
 import os
 import queue
-import signal
 import subprocess
 import sys
 import tempfile
 import threading
+
+from .process_control import (
+    attach_process_job,
+    terminate_process_tree,
+)
 
 
 class DebugSession:
@@ -57,6 +61,7 @@ class DebugSession:
                 bufsize=0,
                 **options,
             )
+            attach_process_job(process)
             return cls(process, script_path)
         except Exception:
             if script_path is not None:
@@ -91,6 +96,7 @@ class DebugSession:
             bufsize=0,
             **options,
         )
+        attach_process_job(process)
         return cls(process, script_path, cleanup_script=False)
 
     @property
@@ -305,23 +311,8 @@ class DebugSession:
     def stop(self):
         """Force-stop the debugger and every process spawned beneath it."""
         if self.done:
-            return False
-        try:
-            if os.name == "nt":
-                subprocess.run(
-                    ["taskkill", "/PID", str(self.process.pid), "/T", "/F"],
-                    stdout=subprocess.DEVNULL,
-                    stderr=subprocess.DEVNULL,
-                    check=False,
-                    timeout=5,
-                )
-            else:
-                os.killpg(self.process.pid, signal.SIGKILL)
-        except (OSError, subprocess.SubprocessError):
-            try:
-                self.process.kill()
-            except OSError:
-                pass
+            return terminate_process_tree(self.process)
+        terminate_process_tree(self.process)
         return True
 
     def close(self):
@@ -333,6 +324,9 @@ class DebugSession:
             self.process.kill()
             self.process.wait()
         self._reader.join(timeout=1)
+        # A completed debuggee can still have descendants without inherited pipes.
+        terminate_process_tree(self.process)
+        self._reader.join(timeout=2)
         with self._stdin_lock:
             if self.process.stdin is not None:
                 try:

@@ -1,9 +1,19 @@
 """Unit tests for integrated terminal helpers."""
 
 import os
+import shlex
+import sys
+import time
+import tempfile
 import unittest
+from pathlib import Path
 from unittest.mock import patch
-from pylex.terminal import shell_command, terminal_environment, python_file_command
+from pylex.terminal import (
+    TerminalProcess,
+    shell_command,
+    terminal_environment,
+    python_file_command,
+)
 
 
 class TerminalHelperTests(unittest.TestCase):
@@ -72,6 +82,27 @@ class TerminalHelperTests(unittest.TestCase):
         base = {"PATH": "original"}
         terminal_environment(base, r"C:\venv\Scripts\python.exe")
         self.assertEqual(base, {"PATH": "original"})
+
+    @unittest.skipIf(os.name == "nt", "POSIX process-group semantics")
+    def test_shell_exit_cleans_up_child_holding_terminal_pipe(self):
+        with tempfile.TemporaryDirectory() as directory:
+            marker = Path(directory) / "terminal-child-survived"
+            child = (
+                "import time; from pathlib import Path; "
+                "time.sleep(2); Path(" + repr(str(marker)) + ").write_text('alive')"
+            )
+            session = TerminalProcess.start("sh", cwd=directory)
+            try:
+                command = shlex.join([sys.executable, "-c", child]) + " &"
+                session.send(command)
+                session.send("exit")
+                self.assertTrue(session.done.wait(5))
+                time.sleep(2.2)
+                self.assertFalse(marker.exists())
+            finally:
+                if not session.done.is_set():
+                    session.stop()
+                    session.done.wait(3)
 
 
 if __name__ == "__main__":
