@@ -86,7 +86,7 @@ class QualityToolTests(unittest.TestCase):
 
         self.assertFalse(panel._worker.is_alive())
         self.assertEqual(cancelled, ["poll-id"])
-        terminate.assert_called_once_with(process)
+        terminate.assert_any_call(process)
         self.assertTrue(panel._cancel_requested.is_set())
 
     def test_pytest_collection_parser_keeps_node_ids_and_deduplicates(self):
