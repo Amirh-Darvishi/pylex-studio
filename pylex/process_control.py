@@ -83,7 +83,7 @@ def attach_process_job(process):
             return False
 
         process._pylex_job_handle = job
-        process._pylex_job_close = kernel32.CloseHandle
+        process._pylex_job_kernel32 = kernel32
         return True
     except Exception:
         if job and kernel32 is not None:
@@ -97,13 +97,13 @@ def attach_process_job(process):
 def close_process_job(process):
     """Close a process's Job Object, terminating every remaining member."""
     job = getattr(process, "_pylex_job_handle", None)
-    close_handle = getattr(process, "_pylex_job_close", None)
-    if not job or close_handle is None:
+    kernel32 = getattr(process, "_pylex_job_kernel32", None)
+    if not job or kernel32 is None:
         return False
     process._pylex_job_handle = None
-    process._pylex_job_close = None
+    process._pylex_job_kernel32 = None
     try:
-        close_handle(job)
+        kernel32.CloseHandle(job)
     except OSError:
         return False
     return True
