@@ -614,6 +614,7 @@ class TerminalPanel(ttk.Frame):
             session.process.wait(timeout=2)
         except subprocess.TimeoutExpired:
             terminate_process_tree(session.process)
+        session.done.wait(timeout=2)
         self.views.pop(frame, None)
         self.notebook.forget(frame)
         frame.destroy()
@@ -647,5 +648,6 @@ class TerminalPanel(ttk.Frame):
                 session.process.wait(timeout=2)
             except subprocess.TimeoutExpired:
                 terminate_process_tree(session.process)
+            session.done.wait(timeout=2)
         self.sessions.clear()
         self.views.clear()
