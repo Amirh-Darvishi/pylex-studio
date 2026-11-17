@@ -143,7 +143,6 @@ class RunnerTests(unittest.TestCase):
         self.assertEqual(stderr, "")
         self.assertEqual(exit_code, 0)
 
-    @unittest.skipIf(__import__("os").name == "nt", "POSIX process-group semantics")
     def test_exited_parent_cannot_leave_pipe_holding_child_behind(self):
         with tempfile.TemporaryDirectory() as directory:
             marker = Path(directory) / "orphan-survived"
@@ -152,6 +151,7 @@ class RunnerTests(unittest.TestCase):
                 "time.sleep(2); Path(" + repr(str(marker)) + ").write_text('alive')"
             )
             source = (
+                "import time; time.sleep(0.1)\n"
                 "import subprocess, sys\n"
                 "subprocess.Popen([sys.executable, '-c', " + repr(child) + "])\n"
                 "print('parent-finished', flush=True)\n"
