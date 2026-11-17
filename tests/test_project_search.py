@@ -6,8 +6,12 @@ import unittest
 from pathlib import Path
 
 from pylex.project_search import (
-    build_replacements, compile_search_pattern, iter_search_files,
-    read_text_snapshot, search_text, write_replacements,
+    build_replacements,
+    compile_search_pattern,
+    iter_search_files,
+    read_text_snapshot,
+    search_text,
+    write_replacements,
 )
 
 
@@ -25,8 +29,9 @@ class ProjectSearchTests(unittest.TestCase):
         self.assertEqual([(item.line, item.column) for item in matches], [(1, 1)])
 
     def test_regex_whole_word_and_case_options(self):
-        pattern = compile_search_pattern(r"foo", regex=True, case_sensitive=True,
-                                          whole_word=True)
+        pattern = compile_search_pattern(
+            r"foo", regex=True, case_sensitive=True, whole_word=True
+        )
         self.assertEqual([m.start() for m in pattern.finditer("foo foobar xfoo")], [0])
 
     def test_invalid_regex_has_actionable_error(self):
@@ -39,9 +44,10 @@ class ProjectSearchTests(unittest.TestCase):
         ignored = self.root / ".venv"
         ignored.mkdir()
         (ignored / "hidden.py").write_text("needle", encoding="utf-8")
-        self.assertEqual([p.name for p in iter_search_files(self.root,
-                                                            include_glob="*.py")],
-                         ["a.py"])
+        self.assertEqual(
+            [p.name for p in iter_search_files(self.root, include_glob="*.py")],
+            ["a.py"],
+        )
 
     def test_large_files_and_binary_files_are_skipped(self):
         (self.root / "large.py").write_bytes(b"x" * 40)
@@ -64,8 +70,9 @@ class ProjectSearchTests(unittest.TestCase):
         self.assertEqual(matches, [])
 
     def test_replacement_preview_is_pure(self):
-        updated, count = build_replacements("one one", compile_search_pattern("one"),
-                                            "two")
+        updated, count = build_replacements(
+            "one one", compile_search_pattern("one"), "two"
+        )
         self.assertEqual((updated, count), ("two two", 2))
 
     def test_atomic_replacement_preserves_crlf_and_bom(self):
