@@ -58,6 +58,11 @@ class FileLoadCoordinator:
         del self._pending[ticket.path]
         return True
 
+    def cancel(self, path):
+        """Cancel the registered operation for one path, if it is still pending."""
+        ticket = self._pending.pop(path, None)
+        return ticket
+
     def invalidate(self):
         """Make every outstanding completion stale and allow fresh operations."""
         self._generation += 1
