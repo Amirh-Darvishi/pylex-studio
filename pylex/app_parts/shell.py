@@ -2572,4 +2572,3 @@ class ShellMixin:
         diagnostics = collect_diagnostics(self.editor.get_content())
         self._set_diagnostics(diagnostics)
         return diagnostics
-
