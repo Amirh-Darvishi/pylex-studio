@@ -7,7 +7,6 @@ import threading
 import tkinter as tk
 from tkinter import font as tkfont
 
-from pygments import lex
 from .editor_performance import (
     build_token_spans,
     is_large_document,
@@ -677,6 +676,7 @@ class CodeEditor(tk.Frame):
 
     def set_content(self, value):
         """Replace document content, yielding to Tk while loading large documents."""
+        self._cancel_highlight_work()
         self.clear_diagnostic()
         if self._content_job is not None:
             self.after_cancel(self._content_job)
