@@ -4,21 +4,23 @@
 class FileLoadTicket:
     """Immutable identity for one file read within one UI lifecycle."""
 
-    __slots__ = ("path", "generation")
+    __slots__ = ("path", "generation", "sequence")
 
-    def __init__(self, path, generation):
+    def __init__(self, path, generation, sequence):
         self.path = path
         self.generation = generation
+        self.sequence = sequence
 
     def __eq__(self, other):
         return (
             isinstance(other, FileLoadTicket)
             and self.path == other.path
             and self.generation == other.generation
+            and self.sequence == other.sequence
         )
 
     def __hash__(self):
-        return hash((self.path, self.generation))
+        return hash((self.path, self.generation, self.sequence))
 
 
 class FileLoadCoordinator:
@@ -30,13 +32,15 @@ class FileLoadCoordinator:
 
     def __init__(self):
         self._generation = 0
+        self._sequence = 0
         self._pending = {}
 
     def begin(self, path):
         """Create a ticket, or return None when this path is already pending."""
         if path in self._pending:
             return None
-        ticket = FileLoadTicket(path, self._generation)
+        self._sequence += 1
+        ticket = FileLoadTicket(path, self._generation, self._sequence)
         self._pending[path] = ticket
         return ticket
 
