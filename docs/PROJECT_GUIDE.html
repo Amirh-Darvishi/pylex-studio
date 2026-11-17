@@ -593,7 +593,9 @@ if __name__ == "__main__":
 <p>در مسیر توسعه نسخه 2.3.0، پیاده‌سازی بزرگ پنجره اصلی به چند ماژول مسئولیت‌محور تقسیم شده است. هدف این تغییر، آسان‌تر شدن نگهداری و توسعه مستقل بخش‌هاست؛ نه بازطراحی رابط کاربری. کلاس <code>PyLexApp</code> همچنان پنجره اصلی و Composition Root است و ساخت ویجت‌ها، callbackها، زمان‌بندی رویدادها و هماهنگی میان بخش‌ها را حفظ می‌کند.</p>
 <h3>تقسیم مسئولیت‌ها</h3>
 <ul>
-<li><strong>ShellMixin</strong> در <code>pylex.app_parts.shell</code>: منوها، نوار ابزار، Activity Bar، پنل‌ها، status bar، زمینه‌های UI و اجزای اصلی پوسته.</li>
+<li><strong>ToolbarMixin</strong> در <code>pylex.app_parts.toolbar</code>: منوهای اصلی، toolbar و کنترل‌های فرمان.</li>
+<li><strong>ShellMixin</strong> در <code>pylex.app_parts.shell</code>: لوگو، Activity Bar، چیدمان Workspace و اتصال اجزای اصلی پوسته.</li>
+<li><strong>PanelsMixin</strong> در <code>pylex.app_parts.panels</code>: status bar، پنل‌های Output و Analysis، خطاها، ترمینال، کیفیت و وابستگی‌ها.</li>
 <li><strong>WorkspaceMixin</strong> در <code>pylex.app_parts.workspace</code>: باز و بسته‌کردن Workspace، فایل‌ها، درخت پروژه، مسیرهای اخیر و عملیات فایل/پوشه.</li>
 <li><strong>DocumentsMixin</strong> در <code>pylex.app_parts.documents</code>: تب‌ها، سند فعال، ایجاد/بازکردن/ذخیره فایل و تنظیمات نمایش ویرایشگر.</li>
 <li><strong>AnalysisMixin</strong> در <code>pylex.app_parts.analysis</code>: تحلیل لغوی و نحوی و پاک‌سازی نتایج.</li>
