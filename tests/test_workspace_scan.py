@@ -1,7 +1,5 @@
 """Tests for the filesystem-only workspace scanner."""
 
-from pathlib import Path
-
 from pylex.workspace_scan import iter_workspace_entries
 
 

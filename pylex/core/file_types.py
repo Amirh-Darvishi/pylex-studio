@@ -237,7 +237,11 @@ def read_text_file_details(path) -> tuple[str, str, str]:
     crlf = content.find("\r\n")
     lf = content.find("\n")
     cr = content.find("\r")
-    endings = [(index, value) for index, value in ((crlf, "\r\n"), (lf, "\n"), (cr, "\r")) if index >= 0]
+    endings = [
+        (index, value)
+        for index, value in ((crlf, "\r\n"), (lf, "\n"), (cr, "\r"))
+        if index >= 0
+    ]
     newline = min(endings, key=lambda item: item[0])[1] if endings else "\n"
     return content, encoding, newline
 

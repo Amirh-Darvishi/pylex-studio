@@ -447,9 +447,9 @@ class WorkspaceMixin:
         cancel = getattr(self, "_workspace_tree_cancel", None)
         if cancel is not None:
             cancel.set()
-        self._workspace_tree_generation = getattr(
-            self, "_workspace_tree_generation", 0
-        ) + 1
+        self._workspace_tree_generation = (
+            getattr(self, "_workspace_tree_generation", 0) + 1
+        )
 
     def _populate_project_tree(self):
         """Scan workspace files off-thread and insert tree nodes in UI-sized batches."""
@@ -552,9 +552,7 @@ class WorkspaceMixin:
                         parent_id,
                         "end",
                         text=name,
-                        image=self._icon(
-                            self._file_icon_name(kind), icon_color, 18
-                        ),
+                        image=self._icon(self._file_icon_name(kind), icon_color, 18),
                         values=(full_path, kind),
                         tags=(kind,),
                     )

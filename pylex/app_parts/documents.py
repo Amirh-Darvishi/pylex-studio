@@ -204,7 +204,11 @@ class DocumentsMixin:
         if document["path"] is None:
             return self.save_as()
         try:
-            source = self.editor.get_content().replace("\r\n", "\n").replace("\r", "\n")
+            source = (
+                self.editor.get_content()
+                .replace("\r\n", "\n")
+                .replace("\r", "\n")
+            )
             eol = self.preferences.get("status_bar_eol", "Auto")
             encoding = document.get("encoding")
             if encoding is None:

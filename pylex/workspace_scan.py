@@ -55,7 +55,6 @@ def iter_workspace_entries(root):
         files.sort(key=lambda item: item.name.lower())
 
         for entry in directories:
-            relative = relative_parent / entry.name
             yield (
                 relative_parent.as_posix() if relative_parent != Path(".") else "",
                 entry.name,
