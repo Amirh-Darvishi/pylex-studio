@@ -5,8 +5,10 @@ from .debugger import DebuggerMixin
 from .documents import DocumentsMixin
 from .execution import ExecutionMixin
 from .preferences import PreferencesMixin
+from .panels import PanelsMixin
 from .shell import ShellMixin
 from .workspace import WorkspaceMixin
+from .toolbar import ToolbarMixin
 
 __all__ = [
     "AnalysisMixin",
@@ -14,6 +16,8 @@ __all__ = [
     "DocumentsMixin",
     "ExecutionMixin",
     "PreferencesMixin",
+    "PanelsMixin",
     "ShellMixin",
     "WorkspaceMixin",
+    "ToolbarMixin",
 ]
