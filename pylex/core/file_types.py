@@ -199,7 +199,8 @@ def file_type_for(path) -> FileType:
             return FileType("pdf", "PDF document", "📕", mime_type, False)
 
     try:
-        sample = path.read_bytes()[:8192]
+        with path.open("rb") as stream:
+            sample = stream.read(8192)
     except OSError:
         sample = b""
     if sample and b"\x00" not in sample:
@@ -207,22 +208,73 @@ def file_type_for(path) -> FileType:
             sample.decode("utf-8")
             return FileType("text", "UTF-8 text file", "📄", mime_type, True)
         except UnicodeDecodeError:
-            pass
+            # Legacy Windows text may use cp1252 even when the extension is
+            # uncommon. Accept it only when the sample is predominantly
+            # printable, avoiding most binary payloads without a NUL byte.
+            try:
+                legacy_sample = sample.decode("cp1252")
+            except UnicodeDecodeError:
+                legacy_sample = ""
+            if legacy_sample:
+                printable = sum(
+                    character.isprintable() or character in "\t\n\r\f\v"
+                    for character in legacy_sample
+                )
+                if printable / len(legacy_sample) >= 0.85:
+                    return FileType(
+                        "text", "Legacy encoded text file", "📄", mime_type, True
+                    )
     return FileType("unknown", "Unknown or binary file", "📄", mime_type, False)
+
+
+def read_text_file_details(path, cancel_event=None) -> tuple[str, str, str]:
+    """Read text metadata, checking an optional cancellation event between chunks."""
+    path = Path(path)
+    if cancel_event is not None and cancel_event.is_set():
+        raise InterruptedError(f"Loading {path.name} was cancelled.")
+    info = file_type_for(path)
+    if not info.is_text:
+        raise UnicodeError(f"{path.name} is not recognized as a text file.")
+
+    data = bytearray()
+    with path.open("rb") as stream:
+        while True:
+            if cancel_event is not None and cancel_event.is_set():
+                raise InterruptedError(f"Loading {path.name} was cancelled.")
+            chunk = stream.read(1024 * 1024)
+            if not chunk:
+                break
+            data.extend(chunk)
+    if cancel_event is not None and cancel_event.is_set():
+        raise InterruptedError(f"Loading {path.name} was cancelled.")
+    if b"\x00" in data:
+        raise UnicodeError(f"{path.name} contains binary data.")
+
+    if data.startswith(b"\xef\xbb\xbf"):
+        candidates = ("utf-8-sig",)
+    else:
+        candidates = ("utf-8", "cp1252")
+    for encoding in candidates:
+        try:
+            content = data.decode(encoding)
+            break
+        except UnicodeDecodeError:
+            continue
+    else:
+        raise UnicodeError(f"{path.name} could not be decoded as text.")
+
+    crlf = content.find("\r\n")
+    lf = content.find("\n")
+    cr = content.find("\r")
+    endings = [
+        (index, value)
+        for index, value in ((crlf, "\r\n"), (lf, "\n"), (cr, "\r"))
+        if index >= 0
+    ]
+    newline = min(endings, key=lambda item: item[0])[1] if endings else "\n"
+    return content, encoding, newline
 
 
 def read_text_file(path) -> str:
     """Read a text file with common Unicode encodings, rejecting binary data."""
-    path = Path(path)
-    info = file_type_for(path)
-    if not info.is_text:
-        raise UnicodeError(f"{path.name} is not recognized as a text file.")
-    data = path.read_bytes()
-    if b"\x00" in data:
-        raise UnicodeError(f"{path.name} contains binary data.")
-    for encoding in ("utf-8-sig", "utf-8", "cp1252"):
-        try:
-            return data.decode(encoding)
-        except UnicodeDecodeError:
-            continue
-    raise UnicodeError(f"{path.name} could not be decoded as text.")
+    return read_text_file_details(path)[0]

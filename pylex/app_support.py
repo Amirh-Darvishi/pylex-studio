@@ -32,7 +32,7 @@ from .analyzer import (
 )
 from .dependencies import inspect_dependencies, python_environment
 from .core.project import Project
-from .core.file_types import file_type_for, read_text_file
+from .core.file_types import file_type_for, read_text_file, read_text_file_details
 from .services.execution import ExecutionService
 from .preferences import DEFAULTS, load_preferences, save_preferences
 from .interpreters import (

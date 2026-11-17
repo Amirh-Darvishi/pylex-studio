@@ -5,6 +5,8 @@
 
 from ..app_support import *  # noqa: F403
 from ..editor_performance import LARGE_FILE_THRESHOLD
+from ..file_loading import FileLoadCoordinator
+from ..workspace_scan import iter_workspace_entries
 
 
 class WorkspaceMixin:
@@ -227,6 +229,7 @@ class WorkspaceMixin:
         if not self._confirm_all_dirty_documents():
             self.status.configure(text="Workspace change cancelled.")
             return False
+        self._invalidate_file_loads()
         self.workspace_controller.open(candidate)
         self.project_root = candidate.root
         self._remember_workspace(candidate.root)
@@ -255,6 +258,7 @@ class WorkspaceMixin:
             self.status.configure(text="Close workspace cancelled.")
             return
         closed = self.project.root
+        self._invalidate_file_loads()
         self.workspace_controller.close()
         self.project_root = None
         self.project_tree.delete(*self.project_tree.get_children())
@@ -346,23 +350,73 @@ class WorkspaceMixin:
             self._load_large_file_async(path, info, file_size)
             return
         try:
-            content = read_text_file(path)
+            content, encoding, newline = read_text_file_details(path)
         except (OSError, UnicodeError) as exc:
             messagebox.showerror("Open Error", f"Could not read {path.name}: {exc}")
             return
-        self._create_document(path=path, content=content)
+        self._create_document(
+            path=path, content=content, encoding=encoding, newline=newline
+        )
         self.clear_results()
         self.status.configure(text=f"Opened {path.name} ({info.description}).")
 
+    def _file_load_coordinator(self):
+        """Return the UI-thread-owned coordinator for outstanding file loads."""
+        coordinator = getattr(self, "_load_coordinator", None)
+        if coordinator is None:
+            coordinator = FileLoadCoordinator()
+            self._load_coordinator = coordinator
+        return coordinator
+
+    def _cancel_file_load(self, path):
+        """Cancel one pending read and prevent its result from creating a tab."""
+        resolved = str(Path(path).expanduser().resolve())
+        cancel_events = getattr(self, "_file_load_cancel_events", {})
+        cancel_event = cancel_events.pop(resolved, None)
+        if cancel_event is not None:
+            cancel_event.set()
+        tickets = getattr(self, "_file_load_tickets", {})
+        ticket = tickets.pop(resolved, None)
+        coordinator = getattr(self, "_load_coordinator", None)
+        if coordinator is not None and ticket is not None:
+            coordinator.cancel(ticket)
+        return cancel_event is not None
+
+    def _invalidate_file_loads(self):
+        """Invalidate pending reads and scans when their UI context is leaving."""
+        cancel_events = getattr(self, "_file_load_cancel_events", {})
+        for cancel_event in cancel_events.values():
+            cancel_event.set()
+        cancel_events.clear()
+        getattr(self, "_file_load_tickets", {}).clear()
+        coordinator = getattr(self, "_load_coordinator", None)
+        if coordinator is not None:
+            coordinator.invalidate()
+        self._cancel_workspace_tree_scan()
+
     def _load_large_file_async(self, path, info, file_size):
-        """Read large text files off the UI thread and deliver the result safely."""
-        resolved = str(path)
-        pending = getattr(self, "_pending_file_loads", set())
-        if resolved in pending:
+        """Read large text files off-thread and ignore results from stale contexts."""
+        resolved = str(path.resolve())
+        coordinator = self._file_load_coordinator()
+        ticket = coordinator.begin(resolved)
+        if ticket is None:
             self.status.configure(text=f"Already loading {path.name}…")
             return
-        pending.add(resolved)
-        self._pending_file_loads = pending
+
+        cancel_event = threading.Event()
+        cancel_events = getattr(self, "_file_load_cancel_events", {})
+        cancel_events[resolved] = cancel_event
+        self._file_load_cancel_events = cancel_events
+        tickets = getattr(self, "_file_load_tickets", {})
+        tickets[resolved] = ticket
+        self._file_load_tickets = tickets
+
+        def clear_cancel_event():
+            if cancel_events.get(resolved) is cancel_event:
+                cancel_events.pop(resolved, None)
+            if tickets.get(resolved) == ticket:
+                tickets.pop(resolved, None)
+
         result_queue = queue.Queue(maxsize=1)
         size_mb = file_size / (1024 * 1024)
         self.status.configure(
@@ -371,8 +425,10 @@ class WorkspaceMixin:
 
         def read_file():
             try:
-                result_queue.put((True, read_text_file(path)))
-            except (OSError, UnicodeError) as exc:
+                result_queue.put(
+                    (True, read_text_file_details(path, cancel_event=cancel_event))
+                )
+            except Exception as exc:
                 result_queue.put((False, exc))
 
         threading.Thread(
@@ -380,92 +436,182 @@ class WorkspaceMixin:
         ).start()
 
         def poll_result():
+            if not coordinator.is_current(ticket):
+                cancel_event.set()
+                coordinator.complete(ticket)
+                clear_cancel_event()
+                return
+            try:
+                if not self.winfo_exists():
+                    cancel_event.set()
+                    coordinator.complete(ticket)
+                    clear_cancel_event()
+                    return
+            except tk.TclError:
+                cancel_event.set()
+                coordinator.complete(ticket)
+                clear_cancel_event()
+                return
+
             try:
                 succeeded, result = result_queue.get_nowait()
             except queue.Empty:
-                self.after(40, poll_result)
+                try:
+                    self.after(40, poll_result)
+                except tk.TclError:
+                    cancel_event.set()
+                    coordinator.complete(ticket)
+                    clear_cancel_event()
                 return
-            self._pending_file_loads.discard(resolved)
+
+            coordinator.complete(ticket)
+            clear_cancel_event()
             if not succeeded:
                 messagebox.showerror(
                     "Open Error", f"Could not read {path.name}: {result}"
                 )
                 self.status.configure(text=f"Failed to load {path.name}.")
                 return
-            self._create_document(path=path, content=result)
+            content, encoding, newline = result
+            self._create_document(
+                path=path, content=content, encoding=encoding, newline=newline
+            )
             self.clear_results()
             self.status.configure(
                 text=f"Opened {path.name} in large-file mode ({info.description})."
             )
 
-        self.after(40, poll_result)
+        try:
+            self.after(40, poll_result)
+        except tk.TclError:
+            cancel_event.set()
+            coordinator.complete(ticket)
+            clear_cancel_event()
+
+    def _cancel_workspace_tree_scan(self):
+        """Stop publishing entries from a scan of a previous workspace."""
+        cancel = getattr(self, "_workspace_tree_cancel", None)
+        if cancel is not None:
+            cancel.set()
+        self._workspace_tree_generation = (
+            getattr(self, "_workspace_tree_generation", 0) + 1
+        )
 
     def _populate_project_tree(self):
+        """Scan workspace files off-thread and insert tree nodes in UI-sized batches."""
+        self._cancel_workspace_tree_scan()
         self.project_tree.delete(*self.project_tree.get_children())
         if self.project_root is None:
             return
+
+        root = Path(self.project_root)
+        generation = self._workspace_tree_generation
+        cancel = threading.Event()
+        self._workspace_tree_cancel = cancel
+        result_queue = queue.Queue(maxsize=4)
+        finished = threading.Event()
         root_id = self.project_tree.insert(
             "",
             "end",
-            text=self.project_root.name,
+            text=root.name,
             image=self._icon("folder-fill", self.theme_palette.get("accent"), 18),
-            values=(str(self.project_root), "directory"),
+            values=(str(root), "directory"),
             tags=("directory",),
             open=True,
         )
-        ignored = {
-            ".git",
-            ".venv",
-            "venv",
-            "__pycache__",
-            ".pytest_cache",
-            ".mypy_cache",
-            ".ruff_cache",
-            ".tox",
-            "node_modules",
-        }
+        node_ids = {"": root_id}
 
-        def add_children(parent_id, directory):
+        def scan():
+            batch = []
             try:
-                entries = sorted(
-                    directory.iterdir(),
-                    key=lambda item: (not item.is_dir(), item.name.lower()),
-                )
-            except OSError:
+                for entry in iter_workspace_entries(root):
+                    if cancel.is_set():
+                        return
+                    batch.append(entry)
+                    if len(batch) >= 100:
+                        while not cancel.is_set():
+                            try:
+                                result_queue.put(batch, timeout=0.1)
+                                batch = []
+                                break
+                            except queue.Full:
+                                continue
+                if batch and not cancel.is_set():
+                    while not cancel.is_set():
+                        try:
+                            result_queue.put(batch, timeout=0.1)
+                            break
+                        except queue.Full:
+                            continue
+            finally:
+                finished.set()
+
+        threading.Thread(
+            target=scan, name="pylex-workspace-scanner", daemon=True
+        ).start()
+
+        def insert_batch():
+            if cancel.is_set() or generation != self._workspace_tree_generation:
                 return
-            for entry in entries:
-                if entry.name in ignored or entry.is_symlink():
+            try:
+                if not self.winfo_exists():
+                    cancel.set()
+                    return
+            except tk.TclError:
+                cancel.set()
+                return
+
+            try:
+                batch = result_queue.get_nowait()
+            except queue.Empty:
+                if finished.is_set():
+                    return
+                try:
+                    self.after(25, insert_batch)
+                except tk.TclError:
+                    cancel.set()
+                return
+
+            for parent_rel, name, full_path, kind, is_directory in batch:
+                parent_id = node_ids.get(parent_rel)
+                if parent_id is None:
                     continue
-                if entry.is_dir():
-                    node = self.project_tree.insert(
+                if is_directory:
+                    node_id = self.project_tree.insert(
                         parent_id,
                         "end",
-                        text=entry.name,
+                        text=name,
                         image=self._icon(
                             "folder", self.theme_palette.get("accent"), 18
                         ),
-                        values=(str(entry), "directory"),
+                        values=(full_path, "directory"),
                         tags=("directory",),
                         open=False,
                     )
-                    add_children(node, entry)
-                elif entry.is_file():
-                    info = file_type_for(entry)
+                    relative_path = Path(parent_rel) / name
+                    node_ids[relative_path.as_posix()] = node_id
+                else:
                     icon_color = self.theme_palette.get(
-                        f"file_{info.kind}", self.theme_palette.get("editor_fg")
+                        f"file_{kind}", self.theme_palette.get("editor_fg")
                     )
                     self.project_tree.insert(
                         parent_id,
                         "end",
-                        text=entry.name,
-                        image=self._icon(
-                            self._file_icon_name(info.kind), icon_color, 18
-                        ),
-                        values=(str(entry), info.kind),
-                        tags=(info.kind,),
+                        text=name,
+                        image=self._icon(self._file_icon_name(kind), icon_color, 18),
+                        values=(full_path, kind),
+                        tags=(kind,),
                     )
 
-        add_children(root_id, self.project_root)
+            try:
+                self.after(1, insert_batch)
+            except tk.TclError:
+                cancel.set()
+
+        try:
+            self.after(25, insert_batch)
+        except tk.TclError:
+            cancel.set()
 
     def _show_recent_workspace_context_menu(self, event):
         index = self.recent_workspaces_list.nearest(event.y)

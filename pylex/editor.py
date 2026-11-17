@@ -2,11 +2,16 @@
 
 import builtins
 import keyword
+import queue
+import threading
 import tkinter as tk
 from tkinter import font as tkfont
 
-from pygments import lex
-from .editor_performance import is_large_document, lexer_for_path
+from .editor_performance import (
+    build_token_spans,
+    is_large_document,
+    lexer_for_path,
+)
 from pygments.token import (
     Comment,
     Error,
@@ -39,6 +44,12 @@ class CodeEditor(tk.Frame):
         self.indent_string = "    "
         self.editor_font = tkfont.Font(family="Consolas", size=self.font_size)
         self._highlight_job = None
+        self._highlight_generation = 0
+        self._highlight_cancel = None
+        self._highlight_poll_job = None
+        self._highlight_apply_job = None
+        self._line_refresh_job = None
+        self._bracket_job = None
         self._diagnostic_location = None
         self._completion_window = None
         self._completion_list = None
@@ -110,6 +121,7 @@ class CodeEditor(tk.Frame):
         self.text.edit_modified(False)
         self.refresh_lines()
         self.update_current_line()
+        self.bind("<Destroy>", self._on_destroy, add="+")
 
     def _configure_tags(self):
         styles = {
@@ -202,7 +214,7 @@ class CodeEditor(tk.Frame):
             if self._loading_content:
                 return
             if not self.large_file_mode:
-                self.refresh_lines()
+                self._schedule_line_refresh()
             self._schedule_highlight()
             self.update_current_line()
             if self.on_cursor_change:
@@ -354,7 +366,16 @@ class CodeEditor(tk.Frame):
             self.update_current_line()
         return "break"
 
+    def _schedule_matching_bracket(self):
+        """Debounce full-source bracket matching while the caret is moving."""
+        if self.large_file_mode:
+            return
+        if self._bracket_job is not None:
+            self.after_cancel(self._bracket_job)
+        self._bracket_job = self.after(90, self._update_matching_bracket)
+
     def _update_matching_bracket(self):
+        self._bracket_job = None
         if self.large_file_mode:
             return
         self.text.tag_remove("matching_bracket", "1.0", "end")
@@ -652,7 +673,7 @@ class CodeEditor(tk.Frame):
 
     def _cursor_changed(self, event=None):
         self.update_current_line()
-        self._update_matching_bracket()
+        self._schedule_matching_bracket()
         if self.on_cursor_change:
             self.on_cursor_change()
 
@@ -665,10 +686,17 @@ class CodeEditor(tk.Frame):
 
     def set_content(self, value):
         """Replace document content, yielding to Tk while loading large documents."""
+        if self._highlight_job is not None:
+            self.after_cancel(self._highlight_job)
+            self._highlight_job = None
+        self._cancel_highlight_work()
         self.clear_diagnostic()
         if self._content_job is not None:
             self.after_cancel(self._content_job)
             self._content_job = None
+        if self._line_refresh_job is not None:
+            self.after_cancel(self._line_refresh_job)
+            self._line_refresh_job = None
         self.text.configure(state="normal")
         self.text.delete("1.0", "end")
         self.large_file_mode = is_large_document(value, self.file_path)
@@ -725,21 +753,92 @@ class CodeEditor(tk.Frame):
             return "py_operator"
         return None
 
+    def _cancel_highlight_work(self):
+        """Invalidate a previous tokenizer and cancel its scheduled UI batches."""
+        self._highlight_generation += 1
+        if self._highlight_cancel is not None:
+            self._highlight_cancel.set()
+            self._highlight_cancel = None
+        for attribute in ("_highlight_poll_job", "_highlight_apply_job"):
+            job = getattr(self, attribute)
+            if job is not None:
+                try:
+                    self.after_cancel(job)
+                except tk.TclError:
+                    pass
+                setattr(self, attribute, None)
+
+    def _schedule_line_refresh(self):
+        """Coalesce repeated gutter rebuilds while the user is typing."""
+        if self._line_refresh_job is not None:
+            self.after_cancel(self._line_refresh_job)
+        self._line_refresh_job = self.after(60, self._refresh_lines_after_edit)
+
+    def _refresh_lines_after_edit(self):
+        self._line_refresh_job = None
+        if not self.large_file_mode:
+            self.refresh_lines()
+
     def _schedule_highlight(self, event=None):
         if self.large_file_mode:
             return
+        self._cancel_highlight_work()
         if self._highlight_job is not None:
             self.after_cancel(self._highlight_job)
         self._highlight_job = self.after(120, self.highlight)
 
     def highlight(self, event=None):
-        """Apply file-type-aware Pygments token tags to manageable documents."""
+        """Tokenize in a worker and apply syntax tags in bounded UI batches."""
         self._highlight_job = None
         if self.large_file_mode:
             return
+        self._cancel_highlight_work()
+        generation = self._highlight_generation
+        cancel_event = threading.Event()
+        self._highlight_cancel = cancel_event
         source = self.get_content()
         lexer = lexer_for_path(self.file_path)
-        tags = (
+        result_queue = queue.Queue(maxsize=1)
+
+        def tokenize_source():
+            try:
+                raw_spans = build_token_spans(source, lexer, cancel_event.is_set)
+                if raw_spans is not None and not cancel_event.is_set():
+                    spans = [
+                        (tag, start, end)
+                        for token_type, start, end in raw_spans
+                        if (tag := self._tag_for_token(token_type)) is not None
+                    ]
+                    result_queue.put((True, spans))
+            except Exception as exc:
+                if not cancel_event.is_set():
+                    result_queue.put((False, exc))
+
+        threading.Thread(
+            target=tokenize_source, name="pylex-syntax-highlighter", daemon=True
+        ).start()
+        self._poll_highlight_result(generation, cancel_event, result_queue)
+
+    def _poll_highlight_result(self, generation, cancel_event, result_queue):
+        if generation != self._highlight_generation or cancel_event.is_set():
+            return
+        try:
+            succeeded, result = result_queue.get_nowait()
+        except queue.Empty:
+            try:
+                self._highlight_poll_job = self.after(
+                    20,
+                    lambda: self._poll_highlight_result(
+                        generation, cancel_event, result_queue
+                    ),
+                )
+            except tk.TclError:
+                cancel_event.set()
+            return
+        self._highlight_poll_job = None
+        if not succeeded:
+            return
+        for tag in (
             "py_keyword",
             "py_builtin",
             "py_string",
@@ -749,18 +848,54 @@ class CodeEditor(tk.Frame):
             "py_class",
             "py_operator",
             "py_error",
-        )
-        for tag in tags:
+        ):
             self.text.tag_remove(tag, "1.0", "end")
-        offset = 0
-        for token_type, value in lex(source, lexer):
-            tag = self._tag_for_token(token_type)
-            if tag and value:
-                self.text.tag_add(tag, f"1.0+{offset}c", f"1.0+{offset + len(value)}c")
-            offset += len(value)
+        self._apply_highlight_batch(generation, result, 0)
+
+    def _apply_highlight_batch(self, generation, spans, offset):
+        if generation != self._highlight_generation:
+            return
+        end = min(offset + 400, len(spans))
+        try:
+            for tag, start, stop in spans[offset:end]:
+                self.text.tag_add(tag, f"1.0+{start}c", f"1.0+{stop}c")
+        except tk.TclError:
+            return
+        if end < len(spans):
+            try:
+                self._highlight_apply_job = self.after(
+                    1, lambda: self._apply_highlight_batch(generation, spans, end)
+                )
+            except tk.TclError:
+                pass
+            return
+        self._highlight_apply_job = None
         self.text.tag_raise("error_line")
         self.text.tag_raise("sel")
         self._update_matching_bracket()
+
+    def _on_destroy(self, event):
+        if event.widget is not self:
+            return
+        self._cancel_highlight_work()
+        if self._highlight_job is not None:
+            try:
+                self.after_cancel(self._highlight_job)
+            except tk.TclError:
+                pass
+            self._highlight_job = None
+        if self._line_refresh_job is not None:
+            try:
+                self.after_cancel(self._line_refresh_job)
+            except tk.TclError:
+                pass
+            self._line_refresh_job = None
+        if self._bracket_job is not None:
+            try:
+                self.after_cancel(self._bracket_job)
+            except tk.TclError:
+                pass
+            self._bracket_job = None
 
     def show_diagnostic(self, line, column=0, end_line=None, end_column=None):
         """Highlight an error span and move the insertion cursor to its location."""

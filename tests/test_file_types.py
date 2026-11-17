@@ -32,6 +32,14 @@ class FileTypeTests(unittest.TestCase):
             with self.subTest(filename=filename):
                 self.assertEqual(file_type_for(filename).kind, kind)
 
+    def test_unknown_text_detection_reads_large_file_sample_safely(self):
+        with tempfile.TemporaryDirectory() as folder:
+            path = Path(folder) / "custom.extension"
+            path.write_bytes(b"plain text\\n" + b"x" * (2 * 1024 * 1024))
+            info = file_type_for(path)
+            self.assertTrue(info.is_text)
+            self.assertEqual(info.kind, "text")
+
     def test_binary_files_keep_binary_description(self):
         info = file_type_for("payload.bin")
         self.assertEqual(info.kind, "binary")
@@ -50,6 +58,19 @@ class FileTypeTests(unittest.TestCase):
             self.assertTrue(info.is_text)
             self.assertEqual(info.kind, "text")
 
+    def test_unknown_cp1252_file_is_detected_as_text(self):
+        with tempfile.TemporaryDirectory() as folder:
+            path = Path(folder) / "legacy.custom"
+            path.write_bytes("café – résumé".encode("cp1252"))
+            info = file_type_for(path)
+            self.assertTrue(info.is_text)
+            self.assertEqual(info.kind, "text")
+            from pylex.core.file_types import read_text_file_details
+
+            content, encoding, _newline = read_text_file_details(path)
+            self.assertEqual(content, "café – résumé")
+            self.assertEqual(encoding, "cp1252")
+
     def test_binary_file_is_not_opened_as_editor_text(self):
         with tempfile.TemporaryDirectory() as folder:
             path = Path(folder) / "payload.unknown"
@@ -65,6 +86,41 @@ class FileTypeTests(unittest.TestCase):
             binary_path.write_bytes(b"\x89PNG\x00")
             with self.assertRaises(UnicodeError):
                 read_text_file(binary_path)
+
+    def test_read_text_preserves_utf8_bom_and_newline_metadata(self):
+        with tempfile.TemporaryDirectory() as folder:
+            path = Path(folder) / "bom.txt"
+            path.write_bytes(b"\xef\xbb\xbffirst\r\nsecond\r\n")
+            from pylex.core.file_types import read_text_file_details
+
+            content, encoding, newline = read_text_file_details(path)
+            self.assertEqual(content, "first\r\nsecond\r\n")
+            self.assertEqual(encoding, "utf-8-sig")
+            self.assertEqual(newline, "\r\n")
+
+    def test_read_text_can_be_cancelled_before_reading(self):
+        import threading
+
+        with tempfile.TemporaryDirectory() as folder:
+            path = Path(folder) / "large.txt"
+            path.write_text("content", encoding="utf-8")
+            cancel_event = threading.Event()
+            cancel_event.set()
+            from pylex.core.file_types import read_text_file_details
+
+            with self.assertRaises(InterruptedError):
+                read_text_file_details(path, cancel_event=cancel_event)
+
+    def test_read_text_falls_back_to_windows_1252(self):
+        with tempfile.TemporaryDirectory() as folder:
+            path = Path(folder) / "legacy.txt"
+            path.write_bytes("caf\xe9".encode("cp1252"))
+            from pylex.core.file_types import read_text_file_details
+
+            content, encoding, newline = read_text_file_details(path)
+            self.assertEqual(content, "caf\xe9")
+            self.assertEqual(encoding, "cp1252")
+            self.assertEqual(newline, "\n")
 
 
 if __name__ == "__main__":
