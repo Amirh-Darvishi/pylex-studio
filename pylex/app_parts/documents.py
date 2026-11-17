@@ -4,6 +4,7 @@
 # ruff: noqa: F403, F405
 
 from ..app_support import *  # noqa: F403
+from ..core.file_io import atomic_write_text
 
 
 class DocumentsMixin:
@@ -211,7 +212,7 @@ class DocumentsMixin:
                 "UTF-8 with BOM": "utf-8-sig",
                 "ASCII": "ascii",
             }.get(encoding, "utf-8")
-            document["path"].write_text(source, encoding=codec, newline="")
+            atomic_write_text(document["path"], source, encoding=codec, newline="")
             document["dirty"] = False
             self.editor_tabs.tab(document["frame"], text=self._tab_label(document))
             self._sync_active_document()
@@ -242,5 +243,11 @@ class DocumentsMixin:
                     "Save Error", "That file is already open in another tab."
                 )
                 return False
+        previous_path = document["path"]
         document["path"] = path
-        return self.save_file()
+        if self.save_file():
+            return True
+        document["path"] = previous_path
+        self.editor_tabs.tab(document["frame"], text=self._tab_label(document))
+        self._sync_active_document()
+        return False
