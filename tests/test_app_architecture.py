@@ -1,9 +1,6 @@
 """Architecture checks for the modular PyLex application composition."""
 
-import pytest
-
-tk = pytest.importorskip("tkinter")
-pytest.importorskip("_tkinter")
+import tkinter as tk
 
 from pylex.app import PyLexApp
 from pylex.app_parts import (
