@@ -23,10 +23,10 @@ def test_scanner_orders_directories_before_files_and_preserves_parent_paths(tmp_
 
 
 def test_scanner_ignores_generated_directories_and_symlinks(tmp_path):
-    (tmp_path / ".git").mkdir()
-    (tmp_path / ".git" / "config").write_text("ignored", encoding="utf-8")
-    (tmp_path / "__pycache__").mkdir()
-    (tmp_path / "__pycache__" / "module.pyc").write_bytes(b"binary")
+    (tmp_path / ".GIT").mkdir()
+    (tmp_path / ".GIT" / "config").write_text("ignored", encoding="utf-8")
+    (tmp_path / "__PYCache__").mkdir()
+    (tmp_path / "__PYCache__" / "module.pyc").write_bytes(b"binary")
     (tmp_path / "visible.py").write_text("pass", encoding="utf-8")
     outside = tmp_path.parent / f"{tmp_path.name}-outside"
     outside.mkdir(exist_ok=True)
@@ -37,8 +37,9 @@ def test_scanner_ignores_generated_directories_and_symlinks(tmp_path):
         pass
 
     paths = [item[2] for item in iter_workspace_entries(tmp_path)]
+    normalized_paths = [path.casefold() for path in paths]
     assert any(path.endswith("visible.py") for path in paths)
-    assert not any(".git" in path or "__pycache__" in path for path in paths)
+    assert not any(".git" in path or "__pycache__" in path for path in normalized_paths)
     assert not any(path.endswith("secret.txt") for path in paths)
 
 
