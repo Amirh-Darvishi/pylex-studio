@@ -94,14 +94,18 @@ def _token_error_diagnostic(exc: tokenize.TokenError, source: str) -> Diagnostic
     )
 
 
-def lexical_analysis(source: str):
+def lexical_analysis(source: str, is_cancelled=None):
     """Tokenize source with Python tokenize, retaining start and end positions.
 
     Tokenization errors are intentionally raised so callers can distinguish a
     partial token stream from a complete lexical analysis.
     """
     result = []
-    generated = list(tokenize.generate_tokens(io.StringIO(source).readline))
+    generated = []
+    for item in tokenize.generate_tokens(io.StringIO(source).readline):
+        if is_cancelled is not None and is_cancelled():
+            return None
+        generated.append(item)
     # Some Python versions emit an ERRORTOKEN for an unterminated quote
     # instead of raising TokenError. Ask the parser for its canonical error.
     if any(item.type == tokenize.ERRORTOKEN for item in generated):
@@ -157,11 +161,13 @@ def syntax_analysis(source: str) -> AnalysisResult:
         )
 
 
-def collect_diagnostics(source: str):
+def collect_diagnostics(source: str, is_cancelled=None):
     """Collect lexical and parser diagnostics, removing duplicate reports."""
     found = []
     try:
-        lexical_analysis(source)
+        lexical_result = lexical_analysis(source, is_cancelled)
+        if lexical_result is None and is_cancelled is not None and is_cancelled():
+            return None
     except tokenize.TokenError as exc:
         found.append(_token_error_diagnostic(exc, source))
     except SyntaxError as exc:
@@ -173,6 +179,8 @@ def collect_diagnostics(source: str):
             )
         )
 
+    if is_cancelled is not None and is_cancelled():
+        return None
     syntax = syntax_analysis(source)
     if not syntax.success and syntax.error_type:
         candidate = Diagnostic(
@@ -185,6 +193,9 @@ def collect_diagnostics(source: str):
             syntax.source_line,
         )
         found.append(candidate)
+
+    if is_cancelled is not None and is_cancelled():
+        return None
 
     # A tokenizer EOF report and the parser's SyntaxError often describe the
     # same unclosed delimiter/string, but with different messages and columns.
