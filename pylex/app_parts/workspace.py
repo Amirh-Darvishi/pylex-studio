@@ -394,7 +394,7 @@ class WorkspaceMixin:
 
         def clear_cancel_event():
             if cancel_events.get(resolved) is cancel_event:
-                clear_cancel_event()
+                cancel_events.pop(resolved, None)
 
         result_queue = queue.Queue(maxsize=1)
         size_mb = file_size / (1024 * 1024)
