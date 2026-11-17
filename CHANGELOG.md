@@ -1,9 +1,9 @@
 # Changelog
 
-## [2.6.0] - 2026-11-18 (release pending)
+## [2.6.0] - 2026-11-17
 
 ### Process lifecycle and stability
-- Align the package `__version__` with the 2.6.0 development line and add a version regression test.
+- Align the package `__version__` with the 2.6.0 release and add a version regression test.
 - Harden Runner, integrated Terminal, and Debugger shutdown so child processes cannot outlive their owning session.
 - Use isolated POSIX process groups to clean up descendants even after the process-group leader exits.
 - Attach Windows child processes to a kill-on-close Job Object when permitted; retain the process-tree fallback for environments where Job Object assignment is rejected.
@@ -18,7 +18,7 @@
 - Merge implementation through PR #26: https://github.com/Amirh-Darvishi/pylex-studio/pull/26
 - Merged into `main` at commit `3d5a97aebd7a76fac03666f1a07def4f3ef62fd3`.
 - CI run: https://github.com/Amirh-Darvishi/pylex-studio/actions/runs/44183746021
-- GitHub Release and tag are pending; 2.5.0 remains the latest published stable release.
+- Published as the stable 2.6.0 release: https://github.com/Amirh-Darvishi/pylex-studio/releases/tag/2.6.0
 
 ## [2.5.0] - 2026-11-17
 
