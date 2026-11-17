@@ -208,7 +208,22 @@ def file_type_for(path) -> FileType:
             sample.decode("utf-8")
             return FileType("text", "UTF-8 text file", "📄", mime_type, True)
         except UnicodeDecodeError:
-            pass
+            # Legacy Windows text may use cp1252 even when the extension is
+            # uncommon. Accept it only when the sample is predominantly
+            # printable, avoiding most binary payloads without a NUL byte.
+            try:
+                legacy_sample = sample.decode("cp1252")
+            except UnicodeDecodeError:
+                legacy_sample = ""
+            if legacy_sample:
+                printable = sum(
+                    character.isprintable() or character in "\t\n\r\f\v"
+                    for character in legacy_sample
+                )
+                if printable / len(legacy_sample) >= 0.85:
+                    return FileType(
+                        "text", "Legacy encoded text file", "📄", mime_type, True
+                    )
     return FileType("unknown", "Unknown or binary file", "📄", mime_type, False)
 
 
