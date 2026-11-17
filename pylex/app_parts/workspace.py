@@ -6,6 +6,7 @@
 from ..app_support import *  # noqa: F403
 from ..editor_performance import LARGE_FILE_THRESHOLD
 from ..file_loading import FileLoadCoordinator
+from ..workspace_scan import iter_workspace_entries
 
 
 class WorkspaceMixin:
@@ -435,72 +436,132 @@ class WorkspaceMixin:
         except tk.TclError:
             coordinator.complete(ticket)
 
+    def _cancel_workspace_tree_scan(self):
+        """Stop publishing entries from a scan of a previous workspace."""
+        cancel = getattr(self, "_workspace_tree_cancel", None)
+        if cancel is not None:
+            cancel.set()
+        self._workspace_tree_generation = getattr(
+            self, "_workspace_tree_generation", 0
+        ) + 1
+
     def _populate_project_tree(self):
+        """Scan workspace files off-thread and insert tree nodes in UI-sized batches."""
+        self._cancel_workspace_tree_scan()
         self.project_tree.delete(*self.project_tree.get_children())
         if self.project_root is None:
             return
+
+        root = Path(self.project_root)
+        generation = self._workspace_tree_generation
+        cancel = threading.Event()
+        self._workspace_tree_cancel = cancel
+        result_queue = queue.Queue(maxsize=4)
+        finished = threading.Event()
         root_id = self.project_tree.insert(
             "",
             "end",
-            text=self.project_root.name,
+            text=root.name,
             image=self._icon("folder-fill", self.theme_palette.get("accent"), 18),
-            values=(str(self.project_root), "directory"),
+            values=(str(root), "directory"),
             tags=("directory",),
             open=True,
         )
-        ignored = {
-            ".git",
-            ".venv",
-            "venv",
-            "__pycache__",
-            ".pytest_cache",
-            ".mypy_cache",
-            ".ruff_cache",
-            ".tox",
-            "node_modules",
-        }
+        node_ids = {"": root_id}
 
-        def add_children(parent_id, directory):
+        def scan():
+            batch = []
             try:
-                entries = sorted(
-                    directory.iterdir(),
-                    key=lambda item: (not item.is_dir(), item.name.lower()),
-                )
-            except OSError:
+                for entry in iter_workspace_entries(root):
+                    if cancel.is_set():
+                        return
+                    batch.append(entry)
+                    if len(batch) >= 100:
+                        while not cancel.is_set():
+                            try:
+                                result_queue.put(batch, timeout=0.1)
+                                batch = []
+                                break
+                            except queue.Full:
+                                continue
+                if batch and not cancel.is_set():
+                    while not cancel.is_set():
+                        try:
+                            result_queue.put(batch, timeout=0.1)
+                            break
+                        except queue.Full:
+                            continue
+            finally:
+                finished.set()
+
+        threading.Thread(
+            target=scan, name="pylex-workspace-scanner", daemon=True
+        ).start()
+
+        def insert_batch():
+            if cancel.is_set() or generation != self._workspace_tree_generation:
                 return
-            for entry in entries:
-                if entry.name in ignored or entry.is_symlink():
+            try:
+                if not self.winfo_exists():
+                    cancel.set()
+                    return
+            except tk.TclError:
+                cancel.set()
+                return
+
+            try:
+                batch = result_queue.get_nowait()
+            except queue.Empty:
+                if finished.is_set():
+                    return
+                try:
+                    self.after(25, insert_batch)
+                except tk.TclError:
+                    cancel.set()
+                return
+
+            for parent_rel, name, full_path, kind, is_directory in batch:
+                parent_id = node_ids.get(parent_rel)
+                if parent_id is None:
                     continue
-                if entry.is_dir():
-                    node = self.project_tree.insert(
+                if is_directory:
+                    node_id = self.project_tree.insert(
                         parent_id,
                         "end",
-                        text=entry.name,
+                        text=name,
                         image=self._icon(
                             "folder", self.theme_palette.get("accent"), 18
                         ),
-                        values=(str(entry), "directory"),
+                        values=(full_path, "directory"),
                         tags=("directory",),
                         open=False,
                     )
-                    add_children(node, entry)
-                elif entry.is_file():
-                    info = file_type_for(entry)
+                    relative_path = Path(parent_rel) / name
+                    node_ids[relative_path.as_posix()] = node_id
+                else:
                     icon_color = self.theme_palette.get(
-                        f"file_{info.kind}", self.theme_palette.get("editor_fg")
+                        f"file_{kind}", self.theme_palette.get("editor_fg")
                     )
                     self.project_tree.insert(
                         parent_id,
                         "end",
-                        text=entry.name,
+                        text=name,
                         image=self._icon(
-                            self._file_icon_name(info.kind), icon_color, 18
+                            self._file_icon_name(kind), icon_color, 18
                         ),
-                        values=(str(entry), info.kind),
-                        tags=(info.kind,),
+                        values=(full_path, kind),
+                        tags=(kind,),
                     )
 
-        add_children(root_id, self.project_root)
+            try:
+                self.after(1, insert_batch)
+            except tk.TclError:
+                cancel.set()
+
+        try:
+            self.after(25, insert_batch)
+        except tk.TclError:
+            cancel.set()
 
     def _show_recent_workspace_context_menu(self, event):
         index = self.recent_workspaces_list.nearest(event.y)
