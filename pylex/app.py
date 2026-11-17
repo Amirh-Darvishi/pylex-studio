@@ -1,6 +1,17 @@
 """Main graphical interface and composition root for PyLex Studio."""
 
-from .app_support import *  # noqa: F403
+from .app_support import (
+    DebuggerController,
+    DocumentController,
+    ExecutionController,
+    ExecutionService,
+    ThemeManager,
+    WorkspaceController,
+    load_preferences,
+    sys,
+    tk,
+    ttkb,
+)
 from .app_parts import (
     AnalysisMixin,
     DebuggerMixin,
@@ -11,7 +22,16 @@ from .app_parts import (
     WorkspaceMixin,
 )
 
-class PyLexApp(ShellMixin, WorkspaceMixin, DocumentsMixin, AnalysisMixin, ExecutionMixin, DebuggerMixin, PreferencesMixin, tk.Tk):
+class PyLexApp(
+    ShellMixin,
+    WorkspaceMixin,
+    DocumentsMixin,
+    AnalysisMixin,
+    ExecutionMixin,
+    DebuggerMixin,
+    PreferencesMixin,
+    tk.Tk,
+):
     """Main application window and UI composition root."""
 
     @property
