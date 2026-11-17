@@ -49,6 +49,7 @@ class CodeEditor(tk.Frame):
         self._highlight_poll_job = None
         self._highlight_apply_job = None
         self._line_refresh_job = None
+        self._bracket_job = None
         self._diagnostic_location = None
         self._completion_window = None
         self._completion_list = None
@@ -365,7 +366,16 @@ class CodeEditor(tk.Frame):
             self.update_current_line()
         return "break"
 
+    def _schedule_matching_bracket(self):
+        """Debounce full-source bracket matching while the caret is moving."""
+        if self.large_file_mode:
+            return
+        if self._bracket_job is not None:
+            self.after_cancel(self._bracket_job)
+        self._bracket_job = self.after(90, self._update_matching_bracket)
+
     def _update_matching_bracket(self):
+        self._bracket_job = None
         if self.large_file_mode:
             return
         self.text.tag_remove("matching_bracket", "1.0", "end")
@@ -663,7 +673,7 @@ class CodeEditor(tk.Frame):
 
     def _cursor_changed(self, event=None):
         self.update_current_line()
-        self._update_matching_bracket()
+        self._schedule_matching_bracket()
         if self.on_cursor_change:
             self.on_cursor_change()
 
@@ -882,6 +892,12 @@ class CodeEditor(tk.Frame):
             except tk.TclError:
                 pass
             self._line_refresh_job = None
+        if self._bracket_job is not None:
+            try:
+                self.after_cancel(self._bracket_job)
+            except tk.TclError:
+                pass
+            self._bracket_job = None
 
     def show_diagnostic(self, line, column=0, end_line=None, end_column=None):
         """Highlight an error span and move the insertion cursor to its location."""
