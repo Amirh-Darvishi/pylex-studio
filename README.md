@@ -1,8 +1,8 @@
 # PyLex Studio
 
-**Latest stable release: 2.4.1 — Background Analysis & UI Responsiveness**
+**Latest stable release: 2.5.0 — Workspace Search & Replace**
 
-[View the 2.4.1 release notes](https://github.com/Amirh-Darvishi/pylex-studio/releases/tag/2.4.1)
+[View the 2.5.0 release notes](https://github.com/Amirh-Darvishi/pylex-studio/releases/tag/2.5.0)
 
 A lightweight Python desktop editor with independent lexical and syntax analysis.
 
@@ -14,9 +14,15 @@ The 2.4.1 feature branch passed all six Windows/Ubuntu × Python 3.10/3.11/3.13 
 
 The release includes the stability and file-handling improvements from 2.4.0: cancellable large-file loading, background workspace scanning, incremental project-tree updates, atomic saves that preserve encoding/newline conventions, and cancellable Pygments highlighting.
 
-## 2.5.0 development — Workspace Search & Replace
+## 2.5.0 release — Workspace Search & Replace
 
-The 2.5.0 feature branch introduces workspace-wide literal and regular-expression search, case and whole-word options, file-pattern filtering, cancellable background scanning, unsaved-buffer overlays, grouped results with direct navigation, and a reviewed replacement flow. Replacement writes preserve detected encoding and line endings, use atomic file replacement, and reject files modified after the preview. This work is in development and is not part of the stable 2.4.1 release.
+PyLex Studio 2.5.0 adds project-wide search and replacement. Search supports literal text and regular expressions, case-sensitive and whole-word matching, and filename glob filters. Supported text files are scanned on a cancellable background worker; generated, VCS, virtual-environment, and hidden directories are excluded by default, and binary or oversized files are skipped. Results are grouped by file and show line and column locations, with direct navigation to the matching editor position. Unsaved open-document buffers are included without being written to disk.
+
+Replacement is previewed before it is applied. Disk writes are atomic and preserve detected text encoding, UTF-8 BOM, and newline conventions. Open dirty buffers remain dirty after replacement. Before changing a disk file, PyLex verifies that it still matches the search snapshot using file metadata and SHA-256, preventing accidental overwrites of intervening edits. Windows path equivalence is handled when resolving replacement targets.
+
+Open Workspace Search with `Ctrl+Shift+F` or from the Tools menu. The release passed all six Windows/Ubuntu × Python 3.10/3.11/3.13 CI jobs, including pytest, compileall, Black, and Ruff.
+
+[View the 2.5.0 release notes](https://github.com/Amirh-Darvishi/pylex-studio/releases/tag/2.5.0) · [Full changes in PR #25](https://github.com/Amirh-Darvishi/pylex-studio/pull/25)
 
 ## 2.3.0 release — Modular Application UI
 
