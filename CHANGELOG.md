@@ -3,7 +3,7 @@
 ## [2.3.0] - Unreleased
 
 ### Architecture
-- Decomposed the large `PyLexApp` implementation into focused UI responsibility mixins for shell/layout, workspace, documents, analysis, execution, debugging, and preferences.
+- Decomposed the large `PyLexApp` implementation into focused UI responsibility mixins for toolbar/menus, shell/layout, panels, workspace, documents, analysis, execution, debugging, and preferences.
 - Kept `PyLexApp` as the Tkinter composition root and preserved existing callbacks, widgets, themes, shortcuts, and lifecycle behavior during extraction.
 - Centralized shared application imports in `pylex/app_support.py` to keep the extracted modules consistent.
 
