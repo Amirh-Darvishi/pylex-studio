@@ -311,7 +311,7 @@ class DebugSession:
     def stop(self):
         """Force-stop the debugger and every process spawned beneath it."""
         if self.done:
-            return close_process_job(self.process)
+            return terminate_process_tree(self.process)
         terminate_process_tree(self.process)
         return True
 
