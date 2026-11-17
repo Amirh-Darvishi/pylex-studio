@@ -971,4 +971,3 @@ class PreferencesMixin:
                 )
             except tk.TclError:
                 pass
-
