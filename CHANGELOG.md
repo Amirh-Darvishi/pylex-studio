@@ -1,6 +1,6 @@
 # Changelog
 
-## [2.3.1] - Unreleased
+## [2.3.1] - 2026-11-17
 
 ### Performance
 - Read large text files on a background worker so disk I/O does not block the Tk event loop.
@@ -8,7 +8,7 @@
 - Select Pygments lexers by file extension so JSON, JavaScript, and other supported text formats are no longer tokenized as Python.
 - Added focused regression tests for lexer selection and large-document thresholds.
 
-## [2.3.0] - Unreleased
+## [2.3.0] - 2026-11-17
 
 ### Architecture
 - Decomposed the large `PyLexApp` implementation into focused UI responsibility mixins for toolbar/menus, shell/layout, panels, workspace, documents, analysis, execution, debugging, and preferences.
