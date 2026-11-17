@@ -2,6 +2,8 @@
 
 **Latest stable release: 2.5.0 — Workspace Search & Replace**
 
+The 2.6.0 stability work has been merged into `main`; its GitHub release is pending.
+
 [View the 2.5.0 release notes](https://github.com/Amirh-Darvishi/pylex-studio/releases/tag/2.5.0)
 
 A lightweight Python desktop editor with independent lexical and syntax analysis.
@@ -13,6 +15,20 @@ PyLex Studio 2.4.1 completes the responsiveness improvements introduced in 2.4.0
 The 2.4.1 feature branch passed all six Windows/Ubuntu × Python 3.10/3.11/3.13 CI jobs: 169 tests passed, 1 skipped, and 12 subtests passed; compileall, Black, and Ruff also passed. The display-dependent GUI smoke test is skipped on headless runners.
 
 The release includes the stability and file-handling improvements from 2.4.0: cancellable large-file loading, background workspace scanning, incremental project-tree updates, atomic saves that preserve encoding/newline conventions, and cancellable Pygments highlighting.
+
+## 2.6.0 development update — Process lifecycle stability (merged; release pending)
+
+The 2.6.0 stability update hardens process ownership and shutdown across the Runner, integrated Terminal, Debugger, and Quality panel. POSIX sessions now clean up their isolated process groups even when the original process exits before a child. On Windows, processes are attached to a kill-on-close Job Object when permitted by the host process policy, with the existing process-tree fallback retained.
+
+The Quality panel now handles the close-during-process-startup race, cancels active work during shutdown, and cancels its recurring UI poll. The package version is aligned to `2.6.0`, with a regression test. Regression coverage was added for descendant cleanup and shutdown races.
+
+Validation passed on all six Windows/Ubuntu × Python 3.10/3.11/3.13 CI jobs. Every job passed pytest, compileall, Black, and Ruff. Linux: 184 passed, 1 GUI smoke test skipped on the headless runner. Windows: 183 passed, 2 platform/display-related tests skipped.
+
+- [Implementation PR #26](https://github.com/Amirh-Darvishi/pylex-studio/pull/26)
+- [CI matrix run](https://github.com/Amirh-Darvishi/pylex-studio/actions/runs/44183746021)
+- Merged into `main` at commit `3d5a97aebd7a76fac03666f1a07def4f3ef62fd3`
+
+The 2.6.0 GitHub Release and tag have not yet been published.
 
 ## 2.5.0 release — Workspace Search & Replace
 
