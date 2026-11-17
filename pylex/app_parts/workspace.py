@@ -368,11 +368,24 @@ class WorkspaceMixin:
             self._load_coordinator = coordinator
         return coordinator
 
+    def _cancel_file_load(self, path):
+        """Cancel one pending read and prevent its result from creating a tab."""
+        resolved = str(Path(path).expanduser().resolve())
+        cancel_events = getattr(self, "_file_load_cancel_events", {})
+        cancel_event = cancel_events.pop(resolved, None)
+        if cancel_event is not None:
+            cancel_event.set()
+        coordinator = getattr(self, "_load_coordinator", None)
+        if coordinator is not None:
+            coordinator.cancel(resolved)
+        return cancel_event is not None
+
     def _invalidate_file_loads(self):
         """Invalidate pending reads and scans when their UI context is leaving."""
-        for cancel_event in getattr(self, "_file_load_cancel_events", {}).values():
+        cancel_events = getattr(self, "_file_load_cancel_events", {})
+        for cancel_event in cancel_events.values():
             cancel_event.set()
-        getattr(self, "_file_load_cancel_events", {}).clear()
+        cancel_events.clear()
         coordinator = getattr(self, "_load_coordinator", None)
         if coordinator is not None:
             coordinator.invalidate()
