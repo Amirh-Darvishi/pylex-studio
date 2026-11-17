@@ -1,18 +1,18 @@
 # PyLex Studio
 
-**Latest stable release: 2.2.0 — Modular Application Architecture**
+**Latest stable release: 2.3.1 — Editor Performance & Large File Handling**
 
-[View the 2.2.0 release notes](https://github.com/Amirh-Darvishi/pylex-studio/releases/tag/v2.2.0)
+[View the 2.3.1 release notes](https://github.com/Amirh-Darvishi/pylex-studio/releases/tag/2.3.1)
 
 A lightweight Python desktop editor with independent lexical and syntax analysis.
 
-## 2.2.0 release
+## 2.3.1 release
 
-PyLex Studio 2.2.0 separates workspace, document, execution, and debugger lifecycle ownership into UI-independent controllers. The Tkinter application remains the composition root and presentation layer, while controllers own lifecycle state and delegate process creation to the existing execution service. Compatibility properties preserve the existing application state interface. The release adds isolated controller tests and retains the Windows/Ubuntu Python 3.10, 3.11, and 3.13 CI matrix with Ruff and Black quality gates.
+PyLex Studio 2.3.1 improves editor responsiveness when opening large text files. Files of 512 KiB or larger are read on a background worker and inserted in bounded chunks. Large documents use a lightweight editing mode that skips full-document syntax highlighting, whole-document bracket scans, and line-number gutter generation. Pygments lexers are selected by file extension, including JSON and JavaScript. The release passed the Windows and Ubuntu CI matrix with Python 3.10, 3.11, and 3.13.
 
-## 2.3.0 development architecture
+## 2.3.0 release — Modular Application UI
 
-The 2.3.0 development branch decomposes the Tkinter application into focused UI mixins for toolbar and menus, shell/layout, panels, workspace and files, documents, analysis, execution, debugging, and preferences. `PyLexApp` remains the composition root; widget construction, event handling, and presentation behavior are kept intact. Runtime dependencies are listed in `requirements.txt`; contributors and CI install test and quality tools from `requirements-dev.txt`.
+PyLex Studio 2.3.0 decomposes the Tkinter application into focused UI mixins for toolbar and menus, shell/layout, panels, workspace and files, documents, analysis, execution, debugging, and preferences. `PyLexApp` remains the composition root; widget construction, event handling, and presentation behavior are kept intact. Runtime dependencies are listed in `requirements.txt`; contributors and CI install test and quality tools from `requirements-dev.txt`.
 
 ## Language roadmap
 
