@@ -284,4 +284,3 @@ class ExecutionMixin:
         self.status.configure(
             text=f"Runtime error: {error_type} — line {line}. See Errors and Output."
         )
-
