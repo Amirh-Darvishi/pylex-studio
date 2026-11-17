@@ -1,6 +1,7 @@
 """Atomic text-file persistence helpers."""
 
 import os
+import stat
 import tempfile
 from pathlib import Path
 
@@ -12,6 +13,8 @@ def atomic_write_text(path, content, encoding="utf-8", newline=""):
     final replace fails. A temporary file is always cleaned up when possible.
     """
     destination = Path(path)
+    if destination.is_symlink():
+        destination = destination.resolve()
     temporary_path = None
     try:
         with tempfile.NamedTemporaryFile(
@@ -29,10 +32,11 @@ def atomic_write_text(path, content, encoding="utf-8", newline=""):
             os.fsync(stream.fileno())
 
         if destination.exists():
-            try:
-                os.chmod(temporary_path, destination.stat().st_mode)
-            except OSError:
-                pass
+            existing_mode = destination.stat().st_mode
+            writable_bits = stat.S_IWUSR | stat.S_IWGRP | stat.S_IWOTH
+            if not existing_mode & writable_bits:
+                raise PermissionError(f"{destination} is read-only.")
+            os.chmod(temporary_path, stat.S_IMODE(existing_mode))
         os.replace(temporary_path, destination)
         temporary_path = None
     finally:

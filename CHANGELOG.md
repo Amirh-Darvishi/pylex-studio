@@ -3,8 +3,10 @@
 ## Unreleased — PyLex Studio 2.4.0
 
 ### Reliability
-- Guard asynchronous large-file loading against stale workspace and window lifecycles.
+- Guard asynchronous large-file loading against stale workspace and window lifecycles, with cancellable chunked reads.
 - Move workspace filesystem scanning off the Tk event loop and populate the project tree incrementally.
+- Save documents atomically and preserve their detected text encoding and newline convention.
+- Limit file-type detection to a bounded sample instead of reading entire unknown files.
 - Add regression coverage for stale load completions and workspace scanning.
 
 
