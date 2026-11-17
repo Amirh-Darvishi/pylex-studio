@@ -758,4 +758,3 @@ class WorkspaceMixin:
             self.project_tree.item(selection[0], open=not is_open)
             return "break"
         self._open_path(path)
-
