@@ -10,13 +10,44 @@ from pathlib import Path
 
 
 DEFAULT_EXCLUDES = (
-    ".git", ".hg", ".svn", ".venv", "venv", "__pycache__", ".mypy_cache",
-    ".pytest_cache", ".ruff_cache", "node_modules", "build", "dist",
+    ".git",
+    ".hg",
+    ".svn",
+    ".venv",
+    "venv",
+    "__pycache__",
+    ".mypy_cache",
+    ".pytest_cache",
+    ".ruff_cache",
+    "node_modules",
+    "build",
+    "dist",
 )
 DEFAULT_EXTENSIONS = {
-    ".py", ".pyi", ".txt", ".md", ".rst", ".toml", ".ini", ".cfg",
-    ".json", ".yaml", ".yml", ".xml", ".html", ".htm", ".css", ".js",
-    ".ts", ".tsx", ".jsx", ".sql", ".sh", ".bat", ".ps1", ".gitignore",
+    ".py",
+    ".pyi",
+    ".txt",
+    ".md",
+    ".rst",
+    ".toml",
+    ".ini",
+    ".cfg",
+    ".json",
+    ".yaml",
+    ".yml",
+    ".xml",
+    ".html",
+    ".htm",
+    ".css",
+    ".js",
+    ".ts",
+    ".tsx",
+    ".jsx",
+    ".sql",
+    ".sh",
+    ".bat",
+    ".ps1",
+    ".gitignore",
 }
 MAX_FILE_BYTES = 2 * 1024 * 1024
 
@@ -42,8 +73,9 @@ class FileSnapshot:
     digest: str
 
 
-def compile_search_pattern(query: str, *, regex=False, case_sensitive=False,
-                           whole_word=False):
+def compile_search_pattern(
+    query: str, *, regex=False, case_sensitive=False, whole_word=False
+):
     """Compile literal or regular-expression search with explicit options."""
     if not query:
         raise ValueError("Search text cannot be empty.")
@@ -57,8 +89,14 @@ def compile_search_pattern(query: str, *, regex=False, case_sensitive=False,
         raise ValueError(f"Invalid regular expression: {exc}") from exc
 
 
-def iter_search_files(root, *, include_glob="*", excluded_dirs=DEFAULT_EXCLUDES,
-                      max_file_bytes=MAX_FILE_BYTES, cancel_event=None):
+def iter_search_files(
+    root,
+    *,
+    include_glob="*",
+    excluded_dirs=DEFAULT_EXCLUDES,
+    max_file_bytes=MAX_FILE_BYTES,
+    cancel_event=None,
+):
     """Yield supported, bounded-size regular files beneath a workspace."""
     root = Path(root).expanduser().resolve()
     excluded = set(excluded_dirs)
@@ -66,7 +104,8 @@ def iter_search_files(root, *, include_glob="*", excluded_dirs=DEFAULT_EXCLUDES,
         if cancel_event is not None and cancel_event.is_set():
             break
         dirs[:] = sorted(
-            name for name in dirs
+            name
+            for name in dirs
             if name not in excluded and (not name.startswith(".") or name == ".github")
         )
         for filename in sorted(filenames):
@@ -83,7 +122,9 @@ def iter_search_files(root, *, include_glob="*", excluded_dirs=DEFAULT_EXCLUDES,
             except OSError:
                 continue
             if path.suffix.lower() not in DEFAULT_EXTENSIONS and path.name not in {
-                ".gitignore", ".editorconfig", "Makefile"
+                ".gitignore",
+                ".editorconfig",
+                "Makefile",
             }:
                 continue
             yield path
@@ -113,25 +154,48 @@ def read_text_snapshot(path, *, max_file_bytes=MAX_FILE_BYTES):
     newline = "\r\n" if "\r\n" in content else ("\r" if "\r" in content else "\n")
     normalized = content.replace("\r\n", "\n").replace("\r", "\n")
     after = path.stat()
-    return FileSnapshot(path.resolve(), normalized, encoding, newline,
-                        after.st_mtime_ns, after.st_size, hashlib.sha256(raw).hexdigest())
+    return FileSnapshot(
+        path.resolve(),
+        normalized,
+        encoding,
+        newline,
+        after.st_mtime_ns,
+        after.st_size,
+        hashlib.sha256(raw).hexdigest(),
+    )
 
 
-def search_text(root, query, *, regex=False, case_sensitive=False, whole_word=False,
-                include_glob="*", excluded_dirs=DEFAULT_EXCLUDES,
-                max_file_bytes=MAX_FILE_BYTES, cancel_event=None,
-                overlays=None):
+def search_text(
+    root,
+    query,
+    *,
+    regex=False,
+    case_sensitive=False,
+    whole_word=False,
+    include_glob="*",
+    excluded_dirs=DEFAULT_EXCLUDES,
+    max_file_bytes=MAX_FILE_BYTES,
+    cancel_event=None,
+    overlays=None,
+):
     """Search workspace files, optionally overlaying unsaved open-document text."""
-    pattern = compile_search_pattern(query, regex=regex,
-                                     case_sensitive=case_sensitive,
-                                     whole_word=whole_word)
+    pattern = compile_search_pattern(
+        query, regex=regex, case_sensitive=case_sensitive, whole_word=whole_word
+    )
     root = Path(root).expanduser().resolve()
     overlays = {Path(path).resolve(): text for path, text in (overlays or {}).items()}
-    candidates = set(iter_search_files(root, include_glob=include_glob,
-                                       excluded_dirs=excluded_dirs,
-                                       max_file_bytes=max_file_bytes,
-                                       cancel_event=cancel_event))
-    candidates.update(path for path in overlays if path.is_file() and path.is_relative_to(root))
+    candidates = set(
+        iter_search_files(
+            root,
+            include_glob=include_glob,
+            excluded_dirs=excluded_dirs,
+            max_file_bytes=max_file_bytes,
+            cancel_event=cancel_event,
+        )
+    )
+    candidates.update(
+        path for path in overlays if path.is_file() and path.is_relative_to(root)
+    )
     results = []
     snapshots = {}
     for path in sorted(candidates):
@@ -149,9 +213,16 @@ def search_text(root, query, *, regex=False, case_sensitive=False, whole_word=Fa
             line_end = content.find("\n", match.end())
             if line_end < 0:
                 line_end = len(content)
-            results.append(SearchMatch(path, line, match.start() - line_start + 1,
-                                       content[line_start:line_end],
-                                       match.start(), match.end()))
+            results.append(
+                SearchMatch(
+                    path,
+                    line,
+                    match.start() - line_start + 1,
+                    content[line_start:line_end],
+                    match.start(),
+                    match.end(),
+                )
+            )
     return results, snapshots
 
 
@@ -174,10 +245,15 @@ def write_replacements(changes, snapshots):
             raise ValueError(f"No original snapshot exists for {path}.")
         current = Path(path).stat()
         current_digest = hashlib.sha256(Path(path).read_bytes()).hexdigest()
-        if (current.st_mtime_ns != snapshot.mtime_ns or current.st_size != snapshot.size
-                or current_digest != snapshot.digest):
+        if (
+            current.st_mtime_ns != snapshot.mtime_ns
+            or current.st_size != snapshot.size
+            or current_digest != snapshot.digest
+        ):
             raise RuntimeError(f"{path} changed after search; run the search again.")
-        prepared.append((Path(path), new_content.replace("\n", snapshot.newline), snapshot))
+        prepared.append(
+            (Path(path), new_content.replace("\n", snapshot.newline), snapshot)
+        )
     written = []
     for path, content, snapshot in prepared:
         atomic_write_text(path, content, encoding=snapshot.encoding, newline="")
