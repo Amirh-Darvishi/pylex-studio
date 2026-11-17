@@ -410,7 +410,10 @@ class CodeEditor(tk.Frame):
         self.text.tag_remove("matching_bracket", "1.0", "end")
 
         def scan():
-            match = find_matching_bracket(source, offset)
+            try:
+                match = find_matching_bracket(source, offset, cancel_event.is_set)
+            except Exception:
+                match = None
             if not cancel_event.is_set():
                 result_queue.put(match)
 
