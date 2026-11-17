@@ -1,5 +1,25 @@
 # Changelog
 
+## [2.6.0] - 2026-11-18 (release pending)
+
+### Process lifecycle and stability
+- Align the package `__version__` with the 2.6.0 development line and add a version regression test.
+- Harden Runner, integrated Terminal, and Debugger shutdown so child processes cannot outlive their owning session.
+- Use isolated POSIX process groups to clean up descendants even after the process-group leader exits.
+- Attach Windows child processes to a kill-on-close Job Object when permitted; retain the process-tree fallback for environments where Job Object assignment is rejected.
+- Fix the Quality panel race where a subprocess could start while the application was closing; cancel active or not-yet-published work and stop the recurring UI poll during close.
+- Add regression tests for Runner and Debugger descendants, Terminal child cleanup on POSIX, Quality panel close-during-startup, and package version consistency.
+
+### Validation
+- Pass all six Windows/Ubuntu × Python 3.10/3.11/3.13 CI jobs.
+- Pass pytest, compileall, Black, and Ruff in every matrix job.
+- Linux: 184 passed, 1 GUI smoke test skipped because the runner is headless.
+- Windows: 183 passed, 2 platform/display-related tests skipped.
+- Merge implementation through PR #26: https://github.com/Amirh-Darvishi/pylex-studio/pull/26
+- Merged into `main` at commit `3d5a97aebd7a76fac03666f1a07def4f3ef62fd3`.
+- CI run: https://github.com/Amirh-Darvishi/pylex-studio/actions/runs/44183746021
+- GitHub Release and tag are pending; 2.5.0 remains the latest published stable release.
+
 ## [2.5.0] - 2026-11-17
 
 ### Workspace search and replacement
