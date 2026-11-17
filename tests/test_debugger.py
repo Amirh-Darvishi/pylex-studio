@@ -1,6 +1,5 @@
 """Tests for the pdb-backed interactive debugger."""
 
-import sys
 import tempfile
 import time
 import unittest
