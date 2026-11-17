@@ -8,6 +8,18 @@
 - Save documents atomically and preserve their detected text encoding and newline convention.
 - Limit file-type detection to a bounded sample instead of reading entire unknown files.
 - Add regression coverage for stale load completions and workspace scanning.
+### Editor responsiveness
+- Build Pygments token spans in a cancellable background task without accessing Tkinter widgets from the worker.
+- Deliver tokenization results through a queue and apply syntax tags in bounded UI-thread batches.
+- Discard stale highlighting results when document content changes, a new document is selected, or the editor is destroyed.
+- Debounce line-number gutter refreshes and matching-bracket calculations to reduce redundant event-loop work.
+- Read status-bar encoding and newline indicators from document metadata, avoiding repeated full-buffer reads.
+
+### Validation and CI
+- Run pytest and compileall on Windows and Ubuntu with Python 3.10, 3.11, and 3.13.
+- Run Black formatting and Ruff lint checks on every matrix combination, rather than a single OS/version subset.
+- Latest full matrix: all six jobs passed; the display-dependent GUI smoke test is skipped in headless environments.
+
 
 
 ## [2.3.1] - 2026-11-17
