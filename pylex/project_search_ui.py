@@ -159,7 +159,7 @@ class ProjectSearchWindow(tk.Toplevel):
         if not selected:
             return
         match = self._matches[int(selected[0])]
-        self.app.open_file_path(match.path)
+        self.app._open_path(match.path)
         editor = self.app.editor
         editor.text.mark_set("insert", f"{match.line}.{match.column - 1}")
         editor.text.see("insert")
