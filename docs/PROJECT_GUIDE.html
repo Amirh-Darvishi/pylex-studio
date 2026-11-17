@@ -110,7 +110,7 @@ source .venv/bin/activate</pre>
 <pre>python -m pip install --upgrade pip
 python -m pip install -r requirements.txt
 python main.py</pre>
-<p>فایل <code>requirements.txt</code> وابستگی Pygments و ابزارهای توسعه Black، Ruff و pytest را فهرست می‌کند. برای اجرای خود برنامه، Pygments وابستگی خارجی اصلی رابط ویرایشگر است؛ Black، Ruff و pytest برای ابزارهای کیفیت و آزمون لازم‌اند.</p>
+<p>فایل <code>requirements.txt</code> فقط وابستگی‌های زمان اجرای برنامه مانند Pygments و ttkbootstrap را فهرست می‌کند. برای مشارکت در توسعه، اجرای آزمون‌ها و کنترل کیفیت، ابتدا <code>python -m pip install -r requirements-dev.txt</code> را اجرا کنید؛ این فایل علاوه بر وابستگی‌های اصلی، pytest، Black و Ruff را نصب می‌کند.</p>
 <h3>چرا venv و نه Docker؟</h3>
 <p>PyLex Studio برنامه دسکتاپ Tkinter است و باید به پنجره‌های سیستم‌عامل دسترسی داشته باشد. اجرای GUI داخل Docker معمولاً به پیکربندی اضافی X11/Wayland یا راهکارهای نمایشگر نیاز دارد. محیط مجازی Python نصب ساده‌تر، تفکیک وابستگی‌ها و تجربه مناسب‌تری برای توسعه دسکتاپ فراهم می‌کند. Docker می‌تواند برای سناریوهای CI یا محیط‌های کنترل‌شده جداگانه مفید باشد، اما روش پیش‌فرض اجرای برنامه نیست.</p>
 </section>
@@ -332,13 +332,16 @@ python -m pytest -v</pre>
 ├── .github/workflows/
 │   └── tests.yml
 ├── requirements.txt
+├── requirements-dev.txt
 ├── pyproject.toml
 ├── README.md
 ├── CHANGELOG.md
 └── .gitignore</pre>
 <table><tr><th>ماژول</th><th>مسئولیت</th></tr>
 <tr><td><code>main.py</code></td><td>نقطه ورود؛ ساخت PyLexApp و شروع حلقه mainloop.</td></tr>
-<tr><td><code>pylex/app.py</code></td><td>پنجره اصلی، منوها، toolbar، اتصال پنل‌ها و هماهنگی workflow.</td></tr>
+<tr><td><code>pylex/app.py</code></td><td>Composition Root پنجره Tk، سازگاری state، مقداردهی اولیه و shutdown.</td></tr>
+<tr><td><code>pylex/app_support.py</code></td><td>مجموعه importهای مشترک مورد استفاده ماژول‌های رابط برنامه.</td></tr>
+<tr><td><code>pylex/app_parts/</code></td><td>ماژول‌های مسئولیت‌محور Shell، Workspace، Documents، Analysis، Execution، Debugger و Preferences.</td></tr>
 <tr><td><code>pylex/editor.py</code></td><td>کنترل ویرایشگر، تب‌ها، نمایش متن و اتصال رنگ‌بندی.</td></tr>
 <tr><td><code>pylex/editor_features.py</code></td><td>توابع کمکی ویرایش متن و رفتارهای هوشمند قابل آزمون.</td></tr>
 <tr><td><code>pylex/analyzer.py</code></td><td>TokenInfo، AnalysisResult، Diagnostic و منطق tokenize/AST.</td></tr>
@@ -371,7 +374,7 @@ python -m compileall -q pylex tests</pre>
 <h3>کنترل کیفیت کد</h3>
 <pre>python -m black --check .
 python -m ruff check .</pre>
-<p>اگر ابزارها در محیط فعال نصب نیستند، ابتدا <code>python -m pip install -r requirements.txt</code> را اجرا کنید. در پروژه‌های بزرگ می‌توان اجرای ابزارها را به مسیرهای تغییرکرده محدود کرد، اما پیش از ادغام باید مجموعه بررسی‌های CI پروژه سبز باشد.</p>
+<p>اگر ابزارها در محیط فعال نصب نیستند، ابتدا <code>python -m pip install -r requirements-dev.txt</code> را اجرا کنید. در پروژه‌های بزرگ می‌توان اجرای ابزارها را به مسیرهای تغییرکرده محدود کرد، اما پیش از ادغام باید مجموعه بررسی‌های CI پروژه سبز باشد.</p>
 <h3>GitHub Actions</h3>
 <p>Workflow موجود در <code>.github/workflows/tests.yml</code> تست‌ها را در ماتریس Windows و Ubuntu و Python 3.10، 3.11 و 3.13 اجرا می‌کند. بررسی Black در job مشخص CI نیز اجرا می‌شود. نتیجه workflow در تب Actions مخزن قابل مشاهده است.</p>
 <h3>راهنمای افزودن آزمون</h3>
@@ -584,6 +587,28 @@ if __name__ == "__main__":
 <div class="note">نسخه 2.2.0 منتشر شده و معماری آن Controllerهای مستقل برای Workspace، Documents، Execution و Debugger را معرفی می‌کند.</div>
 </section>
 
-<footer>PyLex Studio · راهنمای فارسی مسیر نسخه پایدار 2.2.0 · منبع: مخزن رسمی پروژه · نسخه پایدار مبنا: 2.1.0</footer>
+
+<section id="architecture-230">
+<h2>معماری ماژولار رابط برنامه در نسخه 2.3.0</h2>
+<p>در مسیر توسعه نسخه 2.3.0، پیاده‌سازی بزرگ پنجره اصلی به چند ماژول مسئولیت‌محور تقسیم شده است. هدف این تغییر، آسان‌تر شدن نگهداری و توسعه مستقل بخش‌هاست؛ نه بازطراحی رابط کاربری. کلاس <code>PyLexApp</code> همچنان پنجره اصلی و Composition Root است و ساخت ویجت‌ها، callbackها، زمان‌بندی رویدادها و هماهنگی میان بخش‌ها را حفظ می‌کند.</p>
+<h3>تقسیم مسئولیت‌ها</h3>
+<ul>
+<li><strong>ToolbarMixin</strong> در <code>pylex.app_parts.toolbar</code>: منوهای اصلی، toolbar و کنترل‌های فرمان.</li>
+<li><strong>ShellMixin</strong> در <code>pylex.app_parts.shell</code>: لوگو، Activity Bar، چیدمان Workspace و اتصال اجزای اصلی پوسته.</li>
+<li><strong>PanelsMixin</strong> در <code>pylex.app_parts.panels</code>: status bar، پنل‌های Output و Analysis، خطاها، ترمینال، کیفیت و وابستگی‌ها.</li>
+<li><strong>WorkspaceMixin</strong> در <code>pylex.app_parts.workspace</code>: باز و بسته‌کردن Workspace، فایل‌ها، درخت پروژه، مسیرهای اخیر و عملیات فایل/پوشه.</li>
+<li><strong>DocumentsMixin</strong> در <code>pylex.app_parts.documents</code>: تب‌ها، سند فعال، ایجاد/بازکردن/ذخیره فایل و تنظیمات نمایش ویرایشگر.</li>
+<li><strong>AnalysisMixin</strong> در <code>pylex.app_parts.analysis</code>: تحلیل لغوی و نحوی و پاک‌سازی نتایج.</li>
+<li><strong>ExecutionMixin</strong> و <strong>DebuggerMixin</strong>: اجرای برنامه، خروجی و ورودی تعاملی، و چرخه فرمان‌های Debugger.</li>
+<li><strong>PreferencesMixin</strong> در <code>pylex.app_parts.preferences</code>: تنظیمات، پنجره‌های ترجیحات، تغییر تم و تنظیمات رابط؛ مالکیت ساخت و بستن پنجره اصلی در <code>PyLexApp</code> باقی می‌ماند.</li>
+</ul>
+<h3>مرز معماری و سازگاری</h3>
+<p>ماژول‌های جدید به شکل mixinهای بدون state مستقل ترکیب می‌شوند و از طریق <code>self</code> به همان رابط داخلی موجود دسترسی دارند. در این مرحله نام callbackها و قراردادهای متصل به ویجت‌ها تغییر نکرده‌اند؛ این روش، استخراج کد را بدون بازنویسی رفتارهای رابط انجام می‌دهد. Controllerهای مستقل معرفی‌شده در نسخه 2.2.0 همچنان مالک چرخه عمر Workspace، Documents، Execution و Debugger باقی می‌مانند.</p>
+<h3>وابستگی‌ها و اعتبارسنجی</h3>
+<p><code>requirements.txt</code> فقط بسته‌های زمان اجرا را نگه می‌دارد. ابزارهای توسعه و کنترل کیفیت مانند pytest، Black و Ruff در <code>requirements-dev.txt</code> قرار دارند. تست‌های معماری ترکیب مسئولیت‌ها را بررسی می‌کنند و تست GUI در محیط دارای نمایشگر، راه‌اندازی واقعی پنجره و وجود اجزای اصلی را کنترل می‌کند؛ در runnerهای headless این تست GUI با وضعیت skip مشخص می‌شود. ماتریس Windows و Ubuntu با Python 3.10، 3.11 و 3.13 و کنترل‌های Ruff و Black حفظ می‌شود.</p>
+<div class="note">این بخش تغییرات شاخه توسعه 2.3.0 را توصیف می‌کند؛ نسخه پایدار منتشرشده همچنان 2.2.0 است تا انتشار رسمی نسخه جدید.</div>
+</section>
+
+<footer>PyLex Studio · راهنمای فارسی مسیر نسخه پایدار 2.2.0 · منبع: مخزن رسمی پروژه · نسخه پایدار مبنا: 2.2.0</footer>
 </body>
 </html>

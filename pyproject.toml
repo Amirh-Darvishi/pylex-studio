@@ -15,3 +15,4 @@ target-version = ["py310"]
 testpaths = ["tests"]
 python_files = ["test_*.py"]
 addopts = "-ra"
+markers = ["gui: requires a graphical display and Tk support"]
