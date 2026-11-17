@@ -1,6 +1,11 @@
 """Background lexical and syntax analysis tasks for the PyLex UI."""
 
-from .analyzer import collect_diagnostics, format_tokens, lexical_analysis, syntax_analysis
+from .analyzer import (
+    collect_diagnostics,
+    format_tokens,
+    lexical_analysis,
+    syntax_analysis,
+)
 
 
 def analyze_source(source, mode="all", is_cancelled=None):
