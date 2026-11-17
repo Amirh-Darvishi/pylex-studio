@@ -953,6 +953,7 @@ class CodeEditor(tk.Frame):
         if event.widget is not self:
             return
         self._cancel_highlight_work()
+        self._cancel_bracket_work()
         if self._highlight_job is not None:
             try:
                 self.after_cancel(self._highlight_job)
