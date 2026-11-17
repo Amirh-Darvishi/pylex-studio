@@ -10,6 +10,8 @@ import sys
 import tempfile
 import threading
 
+from .process_control import attach_process_job, close_process_job
+
 
 class DebugSession:
     """Control a pdb child process and collect its interactive output."""
@@ -57,6 +59,7 @@ class DebugSession:
                 bufsize=0,
                 **options,
             )
+            attach_process_job(process)
             return cls(process, script_path)
         except Exception:
             if script_path is not None:
@@ -91,6 +94,7 @@ class DebugSession:
             bufsize=0,
             **options,
         )
+        attach_process_job(process)
         return cls(process, script_path, cleanup_script=False)
 
     @property
@@ -305,23 +309,8 @@ class DebugSession:
     def stop(self):
         """Force-stop the debugger and every process spawned beneath it."""
         if self.done:
-            return False
-        try:
-            if os.name == "nt":
-                subprocess.run(
-                    ["taskkill", "/PID", str(self.process.pid), "/T", "/F"],
-                    stdout=subprocess.DEVNULL,
-                    stderr=subprocess.DEVNULL,
-                    check=False,
-                    timeout=5,
-                )
-            else:
-                os.killpg(self.process.pid, signal.SIGKILL)
-        except (OSError, subprocess.SubprocessError):
-            try:
-                self.process.kill()
-            except OSError:
-                pass
+            return close_process_job(self.process)
+        terminate_process_tree(self.process)
         return True
 
     def close(self):
@@ -333,13 +322,12 @@ class DebugSession:
             self.process.kill()
             self.process.wait()
         self._reader.join(timeout=1)
-        if self._reader.is_alive() and os.name != "nt":
+        if self._reader.is_alive():
             # The debuggee may have spawned a child that inherited pdb's pipe.
-            try:
-                os.killpg(self.process.pid, signal.SIGKILL)
-            except OSError:
-                pass
+            terminate_process_tree(self.process)
             self._reader.join(timeout=2)
+        else:
+            close_process_job(self.process)
         with self._stdin_lock:
             if self.process.stdin is not None:
                 try:
