@@ -78,4 +78,3 @@ class AnalysisMixin:
         self.error_summary.configure(text="Results cleared.")
         self.editor.clear_diagnostic()
         self.status.configure(text="Analysis results cleared.")
-
