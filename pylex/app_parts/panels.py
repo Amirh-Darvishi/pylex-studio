@@ -28,9 +28,7 @@ class PanelsMixin:
             document = self.documents.get(editor, {})
             path = document.get("path")
             language = file_type_for(path).description if path else "Python"
-            encoding = document.get("encoding") or self.preferences.get(
-                "status_bar_encoding", "UTF-8"
-            )
+            encoding = document.get("encoding") or self.preferences.get("status_bar_encoding", "UTF-8")
             encoding_labels = {
                 "utf-8": "UTF-8",
                 "utf-8-sig": "UTF-8 BOM",
@@ -39,9 +37,7 @@ class PanelsMixin:
             }
             encoding = encoding_labels.get(encoding.lower(), encoding)
             newline = document.get("newline", "\n")
-            eol = {"\r\n": "CRLF", "\r": "CR", "\n": "LF"}.get(
-                newline, "LF"
-            )
+            eol = {"\r\n": "CRLF", "\r": "CR", "\n": "LF"}.get(newline, "LF")
             values = {
                 "position": f"Ln {line}, Col {int(column) + 1}",
                 "indent": self.preferences.get("status_bar_indent", "Spaces: 4"),
@@ -51,9 +47,11 @@ class PanelsMixin:
                 "mode": "INS",
             }
         values["indent"] = self.preferences.get("status_bar_indent", values["indent"])
-        if editor is None or editor not in self.documents or not self.documents[
-            editor
-        ].get("encoding"):
+        if (
+            editor is None
+            or editor not in self.documents
+            or not self.documents[editor].get("encoding")
+        ):
             values["encoding"] = self.preferences.get("status_bar_encoding", "UTF-8")
         eol_mode = self.preferences.get("status_bar_eol", "Auto")
         if eol_mode != "Auto":
