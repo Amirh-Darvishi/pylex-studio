@@ -139,8 +139,6 @@ Install the development toolchain, then run the automated test suite with either
 python -m pip install -r requirements-dev.txt
 ```
 
-
-
 ```bash
 python -m unittest discover -s tests -v
 python -m pytest -v
@@ -211,7 +209,7 @@ Open **Tools → Formatter, Linter & Test Explorer** or select the **Quality** p
 - **Format Project** runs Black across the workspace. PyLex blocks this action while any editor tab has unsaved changes, avoiding conflicts between in-memory buffers and files changed on disk.
 - **Lint Buffer / Lint Project** runs Ruff and displays structured diagnostics. Double-click a diagnostic to open the affected file and navigate to its line and column.
 - **Test Explorer** discovers pytest test node IDs, displays the discovered tests, and runs either the complete workspace test suite or the selected test. Output and exit status are shown in the Tool Output tab.
-- **Install Tools** explicitly installs or upgrades Black, Ruff, and pytest in the selected interpreter. These tools are also listed in `requirements.txt`.
+- **Install Tools** explicitly installs or upgrades Black, Ruff, and pytest in the selected interpreter. These tools are listed in `requirements-dev.txt`.
 
 Quality tasks run in background threads so the Tkinter interface remains responsive. Stop terminates the active quality-tool process. Ruff and Black settings are centralized in `pyproject.toml`; pytest discovers tests under `tests/` by default.
 
