@@ -1,13 +1,31 @@
 # Changelog
 
-## Unreleased — PyLex Studio 2.4.0
+## Unreleased — PyLex Studio 2.4.1
 
-### Reliability
+### Analysis and UI responsiveness
+- Run lexical analysis, syntax analysis, and diagnostic collection on a background worker so large source files do not block the Tk event loop.
+- Deliver results through a thread-safe queue and apply them only on the UI thread.
+- Invalidate pending analysis immediately when the active document changes, the user switches tabs, results are cleared, or the application closes.
+- Discard results if the originating document is closed, no longer active, or no longer matches the captured source snapshot.
+- Move matching-bracket scans to a cancellable background worker and keep the existing debounce before starting a scan.
+- Add focused tests for analysis modes, syntax diagnostics, cancellation, and bracket-scan cancellation.
+
+### Existing editor responsiveness
+- Keep Pygments tokenization on a cancellable worker with bounded UI-thread tag batches.
+- Keep debounced gutter updates and metadata-backed status-bar encoding/newline indicators.
+
+### Validation
+- CI will validate the changes on Windows and Ubuntu with Python 3.10, 3.11, and 3.13, including pytest, compileall, Black, and Ruff.
+
+## [2.4.0] - 2026-11-17
+
+### Stability and reliability
 - Guard asynchronous large-file loading against stale workspace and window lifecycles, with cancellable chunked reads.
 - Move workspace filesystem scanning off the Tk event loop and populate the project tree incrementally.
 - Save documents atomically and preserve their detected text encoding and newline convention.
 - Limit file-type detection to a bounded sample instead of reading entire unknown files.
 - Add regression coverage for stale load completions and workspace scanning.
+
 ### Editor responsiveness
 - Build Pygments token spans in a cancellable background task without accessing Tkinter widgets from the worker.
 - Deliver tokenization results through a queue and apply syntax tags in bounded UI-thread batches.
@@ -18,8 +36,7 @@
 ### Validation and CI
 - Run pytest and compileall on Windows and Ubuntu with Python 3.10, 3.11, and 3.13.
 - Run Black formatting and Ruff lint checks on every matrix combination, rather than a single OS/version subset.
-- Latest full matrix: all six jobs passed; the display-dependent GUI smoke test is skipped in headless environments.
-
+- Full matrix passed; the display-dependent GUI smoke test is skipped in headless environments.
 
 
 ## [2.3.1] - 2026-11-17
