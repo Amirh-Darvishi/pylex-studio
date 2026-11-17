@@ -103,6 +103,7 @@ class DocumentsMixin:
         editor.pack(fill="both", expand=True)
         editor.indent_string = self._configured_indent_string()
         editor.text.bind("<<PyLexAnalyze>>", lambda _event: self.analyze_all(), add="+")
+        editor.set_file_path(path)
         editor.set_content(content)
         self.document_controller.register(
             editor,

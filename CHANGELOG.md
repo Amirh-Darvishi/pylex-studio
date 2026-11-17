@@ -1,5 +1,13 @@
 # Changelog
 
+## [2.3.1] - Unreleased
+
+### Performance
+- Read large text files on a background worker so disk I/O does not block the Tk event loop.
+- Insert large documents in bounded chunks and enter a lightweight large-file mode that avoids full-document syntax highlighting, bracket scans, and expensive line-number gutter generation.
+- Select Pygments lexers by file extension so JSON, JavaScript, and other supported text formats are no longer tokenized as Python.
+- Added focused regression tests for lexer selection and large-document thresholds.
+
 ## [2.3.0] - Unreleased
 
 ### Architecture
