@@ -24,3 +24,8 @@ def test_large_document_threshold_uses_size_or_line_count():
     assert not is_large_document("small text\n")
     assert is_large_document("x" * LARGE_FILE_THRESHOLD)
     assert is_large_document("\n" * 15000)
+
+def test_large_file_mode_uses_actual_file_size(tmp_path):
+    path = tmp_path / "large.json"
+    path.write_bytes(b"x" * LARGE_FILE_THRESHOLD)
+    assert is_large_document("small decoded content", path)
