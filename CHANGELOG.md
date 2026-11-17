@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased — PyLex Studio 2.4.1
+## [2.4.1] - 2026-11-17 (merged; unreleased)
 
 ### Analysis and UI responsiveness
 - Run lexical analysis, syntax analysis, and diagnostic collection on a background worker so large source files do not block the Tk event loop.
@@ -15,7 +15,9 @@
 - Keep debounced gutter updates and metadata-backed status-bar encoding/newline indicators.
 
 ### Validation
-- CI will validate the changes on Windows and Ubuntu with Python 3.10, 3.11, and 3.13, including pytest, compileall, Black, and Ruff.
+- Feature-branch CI passed all six Windows/Ubuntu × Python 3.10/3.11/3.13 jobs: 169 passed, 1 skipped, and 12 subtests passed; compileall, Black, and Ruff passed.
+- The display-dependent GUI smoke test was skipped on the headless runner.
+- The change is merged into `main`; the GitHub release has not yet been published.
 
 ## [2.4.0] - 2026-11-17
 
