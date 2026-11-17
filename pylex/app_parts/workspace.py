@@ -4,6 +4,7 @@
 # ruff: noqa: F403, F405
 
 from ..app_support import *  # noqa: F403
+from ..editor_performance import LARGE_FILE_THRESHOLD
 
 
 class WorkspaceMixin:
@@ -341,7 +342,7 @@ class WorkspaceMixin:
         except OSError as exc:
             messagebox.showerror("Open Error", f"Could not inspect {path.name}: {exc}")
             return
-        if file_size >= 512 * 1024:
+        if file_size >= LARGE_FILE_THRESHOLD:
             self._load_large_file_async(path, info, file_size)
             return
         try:
