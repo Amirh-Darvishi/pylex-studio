@@ -4,13 +4,16 @@ from pathlib import Path
 import codecs
 import os
 import queue
-import signal
 import subprocess
 import sys
 import tempfile
 import threading
 
-from .process_control import attach_process_job, close_process_job
+from .process_control import (
+    attach_process_job,
+    close_process_job,
+    terminate_process_tree,
+)
 
 
 class DebugSession:
@@ -322,12 +325,9 @@ class DebugSession:
             self.process.kill()
             self.process.wait()
         self._reader.join(timeout=1)
-        if self._reader.is_alive():
-            # The debuggee may have spawned a child that inherited pdb's pipe.
-            terminate_process_tree(self.process)
-            self._reader.join(timeout=2)
-        else:
-            close_process_job(self.process)
+        # A completed debuggee can still have descendants without inherited pipes.
+        terminate_process_tree(self.process)
+        self._reader.join(timeout=2)
         with self._stdin_lock:
             if self.process.stdin is not None:
                 try:
