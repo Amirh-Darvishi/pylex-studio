@@ -25,11 +25,11 @@ class ExecutionResult:
 
 
 def _terminate_process_tree(process):
-    """Terminate the process and descendants, not only the Python parent."""
-    if process.poll() is not None:
-        return
-    try:
-        if os.name == "nt":
+    """Terminate the isolated process group, including children of an exited parent."""
+    if os.name == "nt":
+        if process.poll() is not None:
+            return
+        try:
             subprocess.run(
                 ["taskkill", "/PID", str(process.pid), "/T", "/F"],
                 stdout=subprocess.DEVNULL,
@@ -37,13 +37,28 @@ def _terminate_process_tree(process):
                 check=False,
                 timeout=5,
             )
-        else:
-            os.killpg(process.pid, signal.SIGKILL)
-    except (OSError, subprocess.SubprocessError):
-        try:
-            process.kill()
-        except OSError:
-            pass
+        except (OSError, subprocess.SubprocessError):
+            try:
+                process.kill()
+            except OSError:
+                pass
+        return
+
+    # The group can outlive its leader when a child inherits stdout/stderr.
+    try:
+        os.killpg(process.pid, signal.SIGKILL)
+    except ProcessLookupError:
+        if process.poll() is None:
+            try:
+                process.kill()
+            except OSError:
+                pass
+    except OSError:
+        if process.poll() is None:
+            try:
+                process.kill()
+            except OSError:
+                pass
 
 
 class ExecutionHandle:
@@ -178,7 +193,12 @@ class ExecutionHandle:
                     except (OSError, ValueError):
                         pass
             for reader in self._readers:
-                reader.join(timeout=3)
+                reader.join(timeout=1)
+            if any(reader.is_alive() for reader in self._readers):
+                # A child may inherit the pipes and outlive the Python process.
+                _terminate_process_tree(self.process)
+                for reader in self._readers:
+                    reader.join(timeout=2)
             with self._lock:
                 if self._stop_requested:
                     status = "stopped"
