@@ -858,9 +858,7 @@ class CodeEditor(tk.Frame):
         end = min(offset + 400, len(spans))
         try:
             for tag, start, stop in spans[offset:end]:
-                self.text.tag_add(
-                    tag, f"1.0+{start}c", f"1.0+{stop}c"
-                )
+                self.text.tag_add(tag, f"1.0+{start}c", f"1.0+{stop}c")
         except tk.TclError:
             return
         if end < len(spans):
