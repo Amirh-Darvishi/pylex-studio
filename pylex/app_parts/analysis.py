@@ -10,6 +10,11 @@ from ..analysis_tasks import analyze_source
 class AnalysisMixin:
     """Analysis UI behavior composed into PyLexApp."""
 
+    def _on_document_changed(self, editor):
+        self.mark_dirty(editor)
+        if editor is self.editor:
+            self._cancel_analysis()
+
     def _cancel_analysis(self):
         """Invalidate pending analysis and stop its worker at the next checkpoint."""
         self._analysis_generation = getattr(self, "_analysis_generation", 0) + 1
