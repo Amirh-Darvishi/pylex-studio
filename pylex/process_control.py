@@ -4,11 +4,10 @@ import os
 
 
 def attach_process_job(process):
-    """Place a Windows child in a kill-on-close Job Object when available.
+    """Attach a Windows child to a kill-on-close Job Object when possible.
 
-    POSIX launches already use a dedicated process group. On Windows, the Job
-    Object keeps descendants associated with the session even after its leader
-    exits, allowing shutdown to clean up processes that inherited output pipes.
+    POSIX launches already use a dedicated process group. A Windows Job Object
+    keeps descendants associated with the session after its leader exits.
     """
     if os.name != "nt":
         return False
@@ -19,7 +18,7 @@ def attach_process_job(process):
         import ctypes
         from ctypes import wintypes
 
-            class BasicLimitInformation(ctypes.Structure):
+        class BasicLimitInformation(ctypes.Structure):
             _fields_ = [
                 ("PerProcessUserTimeLimit", ctypes.c_longlong),
                 ("PerJobUserTimeLimit", ctypes.c_longlong),
@@ -31,8 +30,8 @@ def attach_process_job(process):
                 ("PriorityClass", wintypes.DWORD),
                 ("SchedulingClass", wintypes.DWORD),
             ]
-    
-            class IoCounters(ctypes.Structure):
+
+        class IoCounters(ctypes.Structure):
             _fields_ = [
                 ("ReadOperationCount", ctypes.c_ulonglong),
                 ("WriteOperationCount", ctypes.c_ulonglong),
@@ -41,8 +40,8 @@ def attach_process_job(process):
                 ("WriteTransferCount", ctypes.c_ulonglong),
                 ("OtherTransferCount", ctypes.c_ulonglong),
             ]
-    
-            class ExtendedLimitInformation(ctypes.Structure):
+
+        class ExtendedLimitInformation(ctypes.Structure):
             _fields_ = [
                 ("BasicLimitInformation", BasicLimitInformation),
                 ("IoInfo", IoCounters),
@@ -51,8 +50,8 @@ def attach_process_job(process):
                 ("PeakProcessMemoryUsed", ctypes.c_size_t),
                 ("PeakJobMemoryUsed", ctypes.c_size_t),
             ]
-    
-            kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
+
+        kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
         kernel32.CreateJobObjectW.argtypes = [wintypes.LPVOID, wintypes.LPCWSTR]
         kernel32.CreateJobObjectW.restype = wintypes.HANDLE
         kernel32.SetInformationJobObject.argtypes = [
@@ -66,13 +65,13 @@ def attach_process_job(process):
         kernel32.AssignProcessToJobObject.restype = wintypes.BOOL
         kernel32.CloseHandle.argtypes = [wintypes.HANDLE]
         kernel32.CloseHandle.restype = wintypes.BOOL
-    
+
         job = kernel32.CreateJobObjectW(None, None)
         if not job:
             return False
-    
+
         limits = ExtendedLimitInformation()
-        limits.BasicLimitInformation.LimitFlags = 0x2000  # JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE
+        limits.BasicLimitInformation.LimitFlags = 0x2000
         configured = kernel32.SetInformationJobObject(
             job, 9, ctypes.byref(limits), ctypes.sizeof(limits)
         )
@@ -82,9 +81,10 @@ def attach_process_job(process):
         if not assigned:
             kernel32.CloseHandle(job)
             return False
-    
+
         process._pylex_job_handle = job
         process._pylex_job_close = kernel32.CloseHandle
+        return True
     except Exception:
         if job and kernel32 is not None:
             try:
@@ -92,7 +92,6 @@ def attach_process_job(process):
             except Exception:
                 pass
         return False
-    return True
 
 
 def close_process_job(process):
