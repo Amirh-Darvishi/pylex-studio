@@ -6,7 +6,7 @@ import tkinter as tk
 from tkinter import font as tkfont
 
 from pygments import lex
-from pygments.lexers import PythonLexer
+from .editor_performance import is_large_document, lexer_for_path
 from pygments.token import (
     Comment,
     Error,
@@ -43,6 +43,10 @@ class CodeEditor(tk.Frame):
         self._completion_window = None
         self._completion_list = None
         self._breakpoints = set()
+        self.file_path = None
+        self.large_file_mode = False
+        self._loading_content = False
+        self._content_job = None
 
         self.gutter = tk.Text(
             self,
@@ -195,7 +199,10 @@ class CodeEditor(tk.Frame):
     def _changed(self, event=None):
         if self.text.edit_modified():
             self.text.edit_modified(False)
-            self.refresh_lines()
+            if self._loading_content:
+                return
+            if not self.large_file_mode:
+                self.refresh_lines()
             self._schedule_highlight()
             self.update_current_line()
             if self.on_cursor_change:
@@ -348,6 +355,8 @@ class CodeEditor(tk.Frame):
         return "break"
 
     def _update_matching_bracket(self):
+        if self.large_file_mode:
+            return
         self.text.tag_remove("matching_bracket", "1.0", "end")
         source = self.get_content()
         cursor_count = self.text.count("1.0", "insert", "chars")
@@ -586,6 +595,8 @@ class CodeEditor(tk.Frame):
 
     def refresh_lines(self):
         """Rebuild line numbers without resetting the editor's current scroll offset."""
+        if self.large_file_mode:
+            return
         first, _last = self.text.yview()
         count = max(1, int(self.text.index("end-1c").split(".")[0]))
         current = int(self.text.index("insert").split(".")[0])
@@ -614,6 +625,8 @@ class CodeEditor(tk.Frame):
         self.refresh_lines()
 
     def update_current_line(self, event=None):
+        if self.large_file_mode:
+            return
         self.text.tag_remove("current_line", "1.0", "end")
         line = self.text.index("insert").split(".")[0]
         self.text.tag_add("current_line", f"{line}.0", f"{line}.0 lineend+1c")
@@ -622,6 +635,8 @@ class CodeEditor(tk.Frame):
         self.refresh_gutter_marks()
 
     def refresh_gutter_marks(self):
+        if self.large_file_mode:
+            return
         current = int(self.text.index("insert").split(".")[0])
         self.gutter.configure(state="normal")
         self.gutter.tag_remove("gutter_current", "1.0", "end")
@@ -644,13 +659,48 @@ class CodeEditor(tk.Frame):
     def get_content(self):
         return self.text.get("1.0", "end-1c")
 
+    def set_file_path(self, path):
+        """Associate a document path so syntax highlighting can select its lexer."""
+        self.file_path = str(path) if path else None
+
     def set_content(self, value):
+        """Replace document content, yielding to Tk while loading large documents."""
         self.clear_diagnostic()
+        if self._content_job is not None:
+            self.after_cancel(self._content_job)
+            self._content_job = None
+        self.text.configure(state="normal")
         self.text.delete("1.0", "end")
+        self.large_file_mode = is_large_document(value, self.file_path)
+        self._loading_content = self.large_file_mode
+        if self.large_file_mode:
+            self.gutter.pack_forget()
+            self._insert_content_chunk(value, 0)
+            return
+        if not self.gutter.winfo_manager():
+            self.gutter.pack(side="left", before=self.text, fill="y")
         self.text.insert("1.0", value)
         self.text.edit_modified(False)
         self.refresh_lines()
         self.highlight()
+        self.update_current_line()
+
+    def _insert_content_chunk(self, value, offset):
+        """Insert a large document in bounded chunks so the window can repaint."""
+        end = min(offset + 65536, len(value))
+        self.text.configure(state="normal")
+        self.text.insert("end-1c", value[offset:end])
+        self.text.edit_modified(False)
+        if end < len(value):
+            self.text.configure(state="disabled")
+            self._content_job = self.after(
+                1, lambda: self._insert_content_chunk(value, end)
+            )
+            return
+        self._content_job = None
+        self._loading_content = False
+        self.text.configure(state="normal")
+        self.text.edit_modified(False)
         self.update_current_line()
 
     @staticmethod
@@ -676,14 +726,19 @@ class CodeEditor(tk.Frame):
         return None
 
     def _schedule_highlight(self, event=None):
+        if self.large_file_mode:
+            return
         if self._highlight_job is not None:
             self.after_cancel(self._highlight_job)
         self._highlight_job = self.after(120, self.highlight)
 
     def highlight(self, event=None):
-        """Apply Pygments token tags to the current editor content."""
+        """Apply file-type-aware Pygments token tags to manageable documents."""
         self._highlight_job = None
+        if self.large_file_mode:
+            return
         source = self.get_content()
+        lexer = lexer_for_path(self.file_path)
         tags = (
             "py_keyword",
             "py_builtin",
@@ -698,7 +753,7 @@ class CodeEditor(tk.Frame):
         for tag in tags:
             self.text.tag_remove(tag, "1.0", "end")
         offset = 0
-        for token_type, value in lex(source, PythonLexer()):
+        for token_type, value in lex(source, lexer):
             tag = self._tag_for_token(token_type)
             if tag and value:
                 self.text.tag_add(tag, f"1.0+{offset}c", f"1.0+{offset + len(value)}c")

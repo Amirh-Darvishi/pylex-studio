@@ -4,6 +4,7 @@
 # ruff: noqa: F403, F405
 
 from ..app_support import *  # noqa: F403
+from ..editor_performance import LARGE_FILE_THRESHOLD
 
 
 class WorkspaceMixin:
@@ -337,6 +338,14 @@ class WorkspaceMixin:
             self._open_external_file(path)
             return
         try:
+            file_size = path.stat().st_size
+        except OSError as exc:
+            messagebox.showerror("Open Error", f"Could not inspect {path.name}: {exc}")
+            return
+        if file_size >= LARGE_FILE_THRESHOLD:
+            self._load_large_file_async(path, info, file_size)
+            return
+        try:
             content = read_text_file(path)
         except (OSError, UnicodeError) as exc:
             messagebox.showerror("Open Error", f"Could not read {path.name}: {exc}")
@@ -344,6 +353,52 @@ class WorkspaceMixin:
         self._create_document(path=path, content=content)
         self.clear_results()
         self.status.configure(text=f"Opened {path.name} ({info.description}).")
+
+    def _load_large_file_async(self, path, info, file_size):
+        """Read large text files off the UI thread and deliver the result safely."""
+        resolved = str(path)
+        pending = getattr(self, "_pending_file_loads", set())
+        if resolved in pending:
+            self.status.configure(text=f"Already loading {path.name}…")
+            return
+        pending.add(resolved)
+        self._pending_file_loads = pending
+        result_queue = queue.Queue(maxsize=1)
+        size_mb = file_size / (1024 * 1024)
+        self.status.configure(
+            text=f"Loading large file {path.name} ({size_mb:.1f} MB)…"
+        )
+
+        def read_file():
+            try:
+                result_queue.put((True, read_text_file(path)))
+            except (OSError, UnicodeError) as exc:
+                result_queue.put((False, exc))
+
+        threading.Thread(
+            target=read_file, name="pylex-file-loader", daemon=True
+        ).start()
+
+        def poll_result():
+            try:
+                succeeded, result = result_queue.get_nowait()
+            except queue.Empty:
+                self.after(40, poll_result)
+                return
+            self._pending_file_loads.discard(resolved)
+            if not succeeded:
+                messagebox.showerror(
+                    "Open Error", f"Could not read {path.name}: {result}"
+                )
+                self.status.configure(text=f"Failed to load {path.name}.")
+                return
+            self._create_document(path=path, content=result)
+            self.clear_results()
+            self.status.configure(
+                text=f"Opened {path.name} in large-file mode ({info.description})."
+            )
+
+        self.after(40, poll_result)
 
     def _populate_project_tree(self):
         self.project_tree.delete(*self.project_tree.get_children())
