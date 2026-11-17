@@ -2,14 +2,9 @@
 
 import os
 import sys
+import tkinter as tk
 
 import pytest
-
-tk = pytest.importorskip("tkinter")
-pytest.importorskip("_tkinter")
-
-if sys.platform.startswith("linux") and not os.environ.get("DISPLAY"):
-    pytest.skip("Tk GUI smoke test requires a display (headless runner)", allow_module_level=True)
 
 from pylex.app import PyLexApp
 from pylex.preferences import DEFAULTS
@@ -17,6 +12,9 @@ from pylex.preferences import DEFAULTS
 
 @pytest.mark.gui
 def test_application_window_starts_with_core_workspace_widgets(monkeypatch):
+    if sys.platform.startswith("linux") and not os.environ.get("DISPLAY"):
+        pytest.skip("Tk GUI smoke test requires a display (headless runner)")
+
     monkeypatch.setattr("pylex.app.load_preferences", lambda: dict(DEFAULTS))
     try:
         app = PyLexApp()
