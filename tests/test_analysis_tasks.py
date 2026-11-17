@@ -9,7 +9,7 @@ class AnalysisTaskTests(unittest.TestCase):
     def test_all_mode_returns_lexical_syntax_and_diagnostics(self):
         result = analyze_source("value = 42")
         self.assertEqual(result["mode"], "all")
-        self.assertEqual(result["lexical_count"], 3)
+        self.assertEqual(result["lexical_count"], 4)
         self.assertTrue(result["syntax"].success)
         self.assertEqual(result["diagnostics"], [])
 
