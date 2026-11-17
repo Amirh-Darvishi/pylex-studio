@@ -1,4 +1,5 @@
 """Shared imports for the modular PyLex application UI."""
+
 # ruff: noqa: F401
 
 from . import __version__
