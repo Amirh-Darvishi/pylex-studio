@@ -10,16 +10,18 @@ A lightweight Python desktop editor with independent lexical and syntax analysis
 
 PyLex Studio 2.4.0 improves stability and responsiveness during workspace and editor operations. Large-file reads and workspace scans run off the Tkinter event loop, project-tree updates are incremental, and document saves are atomic while preserving detected encoding and newline conventions. Pygments highlighting runs in a cancellable worker and applies token tags in bounded UI batches. The release passed the Windows and Ubuntu CI matrix with Python 3.10, 3.11, and 3.13.
 
-## 2.4.1 development — Background Analysis & UI Responsiveness
+## 2.4.1 merged — Background Analysis & UI Responsiveness
 
-The 2.4.1 follow-up moves the remaining full-source analysis and bracket-matching work away from the Tkinter event loop:
+The 2.4.1 follow-up has been merged into `main`. It completes the background-processing work for analysis and bracket matching:
 
 - Run lexical analysis, syntax analysis, and diagnostic collection on a cancellable background worker.
-- Apply analysis results only on the UI thread and discard stale results after edits, tab switches, tab closure, or application shutdown.
-- Move matching-bracket scans to a cancellable worker while retaining the existing debounce.
-- Add regression tests for background analysis modes, syntax diagnostics, and cancellation.
+- Apply results only on the Tkinter UI thread; reject stale results after edits, tab switches, tab closure, result clearing, or application shutdown.
+- Move matching-bracket scans to a cancellable worker while retaining debounce and cancellation checkpoints.
+- Add regression coverage for analysis modes, syntax diagnostics, analysis cancellation, and bracket-scan cancellation.
 
-This section describes unreleased follow-up work. **The latest stable release is 2.4.0.**
+The feature-branch CI passed all six Windows/Ubuntu × Python 3.10/3.11/3.13 jobs: 169 tests passed, 1 skipped, and 12 subtests passed; compileall, Black, and Ruff also passed. The display-dependent GUI smoke test is skipped on headless runners.
+
+**This change is merged but has not yet been published as a GitHub release. The latest stable release remains 2.4.0.**
 
 ## 2.3.0 release — Modular Application UI
 
