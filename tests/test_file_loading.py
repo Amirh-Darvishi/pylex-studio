@@ -40,3 +40,25 @@ def test_stale_completion_cannot_remove_a_newer_load_for_same_path():
     assert not coordinator.complete(old_ticket)
     assert coordinator.is_current(new_ticket)
     assert coordinator.pending_count == 1
+
+def test_cancel_removes_only_the_requested_pending_path():
+    coordinator = FileLoadCoordinator()
+    first = coordinator.begin("workspace/first.json")
+    second = coordinator.begin("workspace/second.json")
+
+    assert coordinator.cancel(first.path) == first
+    assert not coordinator.is_current(first)
+    assert coordinator.is_current(second)
+    assert coordinator.pending_count == 1
+
+
+def test_stale_cancel_cannot_remove_a_newer_load_for_same_path():
+    coordinator = FileLoadCoordinator()
+    old_ticket = coordinator.begin("workspace/large.json")
+    coordinator.cancel(old_ticket.path)
+    new_ticket = coordinator.begin("workspace/large.json")
+
+    assert coordinator.cancel(old_ticket.path) == new_ticket
+    assert not coordinator.is_current(new_ticket)
+    assert coordinator.pending_count == 0
+
