@@ -90,7 +90,7 @@ def read_text_snapshot(path, *, max_file_bytes=MAX_FILE_BYTES):
     if before.st_size > max_file_bytes:
         raise ValueError("File exceeds the configured search size limit.")
     raw = path.read_bytes()
-    if b"\\x00" in raw:
+    if b"\x00" in raw:
         raise ValueError("File contains binary data.")
     if raw.startswith(b"\xef\xbb\xbf"):
         encoding = "utf-8-sig"
