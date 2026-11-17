@@ -350,11 +350,13 @@ class WorkspaceMixin:
             self._load_large_file_async(path, info, file_size)
             return
         try:
-            content = read_text_file(path)
+            content, encoding, newline = read_text_file_details(path)
         except (OSError, UnicodeError) as exc:
             messagebox.showerror("Open Error", f"Could not read {path.name}: {exc}")
             return
-        self._create_document(path=path, content=content)
+        self._create_document(
+            path=path, content=content, encoding=encoding, newline=newline
+        )
         self.clear_results()
         self.status.configure(text=f"Opened {path.name} ({info.description}).")
 
@@ -390,7 +392,7 @@ class WorkspaceMixin:
 
         def read_file():
             try:
-                result_queue.put((True, read_text_file(path)))
+                result_queue.put((True, read_text_file_details(path)))
             except Exception as exc:
                 result_queue.put((False, exc))
 
@@ -426,7 +428,10 @@ class WorkspaceMixin:
                 )
                 self.status.configure(text=f"Failed to load {path.name}.")
                 return
-            self._create_document(path=path, content=result)
+            content, encoding, newline = result
+            self._create_document(
+                path=path, content=content, encoding=encoding, newline=newline
+            )
             self.clear_results()
             self.status.configure(
                 text=f"Opened {path.name} in large-file mode ({info.description})."

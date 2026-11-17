@@ -93,7 +93,7 @@ class DocumentsMixin:
         self._set_diagnostics([])
         self.status.configure(text="Tab closed.")
 
-    def _create_document(self, path=None, content=""):
+    def _create_document(self, path=None, content="", encoding=None, newline=None):
         """Create a new editor tab and register its independent document state."""
         frame = ttk.Frame(self.editor_tabs)
         editor = CodeEditor(
@@ -112,6 +112,8 @@ class DocumentsMixin:
                 "frame": frame,
                 "path": Path(path) if path else None,
                 "dirty": False,
+                "encoding": encoding,
+                "newline": newline or "\\n",
             },
         )
         self._refresh_open_editors()
@@ -206,13 +208,27 @@ class DocumentsMixin:
             eol = self.preferences.get("status_bar_eol", "Auto")
             if eol == "CRLF":
                 source = source.replace("\n", "\r\n")
-            encoding = self.preferences.get("status_bar_encoding", "UTF-8")
+            encoding = document.get("encoding")
+            if encoding is None:
+                encoding = self.preferences.get("status_bar_encoding", "UTF-8")
             codec = {
                 "UTF-8": "utf-8",
                 "UTF-8 with BOM": "utf-8-sig",
                 "ASCII": "ascii",
-            }.get(encoding, "utf-8")
+            }.get(encoding, encoding)
+            if eol == "CRLF":
+                line_ending = "\\r\\n"
+            elif eol == "LF":
+                line_ending = "\\n"
+            else:
+                line_ending = document.get("newline", "\\n")
+            if line_ending == "\\r\\n":
+                source = source.replace("\\n", "\\r\\n")
+            elif line_ending == "\\r":
+                source = source.replace("\\n", "\\r")
             atomic_write_text(document["path"], source, encoding=codec, newline="")
+            document["encoding"] = codec
+            document["newline"] = line_ending
             document["dirty"] = False
             self.editor_tabs.tab(document["frame"], text=self._tab_label(document))
             self._sync_active_document()

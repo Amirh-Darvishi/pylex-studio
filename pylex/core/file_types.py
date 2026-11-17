@@ -211,8 +211,8 @@ def file_type_for(path) -> FileType:
     return FileType("unknown", "Unknown or binary file", "📄", mime_type, False)
 
 
-def read_text_file(path) -> str:
-    """Read a text file with common Unicode encodings, rejecting binary data."""
+def read_text_file_details(path) -> tuple[str, str, str]:
+    """Read text and return its detected encoding and first newline convention."""
     path = Path(path)
     info = file_type_for(path)
     if not info.is_text:
@@ -220,9 +220,28 @@ def read_text_file(path) -> str:
     data = path.read_bytes()
     if b"\x00" in data:
         raise UnicodeError(f"{path.name} contains binary data.")
-    for encoding in ("utf-8-sig", "utf-8", "cp1252"):
+
+    if data.startswith(b"\xef\xbb\xbf"):
+        candidates = ("utf-8-sig",)
+    else:
+        candidates = ("utf-8", "cp1252")
+    for encoding in candidates:
         try:
-            return data.decode(encoding)
+            content = data.decode(encoding)
+            break
         except UnicodeDecodeError:
             continue
-    raise UnicodeError(f"{path.name} could not be decoded as text.")
+    else:
+        raise UnicodeError(f"{path.name} could not be decoded as text.")
+
+    crlf = content.find("\\r\\n")
+    lf = content.find("\\n")
+    cr = content.find("\\r")
+    endings = [(index, value) for index, value in ((crlf, "\\r\\n"), (lf, "\\n"), (cr, "\\r")) if index >= 0]
+    newline = min(endings, key=lambda item: item[0])[1] if endings else "\\n"
+    return content, encoding, newline
+
+
+def read_text_file(path) -> str:
+    """Read a text file with common Unicode encodings, rejecting binary data."""
+    return read_text_file_details(path)[0]
