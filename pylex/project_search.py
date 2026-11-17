@@ -240,10 +240,21 @@ def write_replacements(changes, snapshots):
 
     prepared = []
     for path, new_content in changes.items():
-        snapshot = snapshots.get(Path(path).resolve())
+        target = Path(path)
+        snapshot = snapshots.get(target.resolve())
+        if snapshot is None:
+            # Windows may expose the same file through its long and 8.3 paths.
+            # Path equality does not recognize those aliases, but samefile does.
+            for candidate in snapshots.values():
+                try:
+                    if Path(candidate.path).samefile(target):
+                        snapshot = candidate
+                        break
+                except OSError:
+                    continue
         if snapshot is None:
             raise ValueError(f"No original snapshot exists for {path}.")
-        current = Path(path).stat()
+        current = target.stat()
         current_digest = hashlib.sha256(Path(path).read_bytes()).hexdigest()
         if (
             current.st_mtime_ns != snapshot.mtime_ns
