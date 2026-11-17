@@ -152,9 +152,9 @@ class RunnerTests(unittest.TestCase):
                 "time.sleep(2); Path(" + repr(str(marker)) + ").write_text('alive')"
             )
             source = (
-                "import subprocess, sys\\n"
-                "subprocess.Popen([sys.executable, '-c', " + repr(child) + "])\\n"
-                "print('parent-finished', flush=True)\\n"
+                "import subprocess, sys\n"
+                "subprocess.Popen([sys.executable, '-c', " + repr(child) + "])\n"
+                "print('parent-finished', flush=True)\n"
             )
             handle = start_source(source, cwd=directory, timeout=5)
             result = handle.wait(5)
