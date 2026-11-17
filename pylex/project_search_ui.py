@@ -142,13 +142,20 @@ class ProjectSearchWindow(tk.Toplevel):
                     self.status.configure(text=f"Search failed: {payload[0]}")
                 else:
                     self._matches, self._snapshots = payload
+                    file_nodes = {}
                     for index, match in enumerate(self._matches):
                         relative = match.path.relative_to(self.root_path)
-                        self.results.insert("", "end", iid=str(index),
-                                             text=f"{relative}: {match.text.strip()}",
-                                             values=(f"{match.line}:{match.column}",))
+                        parent = file_nodes.get(match.path)
+                        if parent is None:
+                            parent = f"file:{len(file_nodes)}"
+                            file_nodes[match.path] = parent
+                            self.results.insert("", "end", iid=parent,
+                                                 text=str(relative), values=("", ""))
+                        self.results.insert(parent, "end", iid=f"match:{index}",
+                                             text=match.text.strip(),
+                                             values=(f"{match.line}:{match.column}", ""))
                     self.status.configure(text=f"{len(self._matches)} matches in "
-                                                f"{len({m.path for m in self._matches})} files")
+                                                f"{len(file_nodes)} files")
                 self.search_button.configure(state="normal")
                 self.cancel_button.configure(state="disabled")
         except queue.Empty:
@@ -160,7 +167,7 @@ class ProjectSearchWindow(tk.Toplevel):
         selected = self.results.selection()
         if not selected:
             return
-        match = self._matches[int(selected[0])]
+        if not selected[0].startswith("match:"):\n            return\n        match = self._matches[int(selected[0].split(":", 1)[1])]
         self.app._open_path(match.path)
         editor = self.app.editor
         editor.text.mark_set("insert", f"{match.line}.{match.column - 1}")
@@ -199,7 +206,7 @@ class ProjectSearchWindow(tk.Toplevel):
                 for index, match in enumerate(self._matches):
                     if match.path == path:
                         replacement_line = new_lines[match.line - 1] if match.line <= len(new_lines) else ""
-                        self.results.item(str(index), values=(
+                        self.results.item(f"match:{index}", values=(
                             f"{match.line}:{match.column}", replacement_line
                         ))
         self._preview = preview
