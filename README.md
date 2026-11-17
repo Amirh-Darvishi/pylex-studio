@@ -14,7 +14,11 @@ The 2.4.1 feature branch passed all six Windows/Ubuntu × Python 3.10/3.11/3.13 
 
 The release includes the stability and file-handling improvements from 2.4.0: cancellable large-file loading, background workspace scanning, incremental project-tree updates, atomic saves that preserve encoding/newline conventions, and cancellable Pygments highlighting.
 
-## 2.5.0 development — Workspace Search & Replace\n\nThe 2.5.0 feature branch introduces workspace-wide literal/regex search, case and whole-word options, file-pattern filtering, background cancellable scanning, unsaved-buffer overlays, grouped results with direct navigation, and a reviewed replacement flow. Replacement writes preserve detected encoding and line endings, use atomic file replacement, and reject files modified after the preview. The feature is under development and is not part of the stable 2.4.1 release.\n\n## 2.3.0 release — Modular Application UI
+## 2.5.0 development — Workspace Search & Replace\n\nThe 2.5.0 feature branch introduces workspace-wide literal/regex search, case and whole-word options, file-pattern filtering, background cancellable scanning, unsaved-buffer overlays, grouped results with direct navigation, and a reviewed replacement flow. Replacement writes preserve detected encoding and line endings, use atomic file replacement, and reject files modified after the preview. The feature is under development and is not part of the stable 2.4.1 release.\n\n## 2.5.0 development — Workspace Search & Replace
+
+The 2.5.0 feature branch introduces workspace-wide literal and regular-expression search, case and whole-word options, file-pattern filtering, cancellable background scanning, unsaved-buffer overlays, grouped results with direct navigation, and a reviewed replacement flow. Replacement writes preserve detected encoding and line endings, use atomic file replacement, and reject files modified after the preview. This work is in development and is not part of the stable 2.4.1 release.
+
+## 2.3.0 release — Modular Application UI
 
 PyLex Studio 2.3.0 decomposes the Tkinter application into focused UI mixins for toolbar and menus, shell/layout, panels, workspace and files, documents, analysis, execution, debugging, and preferences. `PyLexApp` remains the composition root; widget construction, event handling, and presentation behavior are kept intact. Runtime dependencies are listed in `requirements.txt`; contributors and CI install test and quality tools from `requirements-dev.txt`.
 
