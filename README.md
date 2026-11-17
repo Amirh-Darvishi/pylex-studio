@@ -2,7 +2,7 @@
 
 **Latest stable release: 2.4.1 — Background Analysis & UI Responsiveness**
 
-[View the 2.4.0 release notes](https://github.com/Amirh-Darvishi/pylex-studio/releases/tag/2.4.1)
+[View the 2.4.1 release notes](https://github.com/Amirh-Darvishi/pylex-studio/releases/tag/2.4.1)
 
 A lightweight Python desktop editor with independent lexical and syntax analysis.
 
@@ -13,6 +13,10 @@ PyLex Studio 2.4.1 completes the responsiveness improvements introduced in 2.4.0
 The 2.4.1 feature branch passed all six Windows/Ubuntu × Python 3.10/3.11/3.13 CI jobs: 169 tests passed, 1 skipped, and 12 subtests passed; compileall, Black, and Ruff also passed. The display-dependent GUI smoke test is skipped on headless runners.
 
 The release includes the stability and file-handling improvements from 2.4.0: cancellable large-file loading, background workspace scanning, incremental project-tree updates, atomic saves that preserve encoding/newline conventions, and cancellable Pygments highlighting.
+
+## 2.5.0 development — Workspace Search & Replace
+
+The 2.5.0 feature branch introduces workspace-wide literal and regular-expression search, case and whole-word options, file-pattern filtering, cancellable background scanning, unsaved-buffer overlays, grouped results with direct navigation, and a reviewed replacement flow. Replacement writes preserve detected encoding and line endings, use atomic file replacement, and reject files modified after the preview. This work is in development and is not part of the stable 2.4.1 release.
 
 ## 2.3.0 release — Modular Application UI
 

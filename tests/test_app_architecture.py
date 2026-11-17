@@ -34,6 +34,7 @@ def test_application_remains_a_tk_root_and_composes_responsibility_mixins():
 
 def test_major_responsibilities_are_owned_by_their_modules():
     assert "_menu" in ToolbarMixin.__dict__
+    assert "open_project_search" in ToolbarMixin.__dict__
     assert "_workspace" in ShellMixin.__dict__
     assert "_update_editor_status" in PanelsMixin.__dict__
     assert "_populate_project_tree" in WorkspaceMixin.__dict__

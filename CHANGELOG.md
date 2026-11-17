@@ -1,5 +1,17 @@
 # Changelog
 
+## [2.5.0] - Unreleased
+
+### Workspace search and replacement
+- Add a UI-independent workspace search service with literal and regular-expression matching, case sensitivity, whole-word matching, and filename glob filtering.
+- Scan supported text files with size limits and skip generated, VCS, virtual-environment, and hidden directories by default.
+- Run workspace search on a cancellable background worker and display grouped file/line results with direct editor navigation.
+- Include unsaved open-document buffers in search results without writing them to disk.
+- Preview replacements before applying them; preserve encoding and newline conventions and use atomic writes for disk files.
+- Reject replacement when a target file has changed since its search snapshot.
+- Add regression tests for matching modes, exclusions, overlays, cancellation, encoding/newline preservation, and stale-file protection.
+
+
 ## [2.4.1] - 2026-11-17
 
 ### Analysis and UI responsiveness
