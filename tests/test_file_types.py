@@ -85,6 +85,19 @@ class FileTypeTests(unittest.TestCase):
             self.assertEqual(encoding, "utf-8-sig")
             self.assertEqual(newline, "\r\n")
 
+    def test_read_text_can_be_cancelled_before_reading(self):
+        import threading
+
+        with tempfile.TemporaryDirectory() as folder:
+            path = Path(folder) / "large.txt"
+            path.write_text("content", encoding="utf-8")
+            cancel_event = threading.Event()
+            cancel_event.set()
+            from pylex.core.file_types import read_text_file_details
+
+            with self.assertRaises(InterruptedError):
+                read_text_file_details(path, cancel_event=cancel_event)
+
     def test_read_text_falls_back_to_windows_1252(self):
         with tempfile.TemporaryDirectory() as folder:
             path = Path(folder) / "legacy.txt"

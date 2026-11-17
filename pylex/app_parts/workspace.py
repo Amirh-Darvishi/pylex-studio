@@ -370,6 +370,9 @@ class WorkspaceMixin:
 
     def _invalidate_file_loads(self):
         """Invalidate pending reads and scans when their UI context is leaving."""
+        for cancel_event in getattr(self, "_file_load_cancel_events", {}).values():
+            cancel_event.set()
+        getattr(self, "_file_load_cancel_events", {}).clear()
         coordinator = getattr(self, "_load_coordinator", None)
         if coordinator is not None:
             coordinator.invalidate()
@@ -384,6 +387,10 @@ class WorkspaceMixin:
             self.status.configure(text=f"Already loading {path.name}…")
             return
 
+        cancel_event = threading.Event()
+        cancel_events = getattr(self, "_file_load_cancel_events", {})
+        cancel_events[resolved] = cancel_event
+        self._file_load_cancel_events = cancel_events
         result_queue = queue.Queue(maxsize=1)
         size_mb = file_size / (1024 * 1024)
         self.status.configure(
@@ -392,7 +399,9 @@ class WorkspaceMixin:
 
         def read_file():
             try:
-                result_queue.put((True, read_text_file_details(path)))
+                result_queue.put(
+                    (True, read_text_file_details(path, cancel_event=cancel_event))
+                )
             except Exception as exc:
                 result_queue.put((False, exc))
 
@@ -402,14 +411,20 @@ class WorkspaceMixin:
 
         def poll_result():
             if not coordinator.is_current(ticket):
+                cancel_event.set()
                 coordinator.complete(ticket)
+                cancel_events.pop(resolved, None)
                 return
             try:
                 if not self.winfo_exists():
+                    cancel_event.set()
                     coordinator.complete(ticket)
+                    cancel_events.pop(resolved, None)
                     return
             except tk.TclError:
+                cancel_event.set()
                 coordinator.complete(ticket)
+                cancel_events.pop(resolved, None)
                 return
 
             try:
@@ -418,10 +433,13 @@ class WorkspaceMixin:
                 try:
                     self.after(40, poll_result)
                 except tk.TclError:
+                    cancel_event.set()
                     coordinator.complete(ticket)
+                    cancel_events.pop(resolved, None)
                 return
 
             coordinator.complete(ticket)
+            cancel_events.pop(resolved, None)
             if not succeeded:
                 messagebox.showerror(
                     "Open Error", f"Could not read {path.name}: {result}"
@@ -440,7 +458,9 @@ class WorkspaceMixin:
         try:
             self.after(40, poll_result)
         except tk.TclError:
+            cancel_event.set()
             coordinator.complete(ticket)
+            cancel_events.pop(resolved, None)
 
     def _cancel_workspace_tree_scan(self):
         """Stop publishing entries from a scan of a previous workspace."""
