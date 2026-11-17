@@ -51,7 +51,10 @@ class PanelsMixin:
                 "mode": "INS",
             }
         values["indent"] = self.preferences.get("status_bar_indent", values["indent"])
-        values["encoding"] = self.preferences.get("status_bar_encoding", "UTF-8")
+        if editor is None or editor not in self.documents or not self.documents[
+            editor
+        ].get("encoding"):
+            values["encoding"] = self.preferences.get("status_bar_encoding", "UTF-8")
         eol_mode = self.preferences.get("status_bar_eol", "Auto")
         if eol_mode != "Auto":
             values["eol"] = eol_mode
