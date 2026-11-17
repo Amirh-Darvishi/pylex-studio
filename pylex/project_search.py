@@ -64,7 +64,7 @@ def iter_search_files(root, *, include_glob="*", excluded_dirs=DEFAULT_EXCLUDES,
     for directory, dirs, filenames in __import__("os").walk(root):
         dirs[:] = sorted(
             name for name in dirs
-            if name not in excluded and not name.startswith(".") or name == ".github"
+            if name not in excluded and (not name.startswith(".") or name == ".github")
         )
         for filename in sorted(filenames):
             path = Path(directory) / filename
@@ -156,7 +156,7 @@ def write_replacements(changes, snapshots):
     """Apply reviewed replacements atomically, rejecting files changed since search."""
     from .core.file_io import atomic_write_text
 
-    written = []
+    prepared = []
     for path, new_content in changes.items():
         snapshot = snapshots.get(Path(path).resolve())
         if snapshot is None:
@@ -164,7 +164,9 @@ def write_replacements(changes, snapshots):
         current = Path(path).stat()
         if current.st_mtime_ns != snapshot.mtime_ns or current.st_size != snapshot.size:
             raise RuntimeError(f"{path} changed after search; run the search again.")
-        restored = new_content.replace("\n", snapshot.newline)
-        atomic_write_text(path, restored, encoding=snapshot.encoding, newline="")
-        written.append(Path(path))
+        prepared.append((Path(path), new_content.replace("\n", snapshot.newline), snapshot))
+    written = []
+    for path, content, snapshot in prepared:
+        atomic_write_text(path, content, encoding=snapshot.encoding, newline="")
+        written.append(path)
     return written
