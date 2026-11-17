@@ -284,4 +284,3 @@ class DebuggerMixin:
                 self.status.configure(text="Debugging session stopped.")
             return
         self._debug_poll = self.after(80, self._poll_debugger)
-
