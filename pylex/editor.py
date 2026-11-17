@@ -676,6 +676,9 @@ class CodeEditor(tk.Frame):
 
     def set_content(self, value):
         """Replace document content, yielding to Tk while loading large documents."""
+        if self._highlight_job is not None:
+            self.after_cancel(self._highlight_job)
+            self._highlight_job = None
         self._cancel_highlight_work()
         self.clear_diagnostic()
         if self._content_job is not None:
