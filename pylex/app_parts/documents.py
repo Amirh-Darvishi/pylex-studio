@@ -243,4 +243,3 @@ class DocumentsMixin:
                 return False
         document["path"] = path
         return self.save_file()
-
