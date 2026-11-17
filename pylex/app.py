@@ -17,13 +17,17 @@ from .app_parts import (
     DebuggerMixin,
     DocumentsMixin,
     ExecutionMixin,
+    PanelsMixin,
     PreferencesMixin,
     ShellMixin,
+    ToolbarMixin,
     WorkspaceMixin,
 )
 
 class PyLexApp(
+    ToolbarMixin,
     ShellMixin,
+    PanelsMixin,
     WorkspaceMixin,
     DocumentsMixin,
     AnalysisMixin,
