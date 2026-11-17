@@ -28,7 +28,9 @@ class PanelsMixin:
             document = self.documents.get(editor, {})
             path = document.get("path")
             language = file_type_for(path).description if path else "Python"
-            encoding = document.get("encoding") or self.preferences.get("status_bar_encoding", "UTF-8")
+            encoding = document.get("encoding") or self.preferences.get(
+                "status_bar_encoding", "UTF-8"
+            )
             encoding_labels = {
                 "utf-8": "UTF-8",
                 "utf-8-sig": "UTF-8 BOM",
