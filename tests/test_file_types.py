@@ -32,6 +32,14 @@ class FileTypeTests(unittest.TestCase):
             with self.subTest(filename=filename):
                 self.assertEqual(file_type_for(filename).kind, kind)
 
+    def test_unknown_text_detection_reads_large_file_sample_safely(self):
+        with tempfile.TemporaryDirectory() as folder:
+            path = Path(folder) / "custom.extension"
+            path.write_bytes(b"plain text\\n" + b"x" * (2 * 1024 * 1024))
+            info = file_type_for(path)
+            self.assertTrue(info.is_text)
+            self.assertEqual(info.kind, "text")
+
     def test_binary_files_keep_binary_description(self):
         info = file_type_for("payload.bin")
         self.assertEqual(info.kind, "binary")

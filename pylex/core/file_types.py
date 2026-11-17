@@ -199,7 +199,8 @@ def file_type_for(path) -> FileType:
             return FileType("pdf", "PDF document", "📕", mime_type, False)
 
     try:
-        sample = path.read_bytes()[:8192]
+        with path.open("rb") as stream:
+            sample = stream.read(8192)
     except OSError:
         sample = b""
     if sample and b"\x00" not in sample:
