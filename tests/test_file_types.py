@@ -58,6 +58,19 @@ class FileTypeTests(unittest.TestCase):
             self.assertTrue(info.is_text)
             self.assertEqual(info.kind, "text")
 
+    def test_unknown_cp1252_file_is_detected_as_text(self):
+        with tempfile.TemporaryDirectory() as folder:
+            path = Path(folder) / "legacy.custom"
+            path.write_bytes("café – résumé".encode("cp1252"))
+            info = file_type_for(path)
+            self.assertTrue(info.is_text)
+            self.assertEqual(info.kind, "text")
+            from pylex.core.file_types import read_text_file_details
+
+            content, encoding, _newline = read_text_file_details(path)
+            self.assertEqual(content, "café – résumé")
+            self.assertEqual(encoding, "cp1252")
+
     def test_binary_file_is_not_opened_as_editor_text(self):
         with tempfile.TemporaryDirectory() as folder:
             path = Path(folder) / "payload.unknown"
