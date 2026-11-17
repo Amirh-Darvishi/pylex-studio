@@ -6,13 +6,13 @@ import json
 import os
 import queue
 import re
-import signal
 import subprocess
 import threading
 import tkinter as tk
 from pathlib import Path
 from tkinter import messagebox, ttk
 
+from .process_control import attach_process_job, terminate_process_tree
 from .ui.context_menu import ContextMenu
 
 
@@ -30,28 +30,6 @@ def _process_options():
     if os.name == "nt":
         return {"creationflags": getattr(subprocess, "CREATE_NEW_PROCESS_GROUP", 0)}
     return {"start_new_session": True}
-
-
-def _terminate_process_tree(process):
-    """Stop a tool and descendants without leaving pipe-owning children behind."""
-    if process.poll() is not None:
-        return
-    try:
-        if os.name == "nt":
-            subprocess.run(
-                ["taskkill", "/PID", str(process.pid), "/T", "/F"],
-                stdout=subprocess.DEVNULL,
-                stderr=subprocess.DEVNULL,
-                check=False,
-                timeout=5,
-            )
-        else:
-            os.killpg(process.pid, signal.SIGKILL)
-    except (OSError, subprocess.SubprocessError):
-        try:
-            process.kill()
-        except OSError:
-            pass
 
 
 def parse_ruff_diagnostics(output):
@@ -125,11 +103,15 @@ class QualityPanel(ttk.Frame):
         self._events = queue.Queue()
         self._worker = None
         self._process = None
+        self._process_lock = threading.Lock()
+        self._cancel_requested = threading.Event()
+        self._closed = False
+        self._poll_id = None
         self._busy = False
         self._tests = []
         self._diagnostics = []
         self._build()
-        self.after(100, self._poll)
+        self._poll_id = self.after(100, self._poll)
 
     def _build(self):
         actions = ttk.Frame(self)
@@ -341,9 +323,12 @@ class QualityPanel(ttk.Frame):
         self.output.configure(state="disabled")
 
     def _start(self, argv, cwd, env, *, stdin=None, callback=None, label="Running"):
+        if self._closed:
+            return False
         if self._busy:
             self._set_status("A quality tool is already running.")
             return False
+        self._cancel_requested.clear()
         self._busy = True
         self._set_status(label + "...")
         self._clear_output()
@@ -362,7 +347,12 @@ class QualityPanel(ttk.Frame):
                     errors="replace",
                     **_process_options(),
                 )
-                self._process = process
+                attach_process_job(process)
+                with self._process_lock:
+                    self._process = process
+                    cancelled = self._closed or self._cancel_requested.is_set()
+                if cancelled:
+                    terminate_process_tree(process)
                 stdout, stderr = process.communicate(input=stdin)
                 self._events.put(
                     ("complete", (process.returncode, stdout, stderr, callback))
@@ -375,11 +365,14 @@ class QualityPanel(ttk.Frame):
         return True
 
     def _poll(self):
+        if self._closed:
+            return
         try:
             while True:
                 kind, payload = self._events.get_nowait()
                 self._busy = False
-                self._process = None
+                with self._process_lock:
+                    self._process = None
                 if kind == "error":
                     exc, callback = payload
                     self._append_output(f"{type(exc).__name__}: {exc}\n")
@@ -401,21 +394,36 @@ class QualityPanel(ttk.Frame):
                     callback(code, stdout, stderr)
         except queue.Empty:
             pass
-        self.after(100, self._poll)
+        try:
+            self._poll_id = self.after(100, self._poll)
+        except tk.TclError:
+            self._poll_id = None
 
     def stop(self):
-        process = self._process
-        if process is not None and process.poll() is None:
-            _terminate_process_tree(process)
+        self._cancel_requested.set()
+        with self._process_lock:
+            process = self._process
+        if process is not None:
+            terminate_process_tree(process)
             self._set_status("Stopping quality tool...")
         else:
-            self._set_status("No quality tool is running.")
+            self._set_status("Stopping quality tool...")
 
     def close(self):
-        """Terminate an active quality subprocess when the application closes."""
-        process = self._process
-        if process is not None and process.poll() is None:
-            _terminate_process_tree(process)
+        """Stop pending or active quality work and cancel its UI poller."""
+        self._closed = True
+        self._cancel_requested.set()
+        if self._poll_id is not None:
+            try:
+                self.after_cancel(self._poll_id)
+            except tk.TclError:
+                pass
+            self._poll_id = None
+        with self._process_lock:
+            process = self._process
+            self._process = None
+        if process is not None:
+            terminate_process_tree(process)
 
     def _tool_missing(self, module):
         messagebox.showerror(
