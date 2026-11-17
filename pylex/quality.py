@@ -354,6 +354,8 @@ class QualityPanel(ttk.Frame):
                 if cancelled:
                     terminate_process_tree(process)
                 stdout, stderr = process.communicate(input=stdin)
+                # A tool may exit while leaving helper processes behind.
+                terminate_process_tree(process)
                 self._events.put(
                     ("complete", (process.returncode, stdout, stderr, callback))
                 )
