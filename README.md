@@ -12,7 +12,7 @@ PyLex Studio 2.2.0 separates workspace, document, execution, and debugger lifecy
 
 ## 2.3.0 development architecture
 
-The 2.3.0 development branch decomposes the Tkinter application into focused UI mixins for shell/layout, workspace and files, documents, analysis, execution, debugging, and preferences. `PyLexApp` remains the composition root; widget construction, event handling, and presentation behavior are kept intact. Runtime dependencies are listed in `requirements.txt`; contributors and CI install test and quality tools from `requirements-dev.txt`.
+The 2.3.0 development branch decomposes the Tkinter application into focused UI mixins for toolbar and menus, shell/layout, panels, workspace and files, documents, analysis, execution, debugging, and preferences. `PyLexApp` remains the composition root; widget construction, event handling, and presentation behavior are kept intact. Runtime dependencies are listed in `requirements.txt`; contributors and CI install test and quality tools from `requirements-dev.txt`.
 
 ## Language roadmap
 
