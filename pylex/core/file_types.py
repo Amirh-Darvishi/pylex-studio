@@ -215,6 +215,8 @@ def file_type_for(path) -> FileType:
 def read_text_file_details(path, cancel_event=None) -> tuple[str, str, str]:
     """Read text metadata, checking an optional cancellation event between chunks."""
     path = Path(path)
+    if cancel_event is not None and cancel_event.is_set():
+        raise InterruptedError(f"Loading {path.name} was cancelled.")
     info = file_type_for(path)
     if not info.is_text:
         raise UnicodeError(f"{path.name} is not recognized as a text file.")

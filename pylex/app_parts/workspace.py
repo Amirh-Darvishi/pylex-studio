@@ -391,6 +391,11 @@ class WorkspaceMixin:
         cancel_events = getattr(self, "_file_load_cancel_events", {})
         cancel_events[resolved] = cancel_event
         self._file_load_cancel_events = cancel_events
+
+        def clear_cancel_event():
+            if cancel_events.get(resolved) is cancel_event:
+                clear_cancel_event()
+
         result_queue = queue.Queue(maxsize=1)
         size_mb = file_size / (1024 * 1024)
         self.status.configure(
@@ -413,18 +418,18 @@ class WorkspaceMixin:
             if not coordinator.is_current(ticket):
                 cancel_event.set()
                 coordinator.complete(ticket)
-                cancel_events.pop(resolved, None)
+                clear_cancel_event()
                 return
             try:
                 if not self.winfo_exists():
                     cancel_event.set()
                     coordinator.complete(ticket)
-                    cancel_events.pop(resolved, None)
+                    clear_cancel_event()
                     return
             except tk.TclError:
                 cancel_event.set()
                 coordinator.complete(ticket)
-                cancel_events.pop(resolved, None)
+                clear_cancel_event()
                 return
 
             try:
@@ -435,11 +440,11 @@ class WorkspaceMixin:
                 except tk.TclError:
                     cancel_event.set()
                     coordinator.complete(ticket)
-                    cancel_events.pop(resolved, None)
+                    clear_cancel_event()
                 return
 
             coordinator.complete(ticket)
-            cancel_events.pop(resolved, None)
+            clear_cancel_event()
             if not succeeded:
                 messagebox.showerror(
                     "Open Error", f"Could not read {path.name}: {result}"
@@ -460,7 +465,7 @@ class WorkspaceMixin:
         except tk.TclError:
             cancel_event.set()
             coordinator.complete(ticket)
-            cancel_events.pop(resolved, None)
+            clear_cancel_event()
 
     def _cancel_workspace_tree_scan(self):
         """Stop publishing entries from a scan of a previous workspace."""
