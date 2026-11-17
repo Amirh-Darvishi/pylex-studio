@@ -10,6 +10,10 @@ A lightweight Python desktop editor with independent lexical and syntax analysis
 
 PyLex Studio 2.2.0 separates workspace, document, execution, and debugger lifecycle ownership into UI-independent controllers. The Tkinter application remains the composition root and presentation layer, while controllers own lifecycle state and delegate process creation to the existing execution service. Compatibility properties preserve the existing application state interface. The release adds isolated controller tests and retains the Windows/Ubuntu Python 3.10, 3.11, and 3.13 CI matrix with Ruff and Black quality gates.
 
+## 2.3.0 development architecture
+
+The 2.3.0 development branch decomposes the Tkinter application into focused UI mixins for shell/layout, workspace and files, documents, analysis, execution, debugging, and preferences. `PyLexApp` remains the composition root; widget construction, event handling, and presentation behavior are kept intact. Runtime dependencies are listed in `requirements.txt`; contributors and CI install test and quality tools from `requirements-dev.txt`.
+
 ## Language roadmap
 
 PyLex Studio 2.0.0 focuses on a polished, Python-first desktop IDE. The file-type and editor presentation layers are being kept extensible so JavaScript, CSS, and HTML editing can be added in a later release without rebuilding the workspace UI.
@@ -129,7 +133,13 @@ Code runs in a child process. The editor remains responsive while the process is
 
 ## Tests and development checks
 
-Run the automated test suite with either unittest or pytest:
+Install the development toolchain, then run the automated test suite with either unittest or pytest:
+
+```bash
+python -m pip install -r requirements-dev.txt
+```
+
+
 
 ```bash
 python -m unittest discover -s tests -v
@@ -143,7 +153,7 @@ python -m black --check pylex/quality.py tests/test_quality.py
 python -m ruff check pylex/quality.py pylex/git.py pylex/git_panel.py tests/test_quality.py tests/test_git.py
 ```
 
-The CI workflow validates Python 3.10, 3.11, and 3.13 on Ubuntu and Windows.
+A Tk GUI smoke test runs where a graphical display is available and is skipped on headless Linux workers. The CI workflow validates Python 3.10, 3.11, and 3.13 on Ubuntu and Windows.
 
 ## Security
 
