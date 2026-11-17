@@ -13,7 +13,9 @@ class ToolbarMixin:
     def open_project_search(self):
         """Open the workspace-wide search and reviewed replacement window."""
         if self.project is None:
-            messagebox.showinfo("Workspace Search", "Open a workspace before searching.")
+            messagebox.showinfo(
+                "Workspace Search", "Open a workspace before searching."
+            )
             return
         window = getattr(self, "_project_search_window", None)
         if window is not None and window.winfo_exists():
@@ -109,7 +111,11 @@ class ToolbarMixin:
             label="Formatter, Linter & Test Explorer", command=self.open_quality_tools
         )
         tools_menu.add_command(label="Git Source Control", command=self.open_git_tools)
-        tools_menu.add_command(label="Search in Workspace...", command=self.open_project_search, accelerator="Ctrl+Shift+F")
+        tools_menu.add_command(
+            label="Search in Workspace...",
+            command=self.open_project_search,
+            accelerator="Ctrl+Shift+F",
+        )
         tools_menu.add_separator()
         tools_menu.add_command(label="Analyze All", command=self.analyze_all)
         tools_menu.add_command(label="Lexical Analysis", command=self.analyze_lexical)
