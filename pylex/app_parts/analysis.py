@@ -106,7 +106,9 @@ class AnalysisMixin:
             if result["lexical_error"]:
                 status = f"Lexical analysis failed — {result['lexical_error']}."
             else:
-                status = f"Lexical analysis complete — {result['lexical_count']} tokens."
+                status = (
+                    f"Lexical analysis complete — {result['lexical_count']} tokens."
+                )
         elif mode == "syntax":
             syntax = result["syntax"]
             status = (
