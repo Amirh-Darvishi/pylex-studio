@@ -1,4 +1,5 @@
 """Shared imports for the modular PyLex application UI."""
+# ruff: noqa: F401
 
 from . import __version__
 from .commands import Command, CommandRegistry
@@ -48,7 +49,5 @@ from .ui.context_menu import ContextMenu
 from .ui.command_palette import CommandPalette
 
 
-
 # This module intentionally re-exports dependencies used by app mixins.
-# ruff: noqa: F401
 __all__ = [name for name in globals() if not name.startswith("_")] + ["__version__"]
