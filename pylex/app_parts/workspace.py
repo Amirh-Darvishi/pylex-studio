@@ -375,9 +375,11 @@ class WorkspaceMixin:
         cancel_event = cancel_events.pop(resolved, None)
         if cancel_event is not None:
             cancel_event.set()
+        tickets = getattr(self, "_file_load_tickets", {})
+        ticket = tickets.pop(resolved, None)
         coordinator = getattr(self, "_load_coordinator", None)
-        if coordinator is not None:
-            coordinator.cancel(resolved)
+        if coordinator is not None and ticket is not None:
+            coordinator.cancel(ticket)
         return cancel_event is not None
 
     def _invalidate_file_loads(self):
@@ -386,6 +388,7 @@ class WorkspaceMixin:
         for cancel_event in cancel_events.values():
             cancel_event.set()
         cancel_events.clear()
+        getattr(self, "_file_load_tickets", {}).clear()
         coordinator = getattr(self, "_load_coordinator", None)
         if coordinator is not None:
             coordinator.invalidate()
@@ -404,10 +407,15 @@ class WorkspaceMixin:
         cancel_events = getattr(self, "_file_load_cancel_events", {})
         cancel_events[resolved] = cancel_event
         self._file_load_cancel_events = cancel_events
+        tickets = getattr(self, "_file_load_tickets", {})
+        tickets[resolved] = ticket
+        self._file_load_tickets = tickets
 
         def clear_cancel_event():
             if cancel_events.get(resolved) is cancel_event:
                 cancel_events.pop(resolved, None)
+            if tickets.get(resolved) == ticket:
+                tickets.pop(resolved, None)
 
         result_queue = queue.Queue(maxsize=1)
         size_mb = file_size / (1024 * 1024)
