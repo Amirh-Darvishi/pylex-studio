@@ -93,7 +93,7 @@ class TerminalHelperTests(unittest.TestCase):
             )
             session = TerminalProcess.start("sh", cwd=directory)
             try:
-                command = shlex.join([sys.executable, "-c", child])
+                command = shlex.join([sys.executable, "-c", child]) + " &"
                 session.send(command)
                 session.send("exit")
                 self.assertTrue(session.done.wait(5))
