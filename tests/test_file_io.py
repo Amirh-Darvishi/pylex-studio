@@ -1,5 +1,7 @@
 """Tests for safe atomic document persistence."""
 
+import os
+import stat
 from pathlib import Path
 from unittest.mock import patch
 
@@ -58,9 +60,14 @@ def test_atomic_write_follows_file_symlinks_when_supported(tmp_path):
     assert target.read_text(encoding="utf-8") == "updated"
 
 
-def test_atomic_write_creates_new_file(tmp_path):
+def test_atomic_write_creates_new_file_with_normal_umask(tmp_path):
     target = Path(tmp_path) / "new.txt"
-
-    atomic_write_text(target, "created", encoding="utf-8")
+    previous_umask = os.umask(0o022)
+    try:
+        atomic_write_text(target, "created", encoding="utf-8")
+    finally:
+        os.umask(previous_umask)
 
     assert target.read_text(encoding="utf-8") == "created"
+    if os.name == "posix":
+        assert stat.S_IMODE(target.stat().st_mode) == 0o644
