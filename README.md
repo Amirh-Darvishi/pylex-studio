@@ -1,27 +1,18 @@
 # PyLex Studio
 
-**Latest stable release: 2.4.0 — Stability, Reliability & Responsiveness**
+**Latest stable release: 2.4.1 — Background Analysis & UI Responsiveness**
 
-[View the 2.4.0 release notes](https://github.com/Amirh-Darvishi/pylex-studio/releases/tag/2.4.0)
+[View the 2.4.0 release notes](https://github.com/Amirh-Darvishi/pylex-studio/releases/tag/2.4.1)
 
 A lightweight Python desktop editor with independent lexical and syntax analysis.
 
-## 2.4.0 release
+## 2.4.1 release — Background Analysis & UI Responsiveness
 
-PyLex Studio 2.4.0 improves stability and responsiveness during workspace and editor operations. Large-file reads and workspace scans run off the Tkinter event loop, project-tree updates are incremental, and document saves are atomic while preserving detected encoding and newline conventions. Pygments highlighting runs in a cancellable worker and applies token tags in bounded UI batches. The release passed the Windows and Ubuntu CI matrix with Python 3.10, 3.11, and 3.13.
+PyLex Studio 2.4.1 completes the responsiveness improvements introduced in 2.4.0. Lexical analysis, syntax analysis, and diagnostic collection now run on a cancellable background worker. Results are delivered through a thread-safe queue and applied only on the Tkinter UI thread; stale results are rejected after document edits, tab changes, result clearing, or application shutdown. Matching-bracket scans also run in a cancellable worker with debounce and cancellation checkpoints.
 
-## 2.4.1 merged — Background Analysis & UI Responsiveness
+The 2.4.1 feature branch passed all six Windows/Ubuntu × Python 3.10/3.11/3.13 CI jobs: 169 tests passed, 1 skipped, and 12 subtests passed; compileall, Black, and Ruff also passed. The display-dependent GUI smoke test is skipped on headless runners.
 
-The 2.4.1 follow-up has been merged into `main`. It completes the background-processing work for analysis and bracket matching:
-
-- Run lexical analysis, syntax analysis, and diagnostic collection on a cancellable background worker.
-- Apply results only on the Tkinter UI thread; reject stale results after edits, tab switches, tab closure, result clearing, or application shutdown.
-- Move matching-bracket scans to a cancellable worker while retaining debounce and cancellation checkpoints.
-- Add regression coverage for analysis modes, syntax diagnostics, analysis cancellation, and bracket-scan cancellation.
-
-The feature-branch CI passed all six Windows/Ubuntu × Python 3.10/3.11/3.13 jobs: 169 tests passed, 1 skipped, and 12 subtests passed; compileall, Black, and Ruff also passed. The display-dependent GUI smoke test is skipped on headless runners.
-
-**This change is merged but has not yet been published as a GitHub release. The latest stable release remains 2.4.0.**
+The release includes the stability and file-handling improvements from 2.4.0: cancellable large-file loading, background workspace scanning, incremental project-tree updates, atomic saves that preserve encoding/newline conventions, and cancellable Pygments highlighting.
 
 ## 2.3.0 release — Modular Application UI
 
