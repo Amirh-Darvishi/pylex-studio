@@ -1,0 +1,97 @@
+"""Process-tree ownership helpers for execution, terminal and debugger sessions."""
+
+import os
+
+
+def attach_process_job(process):
+    """Place a Windows child in a kill-on-close Job Object when available.
+
+    POSIX launches already use a dedicated process group. On Windows, the Job
+    Object keeps descendants associated with the session even after its leader
+    exits, allowing shutdown to clean up processes that inherited output pipes.
+    """
+    if os.name != "nt":
+        return False
+
+    import ctypes
+    from ctypes import wintypes
+
+    class BasicLimitInformation(ctypes.Structure):
+        _fields_ = [
+            ("PerProcessUserTimeLimit", ctypes.c_longlong),
+            ("PerJobUserTimeLimit", ctypes.c_longlong),
+            ("LimitFlags", wintypes.DWORD),
+            ("MinimumWorkingSetSize", ctypes.c_size_t),
+            ("MaximumWorkingSetSize", ctypes.c_size_t),
+            ("ActiveProcessLimit", wintypes.DWORD),
+            ("Affinity", ctypes.c_size_t),
+            ("PriorityClass", wintypes.DWORD),
+            ("SchedulingClass", wintypes.DWORD),
+        ]
+
+    class IoCounters(ctypes.Structure):
+        _fields_ = [
+            ("ReadOperationCount", ctypes.c_ulonglong),
+            ("WriteOperationCount", ctypes.c_ulonglong),
+            ("OtherOperationCount", ctypes.c_ulonglong),
+            ("ReadTransferCount", ctypes.c_ulonglong),
+            ("WriteTransferCount", ctypes.c_ulonglong),
+            ("OtherTransferCount", ctypes.c_ulonglong),
+        ]
+
+    class ExtendedLimitInformation(ctypes.Structure):
+        _fields_ = [
+            ("BasicLimitInformation", BasicLimitInformation),
+            ("IoInfo", IoCounters),
+            ("ProcessMemoryLimit", ctypes.c_size_t),
+            ("JobMemoryLimit", ctypes.c_size_t),
+            ("PeakProcessMemoryUsed", ctypes.c_size_t),
+            ("PeakJobMemoryUsed", ctypes.c_size_t),
+        ]
+
+    kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
+    kernel32.CreateJobObjectW.argtypes = [wintypes.LPVOID, wintypes.LPCWSTR]
+    kernel32.CreateJobObjectW.restype = wintypes.HANDLE
+    kernel32.SetInformationJobObject.argtypes = [
+        wintypes.HANDLE,
+        ctypes.c_int,
+        wintypes.LPVOID,
+        wintypes.DWORD,
+    ]
+    kernel32.SetInformationJobObject.restype = wintypes.BOOL
+    kernel32.AssignProcessToJobObject.argtypes = [wintypes.HANDLE, wintypes.HANDLE]
+    kernel32.AssignProcessToJobObject.restype = wintypes.BOOL
+    kernel32.CloseHandle.argtypes = [wintypes.HANDLE]
+    kernel32.CloseHandle.restype = wintypes.BOOL
+
+    job = kernel32.CreateJobObjectW(None, None)
+    if not job:
+        return False
+
+    limits = ExtendedLimitInformation()
+    limits.BasicLimitInformation.LimitFlags = 0x2000  # JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE
+    configured = kernel32.SetInformationJobObject(
+        job, 9, ctypes.byref(limits), ctypes.sizeof(limits)
+    )
+    assigned = configured and kernel32.AssignProcessToJobObject(
+        job, wintypes.HANDLE(process._handle)
+    )
+    if not assigned:
+        kernel32.CloseHandle(job)
+        return False
+
+    process._pylex_job_handle = job
+    process._pylex_job_close = kernel32.CloseHandle
+    return True
+
+
+def close_process_job(process):
+    """Close a process's Job Object, terminating every remaining member."""
+    job = getattr(process, "_pylex_job_handle", None)
+    close_handle = getattr(process, "_pylex_job_close", None)
+    if not job or close_handle is None:
+        return False
+    process._pylex_job_handle = None
+    process._pylex_job_close = None
+    close_handle(job)
+    return True
