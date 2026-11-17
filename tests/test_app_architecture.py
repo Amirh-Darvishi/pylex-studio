@@ -8,8 +8,10 @@ from pylex.app_parts import (
     DebuggerMixin,
     DocumentsMixin,
     ExecutionMixin,
+    PanelsMixin,
     PreferencesMixin,
     ShellMixin,
+    ToolbarMixin,
     WorkspaceMixin,
 )
 
@@ -17,7 +19,9 @@ from pylex.app_parts import (
 def test_application_remains_a_tk_root_and_composes_responsibility_mixins():
     assert issubclass(PyLexApp, tk.Tk)
     for mixin in (
+        ToolbarMixin,
         ShellMixin,
+        PanelsMixin,
         WorkspaceMixin,
         DocumentsMixin,
         AnalysisMixin,
@@ -29,8 +33,9 @@ def test_application_remains_a_tk_root_and_composes_responsibility_mixins():
 
 
 def test_major_responsibilities_are_owned_by_their_modules():
-    assert "_menu" in ShellMixin.__dict__
+    assert "_menu" in ToolbarMixin.__dict__
     assert "_workspace" in ShellMixin.__dict__
+    assert "_update_editor_status" in PanelsMixin.__dict__
     assert "_populate_project_tree" in WorkspaceMixin.__dict__
     assert "_create_document" in DocumentsMixin.__dict__
     assert "analyze_all" in AnalysisMixin.__dict__
