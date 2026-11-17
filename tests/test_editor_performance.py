@@ -1,6 +1,7 @@
 """Regression tests for file-aware highlighting and large-file policies."""
 
 from pygments.lexers import JavascriptLexer, JsonLexer, PythonLexer
+from pygments.token import Keyword
 
 from pylex.editor_performance import (
     LARGE_FILE_THRESHOLD,
@@ -39,7 +40,7 @@ def test_token_spans_preserve_source_offsets():
 
     assert spans is not None
     assert spans[0][1:] == (0, 2)
-    assert spans[0][0] in PythonLexer().tokens
+    assert spans[0][0] in Keyword
     assert spans[-1][2] == len(source)
 
 
