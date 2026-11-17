@@ -1,5 +1,8 @@
 """Workspace responsibilities for the PyLex application."""
 
+# These modules intentionally consume the shared UI dependency namespace.
+# ruff: noqa: F403, F405
+
 from ..app_support import *  # noqa: F403
 
 
