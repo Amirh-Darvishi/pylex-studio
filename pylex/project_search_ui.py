@@ -167,7 +167,9 @@ class ProjectSearchWindow(tk.Toplevel):
         selected = self.results.selection()
         if not selected:
             return
-        if not selected[0].startswith("match:"):\n            return\n        match = self._matches[int(selected[0].split(":", 1)[1])]
+        if not selected[0].startswith("match:"):
+            return
+        match = self._matches[int(selected[0].split(":", 1)[1])]
         self.app._open_path(match.path)
         editor = self.app.editor
         editor.text.mark_set("insert", f"{match.line}.{match.column - 1}")
