@@ -6,6 +6,7 @@ import sys
 import time
 import tempfile
 import unittest
+from pathlib import Path
 from unittest.mock import patch
 from pylex.terminal import (
     TerminalProcess,
