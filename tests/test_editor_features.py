@@ -37,6 +37,12 @@ class SmartEditorFeatureTests(unittest.TestCase):
             (opening, source.index("]", opening)),
         )
 
+    def test_matching_bracket_scan_can_be_cancelled(self):
+        source = "outer(inner[0])"
+        self.assertIsNone(
+            find_matching_bracket(source, source.index("("), lambda: True)
+        )
+
     def test_matching_brackets_detects_nested_pair(self):
         source = "outer(inner[0])"
         opening = source.index("(")
