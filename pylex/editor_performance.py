@@ -2,6 +2,7 @@
 
 from pathlib import Path
 
+from pygments import lex
 from pygments.lexers import PythonLexer, get_lexer_for_filename
 from pygments.util import ClassNotFound
 
@@ -34,3 +35,23 @@ def lexer_for_path(path):
         )
     except ClassNotFound:
         return PythonLexer()
+
+
+def build_token_spans(source, lexer, is_cancelled=None):
+    """Tokenize source into offset spans without touching editor widgets.
+
+    The optional predicate lets background callers abandon obsolete work
+    between tokens. A cancelled operation returns None rather than partial tags.
+    """
+    spans = []
+    offset = 0
+    for token_type, value in lex(source, lexer):
+        if is_cancelled is not None and is_cancelled():
+            return None
+        end = offset + len(value)
+        if value:
+            spans.append((token_type, offset, end))
+        offset = end
+    if is_cancelled is not None and is_cancelled():
+        return None
+    return spans
