@@ -134,7 +134,6 @@ def lexical_analysis(source: str, is_cancelled=None):
     return result
 
 
-
 def format_lexical_report(source: str, is_cancelled=None):
     """Format lexical output directly, avoiding intermediate TokenInfo objects."""
     lines = [
@@ -158,7 +157,7 @@ def format_lexical_report(source: str, is_cancelled=None):
                 name = "BUILTIN"
             else:
                 name = "NAME"
-        value = item.string.replace("\\n", r"\\n").replace("\\t", r"\\t")
+        value = item.string.replace("\n", r"\n").replace("\t", r"\t")
         end = f"{item.end[0]}:{item.end[1]}"
         lines.append(
             f"{name:<18} {item.start[0]:>5} {item.start[1]:>7} "
@@ -169,7 +168,8 @@ def format_lexical_report(source: str, is_cancelled=None):
         ast.parse(source)
     if is_cancelled is not None and is_cancelled():
         return None
-    return ("\\n".join(lines) if count else "No tokens found."), count
+    return ("\n".join(lines) if count else "No tokens found."), count
+
 
 def syntax_analysis(source: str) -> AnalysisResult:
     """Validate Python syntax with ast.parse and return structured diagnostics."""
