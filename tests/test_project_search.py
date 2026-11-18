@@ -46,6 +46,18 @@ class ProjectSearchTests(unittest.TestCase):
         )
         self.assertEqual(set(snapshots), {path.resolve()})
 
+    def test_multiline_regex_keeps_the_full_matching_context(self):
+        path = self.root / "multiline.py"
+        path.write_text("begin\nmiddle\nend\n", encoding="utf-8")
+
+        matches, _snapshots = search_text(
+            self.root, r"begin\nmiddle", regex=True
+        )
+
+        self.assertEqual(len(matches), 1)
+        self.assertEqual(matches[0].line, 1)
+        self.assertEqual(matches[0].text, "begin\nmiddle")
+
     def test_search_does_not_retain_snapshots_for_unmatched_files(self):
         (self.root / "match.py").write_text("needle", encoding="utf-8")
         (self.root / "no_match.py").write_text("nothing here", encoding="utf-8")
