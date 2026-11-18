@@ -94,7 +94,7 @@ def main():
 
     source = make_source(args.lines)
     lexer = PythonLexer()
-    cursor = max(0, len(source) - 2)
+    cursor = source.index("(")
     tasks = [
         ("Pygments token spans", lambda: build_token_spans(source, lexer)),
         ("AST syntax analysis", lambda: syntax_analysis(source)),
