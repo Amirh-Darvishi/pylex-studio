@@ -101,16 +101,12 @@ def lexical_analysis(source: str, is_cancelled=None):
     partial token stream from a complete lexical analysis.
     """
     result = []
-    generated = []
+    has_error_token = False
     for item in tokenize.generate_tokens(io.StringIO(source).readline):
         if is_cancelled is not None and is_cancelled():
             return None
-        generated.append(item)
-    # Some Python versions emit an ERRORTOKEN for an unterminated quote
-    # instead of raising TokenError. Ask the parser for its canonical error.
-    if any(item.type == tokenize.ERRORTOKEN for item in generated):
-        ast.parse(source)
-    for item in generated:
+        if item.type == tokenize.ERRORTOKEN:
+            has_error_token = True
         if item.type in (tokenize.ENCODING, tokenize.ENDMARKER):
             continue
         name = tokenize.tok_name.get(item.type, str(item.type))
@@ -131,6 +127,10 @@ def lexical_analysis(source: str, is_cancelled=None):
                 item.end[1],
             )
         )
+    # Some Python versions emit ERRORTOKEN for an unterminated quote instead
+    # of raising TokenError. Ask the parser for its canonical error.
+    if has_error_token:
+        ast.parse(source)
     return result
 
 
