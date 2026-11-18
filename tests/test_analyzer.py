@@ -122,7 +122,7 @@ class AnalyzerTests(unittest.TestCase):
         self.assertEqual(CodeEditor._tag_for_token(token_type), "py_keyword")
 
     def test_streamed_lexical_report_matches_token_object_formatter(self):
-        source = 'if ready:\\n    print("café", 42)\\n'
+        source = 'if ready:\n    print("café", 42)\n'
         expected = format_tokens(lexical_analysis(source))
 
         report, count = format_lexical_report(source)
