@@ -7,7 +7,7 @@
 - Map runtime exceptions to the traceback frame for the executed source and retain the launched editor snapshot and interpreter context.
 - Guard interpreter-discovery, pip-repair, and virtual-environment dialog polling against destroyed Tk windows.
 - Cancel chunked editor-content callbacks and close completion popups when an editor is destroyed.
-- Honor configured indentation width in Smart Backspace and Dedent, including two-space and tab-based indentation.
+- Honor configured indentation width in Auto-Indent, Smart Backspace, and Dedent, including two-space and tab-based indentation; avoid false auto-indent from comment colons.
 - Prevent workspace rename from replacing an existing destination.
 - Add regression coverage for lifecycle callbacks, runtime diagnostic context, dialog polling, indentation, and rename safety.
 
