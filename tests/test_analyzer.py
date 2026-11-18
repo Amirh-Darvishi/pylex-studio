@@ -2,6 +2,7 @@
 
 import tokenize
 import unittest
+from unittest.mock import patch
 
 from pygments import lex
 from pygments.lexers import PythonLexer
@@ -68,6 +69,13 @@ class AnalyzerTests(unittest.TestCase):
     def test_unterminated_string_reports_token_error(self):
         with self.assertRaises((tokenize.TokenError, IndentationError, SyntaxError)):
             lexical_analysis('value = "unfinished')
+
+    def test_collect_diagnostics_does_not_materialize_lexical_tokens(self):
+        with patch(
+            "pylex.analyzer.lexical_analysis",
+            side_effect=AssertionError("diagnostics should use validation-only tokenization"),
+        ):
+            self.assertEqual(collect_diagnostics("value = 42"), [])
 
     def test_collect_diagnostics_deduplicates_same_syntax_issue(self):
         diagnostics = collect_diagnostics('value = "unfinished')
