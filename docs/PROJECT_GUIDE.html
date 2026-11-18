@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="description" content="راهنمای کاربری، معماری، نصب، تحلیل کد، اجرا، دیباگ، کیفیت، Git و توسعه PyLex Studio؛ راهنمای نسخه پایدار 2.6.0">
+<meta name="description" content="راهنمای کاربری، معماری، نصب، تحلیل کد، اجرا، دیباگ، کیفیت، Git و توسعه PyLex Studio؛ راهنمای نسخه پایدار 2.7.0">
 <title>راهنمای جامع PyLex Studio · نسخه پایدار 2.6.0</title>
 <style>
 :root{color-scheme:light;--ink:#202938;--muted:#5d6879;--paper:#fff;--bg:#f2f5fa;--line:#dce3ed;--blue:#2854a5;--soft:#edf4ff;--code:#111827}
@@ -29,12 +29,13 @@ footer{text-align:center;padding:26px;color:var(--muted)}
 <header>
 <h1>PyLex Studio</h1>
 <p>راهنمای جامع کاربری و فنی پروژه؛ از نصب و کار با ویرایشگر تا معماری، اجرا، اشکال‌زدایی و توسعه</p>
-<p class="version">نسخه مستندات: 2.6.0 (پایدار) · آخرین نسخه پایدار: 2.6.0 · Python 3.10+ · Tkinter · Pygments</p>
+<p class="version">نسخه مستندات: 2.7.0 (پایدار) · آخرین نسخه پایدار: 2.7.0 · Python 3.10+ · Tkinter · Pygments</p>
 </header>
 <div class="layout">
 <nav aria-label="فهرست راهنما">
 <strong>فهرست مطالب</strong>
 <a href="#overview">۱. معرفی و دامنه پروژه</a>
+<a href="#performance-270">۱۷. بهینه‌سازی عملکرد (2.7.0)</a>
 <a href="#process-stability-260">۱۶. پایداری چرخه عمر فرایندها (2.6.0)</a>
 <a href="#project-search-250">۱۵. جستجوی سراسری Workspace (2.5.0)</a>
 <a href="#features">۲. قابلیت‌های نسخه 2.3.1</a>
@@ -664,6 +665,25 @@ if __name__ == "__main__":
 <div class="note">نسخه 2.4.1 در تاریخ 17 نوامبر 2026 به‌عنوان نسخه پایدار منتشر شده است. یادداشت انتشار: <a href="https://github.com/Amirh-Darvishi/pylex-studio/releases/tag/2.4.1">PyLex Studio 2.4.1</a>.</div>
 </section>
 
+
+<section id="performance-270">
+<h2>بهینه‌سازی عملکرد در نسخه پایدار 2.7.0</h2>
+<p>نسخه 2.7.0 با هدف کاهش پردازش و تخصیص حافظه غیرضروری در ویرایشگر، تحلیل کد، تطبیق براکت‌ها و Workspace منتشر شده است. رفتار و قابلیت‌های قابل مشاهده برنامه حفظ شده‌اند و کارهای پس‌زمینه همچنان قابل لغو و به‌روزرسانی‌های UI محدود و batch-based هستند.</p>
+<h3>تغییرات اصلی</h3>
+<ul>
+<li>استفاده از offsetهای Pygments و نگهداری فقط spanهای مورد نیاز برای رنگ‌آمیزی ویرایشگر؛ حذف پیمایش و مجموعه‌های واسط تکراری.</li>
+<li>پردازش جریان‌محور توکن‌های لغوی و استفاده مجدد از نتایج lexical و syntax در مسیر تحلیل کامل و جمع‌آوری Diagnostic.</li>
+<li>بهبود پیمایش خطی برای جست‌وجوی Workspace، نگهداری snapshot فقط برای فایل‌های دارای نتیجه و ارائه batchهای محدود در UI.</li>
+<li>کاهش بررسی metadata در Explorer با cache نوع MIME و بررسی‌های filesystem بدون دنبال‌کردن symlink.</li>
+<li>تطبیق براکت با tokenizer پایتون و stack delimiter؛ fallback برای کد ناقص یا حالت‌های tokenizer ناسازگار.</li>
+<li>حفظ cancellation، debounce، حالت فایل حجیم و پردازش‌های پس‌زمینه.</li>
+</ul>
+<h3>نتیجه اندازه‌گیری محلی</h3>
+<p>در Windows با Python 3.13، benchmark تطبیق براکت برای 5,000 خط از 614.17 به 73.33 میلی‌ثانیه (حدود 88.1٪ سریع‌تر) و برای 20,000 خط از 2,836.87 به 284.94 میلی‌ثانیه (حدود 90٪ سریع‌تر) رسید. این نتایج مربوط به همین workload است و به معنی بهبود یکسان همه عملیات نیست.</p>
+<p>آزمون‌های محلی: 198 موفق، 3 skip و 14 subtest موفق؛ Black برای 75 فایل تغییری گزارش نکرد و Ruff موفق بود. هر شش job ماتریس Windows/Ubuntu با Python 3.10، 3.11 و 3.13 موفق شدند.</p>
+<p>جزئیات روش benchmark، workloadها، baseline و محدودیت تفسیر نتایج در <a href="PERFORMANCE.md">مستند Benchmark عملکرد</a> ثبت شده است. <a href="https://github.com/Amirh-Darvishi/pylex-studio/releases/tag/v2.7.0">یادداشت انتشار 2.7.0</a>.</p>
+</section>
+
 <section id="process-stability-260">
 <h2>پایداری چرخه عمر فرایندها در نسخه منتشرشده 2.6.0</h2>
 <p>نسخه 2.6.0 با هدف جلوگیری از باقی‌ماندن فرایندهای فرزند پس از پایان یا بسته‌شدن نشست اجرا منتشر شده است. این تغییرات از طریق PR شماره 26 در شاخه <code>main</code> ادغام و سپس با Tag و GitHub Release رسمی منتشر شده‌اند.</p>
@@ -713,6 +733,6 @@ if __name__ == "__main__":
 <div class="note">نسخه 2.5.0 در تاریخ 17 نوامبر 2026 منتشر شده است. <a href="https://github.com/Amirh-Darvishi/pylex-studio/releases/tag/2.5.0">یادداشت انتشار PyLex Studio 2.5.0</a> · <a href="https://github.com/Amirh-Darvishi/pylex-studio/pull/25">تغییرات PR شماره 25</a>.</div>
 </section>
 
-<footer>PyLex Studio · مستندات نسخه پایدار 2.6.0 · منبع: مخزن رسمی پروژه</footer>
+<footer>PyLex Studio · مستندات نسخه پایدار 2.7.0 · منبع: مخزن رسمی پروژه</footer>
 </body>
 </html>
