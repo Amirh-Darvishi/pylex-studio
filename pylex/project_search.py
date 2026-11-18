@@ -221,6 +221,11 @@ def search_text(
                 snapshots[path] = snapshot
                 matched = True
             visible_end = line_end if line_end >= 0 else len(content)
+            if match.end() > visible_end:
+                following_line_end = content.find("\\n", match.end())
+                visible_end = (
+                    following_line_end if following_line_end >= 0 else len(content)
+                )
             results.append(
                 SearchMatch(
                     path,
