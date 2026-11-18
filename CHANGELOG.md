@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [2.7.0] - 2026-11-18
+
 ### Performance and responsiveness
 - Add repeatable benchmarks for editor tokenization and tag spans, AST analysis, combined diagnostics, bracket matching, large-file reads, workspace scanning, and workspace search; document the methodology and initial baseline in `docs/PERFORMANCE.md`.
 - Use Pygments token offsets directly and retain only syntax spans needed by the editor, reducing repeated work and intermediate allocations.
@@ -11,8 +13,12 @@
 - Optimize bracket matching with Python tokenization and delimiter-stack traversal while preserving the fallback for incomplete and legacy syntax.
 - Preserve cancellable background work, debounced updates, chunked large-file loading, and bounded UI updates.
 
-### Validation
-- Performance comparisons and the full Windows/Ubuntu × Python 3.10/3.11/3.13 CI matrix are pending final verification for this development branch.
+### Validation and release
+- Local suite: 198 passed, 3 skipped, and 14 subtests passed.
+- Black: 75 files unchanged; Ruff: all checks passed.
+- All six Windows/Ubuntu × Python 3.10/3.11/3.13 CI jobs passed, including compileall, pytest, benchmark smoke test, Black, and Ruff.
+- Merged through PR #27: https://github.com/Amirh-Darvishi/pylex-studio/pull/27
+- Published stable release: https://github.com/Amirh-Darvishi/pylex-studio/releases/tag/v2.7.0
 
 ## [2.6.0] - 2026-11-17
 
