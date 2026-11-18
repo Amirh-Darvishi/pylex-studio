@@ -130,8 +130,8 @@ def iter_search_files(
             yield path
 
 
-def read_text_snapshot(path, *, max_file_bytes=MAX_FILE_BYTES):
-    """Read a text file strictly and retain its codec and newline convention."""
+def _read_text_data(path, *, max_file_bytes=MAX_FILE_BYTES):
+    """Read and decode a bounded text file without computing its digest."""
     path = Path(path)
     before = path.stat()
     if before.st_size > max_file_bytes:
@@ -139,10 +139,7 @@ def read_text_snapshot(path, *, max_file_bytes=MAX_FILE_BYTES):
     raw = path.read_bytes()
     if b"\x00" in raw:
         raise ValueError("File contains binary data.")
-    if raw.startswith(b"\xef\xbb\xbf"):
-        encoding = "utf-8-sig"
-    else:
-        encoding = "utf-8"
+    encoding = "utf-8-sig" if raw.startswith(b"\xef\xbb\xbf") else "utf-8"
     try:
         content = raw.decode(encoding)
     except UnicodeDecodeError:
@@ -154,13 +151,29 @@ def read_text_snapshot(path, *, max_file_bytes=MAX_FILE_BYTES):
     newline = "\r\n" if "\r\n" in content else ("\r" if "\r" in content else "\n")
     normalized = content.replace("\r\n", "\n").replace("\r", "\n")
     after = path.stat()
-    return FileSnapshot(
+    return (
         path.resolve(),
         normalized,
         encoding,
         newline,
         after.st_mtime_ns,
         after.st_size,
+        raw,
+    )
+
+
+def read_text_snapshot(path, *, max_file_bytes=MAX_FILE_BYTES):
+    """Read a text file and retain the digest needed for safe replacement."""
+    resolved, content, encoding, newline, mtime_ns, size, raw = _read_text_data(
+        path, max_file_bytes=max_file_bytes
+    )
+    return FileSnapshot(
+        resolved,
+        content,
+        encoding,
+        newline,
+        mtime_ns,
+        size,
         hashlib.sha256(raw).hexdigest(),
     )
 
@@ -202,8 +215,16 @@ def search_text(
         if cancel_event is not None and cancel_event.is_set():
             break
         try:
-            snapshot = read_text_snapshot(path, max_file_bytes=max_file_bytes)
-            content = overlays.get(path, snapshot.content)
+            (
+                resolved,
+                disk_content,
+                encoding,
+                newline,
+                mtime_ns,
+                size,
+                raw,
+            ) = _read_text_data(path, max_file_bytes=max_file_bytes)
+            content = overlays.get(path, disk_content)
         except (OSError, ValueError):
             continue
         line_number = 1
@@ -218,7 +239,17 @@ def search_text(
                 line_start = line_end + 1
                 line_end = content.find("\n", line_start)
             if not matched:
-                snapshots[path] = snapshot
+                # Hash only files that need a replacement snapshot. Keep the
+                # bytes from this read so a matching file is never read twice.
+                snapshots[path] = FileSnapshot(
+                    resolved,
+                    disk_content,
+                    encoding,
+                    newline,
+                    mtime_ns,
+                    size,
+                    hashlib.sha256(raw).hexdigest(),
+                )
                 matched = True
             visible_end = line_end if line_end >= 0 else len(content)
             if match.end() > visible_end:
