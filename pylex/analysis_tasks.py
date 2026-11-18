@@ -3,7 +3,6 @@
 from .analyzer import (
     collect_diagnostics,
     format_lexical_report,
-    lexical_analysis,
     syntax_analysis,
 )
 
