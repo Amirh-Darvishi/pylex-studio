@@ -30,6 +30,7 @@ from .editor_features import (
     find_matching_bracket,
     indentation_for_newline,
     smart_backspace_prefix,
+    dedent_prefix,
     toggle_comment_block,
 )
 
@@ -268,9 +269,12 @@ class CodeEditor(tk.Frame):
         return "break"
 
     def _smart_backspace(self, event=None):
-        """Delete indentation to the previous four-column stop."""
+        """Delete indentation to the previous configured indentation stop."""
         prefix = self.text.get("insert linestart", "insert")
-        replacement = smart_backspace_prefix(prefix)
+        indent_width = max(1, len(self.indent_string.expandtabs(4)))
+        replacement = smart_backspace_prefix(
+            prefix, indent_width, self.indent_string
+        )
         if replacement is None:
             return None
         self.text.delete("insert linestart", "insert")
@@ -289,11 +293,12 @@ class CodeEditor(tk.Frame):
             first = last = int(self.text.index("insert").split(".")[0])
         for line in range(first, last + 1):
             start = f"{line}.0"
-            prefix = self.text.get(start, f"{line}.0+4c")
-            if prefix.startswith("    "):
-                self.text.delete(start, f"{line}.0+4c")
-            elif prefix.startswith("\t"):
-                self.text.delete(start, f"{line}.0+1c")
+            line_text = self.text.get(start, f"{line}.0 lineend")
+            prefix = line_text[: len(line_text) - len(line_text.lstrip(" \\t"))]
+            replacement = dedent_prefix(prefix, self.indent_string)
+            if replacement != prefix:
+                self.text.delete(start, f"{start}+{len(prefix)}c")
+                self.text.insert(start, replacement)
         return "break"
 
     def _toggle_comment(self, event=None):
@@ -969,6 +974,21 @@ class CodeEditor(tk.Frame):
             except tk.TclError:
                 pass
             self._bracket_job = None
+        if self._content_job is not None:
+            try:
+                self.after_cancel(self._content_job)
+            except tk.TclError:
+                pass
+            self._content_job = None
+        completion = self._completion_window
+        if completion is not None:
+            try:
+                if completion.winfo_exists():
+                    completion.destroy()
+            except tk.TclError:
+                pass
+            self._completion_window = None
+            self._completion_list = None
 
     def show_diagnostic(self, line, column=0, end_line=None, end_column=None):
         """Highlight an error span and move the insertion cursor to its location."""

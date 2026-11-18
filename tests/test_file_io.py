@@ -7,7 +7,7 @@ from unittest.mock import patch
 
 import pytest
 
-from pylex.core.file_io import atomic_write_text
+from pylex.core.file_io import atomic_write_text, rename_without_overwrite
 
 
 def test_atomic_write_replaces_file_with_requested_encoding(tmp_path):
@@ -71,3 +71,40 @@ def test_atomic_write_creates_new_file_with_normal_umask(tmp_path):
     assert target.read_text(encoding="utf-8") == "created"
     if os.name == "posix":
         assert stat.S_IMODE(target.stat().st_mode) == 0o644
+
+
+def test_rename_without_overwrite_preserves_existing_destination(tmp_path):
+    source = tmp_path / "source.txt"
+    destination = tmp_path / "destination.txt"
+    source.write_text("source", encoding="utf-8")
+    destination.write_text("destination", encoding="utf-8")
+
+    with pytest.raises(FileExistsError, match="Destination already exists"):
+        rename_without_overwrite(source, destination)
+
+    assert source.read_text(encoding="utf-8") == "source"
+    assert destination.read_text(encoding="utf-8") == "destination"
+
+
+def test_rename_without_overwrite_moves_file_and_same_path_is_noop(tmp_path):
+    source = tmp_path / "source.txt"
+    destination = tmp_path / "renamed.txt"
+    source.write_text("content", encoding="utf-8")
+
+    assert rename_without_overwrite(source, source) == source
+    assert rename_without_overwrite(source, destination) == destination
+    assert not source.exists()
+    assert [item.name for item in tmp_path.iterdir()] == ["renamed.txt"]
+    assert destination.read_text(encoding="utf-8") == "content"
+
+
+def test_rename_without_overwrite_supports_case_only_rename_on_windows(tmp_path):
+    if os.name != "nt":
+        pytest.skip("Case-insensitive rename semantics are Windows-specific.")
+    source = tmp_path / "Example.py"
+    destination = tmp_path / "example.py"
+    source.write_text("content", encoding="utf-8")
+
+    assert rename_without_overwrite(source, destination) == destination
+    assert destination.read_text(encoding="utf-8") == "content"
+    assert [item.name for item in tmp_path.iterdir()] == ["example.py"]

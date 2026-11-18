@@ -6,6 +6,24 @@
 from ..app_support import *  # noqa: F403
 
 
+def _dialog_exists(dialog):
+    """Return false safely when a Tk dialog was destroyed before its poll."""
+    try:
+        return bool(dialog.winfo_exists())
+    except tk.TclError:
+        return False
+
+
+def _schedule_dialog_poll(dialog, delay, callback):
+    """Schedule a poll only while its dialog is alive; tolerate destroy races."""
+    if not _dialog_exists(dialog):
+        return None
+    try:
+        return dialog.after(delay, callback)
+    except tk.TclError:
+        return None
+
+
 class PanelsMixin:
     """Panels UI behavior composed into :class:`PyLexApp`."""
 
@@ -584,12 +602,12 @@ class PanelsMixin:
         threading.Thread(target=discovery_worker, daemon=True).start()
 
         def poll_discovery():
-            if not dialog.winfo_exists():
+            if not _dialog_exists(dialog):
                 return
             try:
                 kind, value = discovery_queue.get_nowait()
             except queue.Empty:
-                dialog.after(120, poll_discovery)
+                _schedule_dialog_poll(dialog, 120, poll_discovery)
                 return
             if kind == "error":
                 status.configure(text="Interpreter discovery warning: " + str(value))
@@ -601,7 +619,7 @@ class PanelsMixin:
                 text="Found " + str(len(value)) + " verified Python interpreter(s)."
             )
 
-        dialog.after(120, poll_discovery)
+        _schedule_dialog_poll(dialog, 120, poll_discovery)
 
         def browse():
             path = filedialog.askopenfilename(
@@ -677,10 +695,9 @@ class PanelsMixin:
                 try:
                     kind, value = result.get_nowait()
                 except queue.Empty:
-                    if dialog.winfo_exists():
-                        dialog.after(100, poll_repair)
+                    _schedule_dialog_poll(dialog, 100, poll_repair)
                     return
-                if not dialog.winfo_exists():
+                if not _dialog_exists(dialog):
                     return
                 repair_button.configure(state="normal")
                 if kind == "error":
@@ -690,7 +707,7 @@ class PanelsMixin:
                 add(value, select=True)
                 status.configure(text="pip is available: " + value.executable)
 
-            dialog.after(100, poll_repair)
+            _schedule_dialog_poll(dialog, 100, poll_repair)
 
         def create_env():
             try:
@@ -724,10 +741,9 @@ class PanelsMixin:
                 try:
                     kind, value = result.get_nowait()
                 except queue.Empty:
-                    if dialog.winfo_exists():
-                        dialog.after(100, poll)
+                    _schedule_dialog_poll(dialog, 100, poll)
                     return
-                if not dialog.winfo_exists():
+                if not _dialog_exists(dialog):
                     return
                 create_button.configure(state="normal")
                 if kind == "error":
@@ -742,7 +758,7 @@ class PanelsMixin:
                 status.configure(text="Created and selected " + value.executable)
                 self.status.configure(text="Project virtual environment created.")
 
-            dialog.after(100, poll)
+            _schedule_dialog_poll(dialog, 100, poll)
 
         buttons = ttk.Frame(body)
         buttons.grid(row=3, column=0, columnspan=3, sticky="ew", pady=10)

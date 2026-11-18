@@ -4,6 +4,7 @@
 # ruff: noqa: F403, F405
 
 from ..app_support import *  # noqa: F403
+from ..core.file_io import rename_without_overwrite
 from ..editor_performance import LARGE_FILE_THRESHOLD
 from ..file_loading import FileLoadCoordinator
 from ..workspace_scan import iter_workspace_entries
@@ -901,7 +902,7 @@ class WorkspaceMixin:
         destination = path.with_name(name)
         was_directory = path.is_dir()
         try:
-            path.rename(destination)
+            rename_without_overwrite(path, destination)
         except OSError as exc:
             messagebox.showerror("Rename", str(exc), parent=self)
             return

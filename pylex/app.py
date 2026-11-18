@@ -142,6 +142,7 @@ class PyLexApp(
         self.debug_session = None
         self._debug_poll = None
         self._last_timeout_display = None
+        self._execution_context = None
         self.breakpoints = {}
         self.conditional_breakpoints = {}
         self.documents = {}
@@ -158,6 +159,17 @@ class PyLexApp(
         self.protocol("WM_DELETE_WINDOW", self.close)
         self._title()
 
+    def _close_toolbar_menu(self):
+        """Close any active toolbar popup and cancel its scheduled timers."""
+        close_menu = getattr(self, "_toolbar_menu_close", None)
+        if callable(close_menu):
+            close_menu()
+
+    def _cancel_lifecycle_polls(self):
+        """Cancel UI polling callbacks before destroying the Tk root."""
+        self._cancel_execution_poll()
+        self._cancel_debug_poll()
+
     def close(self):
         for editor, document in list(self.documents.items()):
             if not document["dirty"]:
@@ -167,8 +179,10 @@ class PyLexApp(
             self._sync_active_document()
             if not self._confirm():
                 return
+        self._close_toolbar_menu()
         self._cancel_analysis()
         self._invalidate_file_loads()
+        self._cancel_lifecycle_polls()
         if self.execution_controller.stop():
             handle = self.execution
             handle.wait(timeout=2)

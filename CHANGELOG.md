@@ -2,6 +2,15 @@
 
 ## [Unreleased]
 
+### UX and reliability improvements
+- Guard execution and debugger polling against stale sessions, cancel their scheduled callbacks when replacing sessions or shutting down, and prevent old runtime diagnostics from replacing the active document's diagnostics.
+- Map runtime exceptions to the traceback frame for the executed source and retain the launched editor snapshot and interpreter context.
+- Guard interpreter-discovery, pip-repair, and virtual-environment dialog polling against destroyed Tk windows.
+- Cancel chunked editor-content callbacks and close completion popups when an editor is destroyed.
+- Honor configured indentation width in Smart Backspace and Dedent, including two-space and tab-based indentation.
+- Prevent workspace rename from replacing an existing destination.
+- Add regression coverage for lifecycle callbacks, runtime diagnostic context, dialog polling, indentation, and rename safety.
+
 ## [2.7.0] - 2026-11-18
 
 ### Performance and responsiveness
