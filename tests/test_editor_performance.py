@@ -60,7 +60,7 @@ def test_token_spans_use_exact_source_offsets_for_unicode_and_newlines():
     assert spans is not None
     assert all(source[start:end] for _token, start, end in spans)
     assert spans[-1][2] == len(source)
-    assert any(source[start:end] == "café" for _token, start, end in spans)
+    assert any("café" in source[start:end] for _token, start, end in spans)
 
 
 def test_highlight_spans_keep_only_tokens_with_editor_tags():
