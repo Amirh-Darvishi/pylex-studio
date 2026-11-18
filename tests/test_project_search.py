@@ -3,6 +3,7 @@
 import tempfile
 import threading
 import unittest
+from unittest.mock import patch
 from pathlib import Path
 
 from pylex.project_search import (
@@ -64,6 +65,22 @@ class ProjectSearchTests(unittest.TestCase):
 
         self.assertEqual(len(matches), 1)
         self.assertEqual(set(snapshots), {(self.root / "match.py").resolve()})
+
+    def test_search_computes_digests_only_for_files_with_matches(self):
+        matched = self.root / "matched.py"
+        unmatched = self.root / "unmatched.py"
+        matched.write_text("needle here", encoding="utf-8")
+        unmatched.write_text("nothing here", encoding="utf-8")
+
+        with patch("pylex.project_search.hashlib.sha256", wraps=__import__(
+            "hashlib"
+        ).sha256) as digest:
+            matches, snapshots = search_text(self.root, "needle")
+
+        self.assertEqual(len(matches), 1)
+        self.assertEqual(set(snapshots), {matched.resolve()})
+        self.assertEqual(digest.call_count, 1)
+        self.assertEqual(len(snapshots[matched.resolve()].digest), 64)
 
     def test_regex_whole_word_and_case_options(self):
         pattern = compile_search_pattern(
