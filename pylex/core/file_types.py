@@ -145,7 +145,6 @@ _SPECIAL_NAMES = {
 }
 
 
-
 @lru_cache(maxsize=256)
 def _mime_type_for_suffix(suffix):
     """Cache MIME lookups for common single-extension workspace files."""

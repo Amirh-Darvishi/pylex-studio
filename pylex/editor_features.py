@@ -144,9 +144,7 @@ def find_matching_bracket(source, cursor_offset, is_cancelled=None):
     pairs = {"(": ")", "[": "]", "{": "}"}
     reverse = {value: key for key, value in pairs.items()}
     line_offsets = [0]
-    line_offsets.extend(
-        index + 1 for index, char in enumerate(source) if char == "\n"
-    )
+    line_offsets.extend(index + 1 for index, char in enumerate(source) if char == "\n")
     delimiters = []
     try:
         for item in tokenize.generate_tokens(StringIO(source).readline):
@@ -172,8 +170,6 @@ def find_matching_bracket(source, cursor_offset, is_cancelled=None):
             position = line_offsets[row - 1] + column
             delimiters.append((position, item.string))
     except (tokenize.TokenError, IndentationError):
-        return _find_matching_bracket_with_pygments(
-            source, cursor_offset, is_cancelled
-        )
+        return _find_matching_bracket_with_pygments(source, cursor_offset, is_cancelled)
 
     return _match_delimiter_sequence(delimiters, cursor_offset, is_cancelled)

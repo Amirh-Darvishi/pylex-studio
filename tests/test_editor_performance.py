@@ -50,7 +50,6 @@ def test_token_span_generation_can_be_cancelled():
     assert build_token_spans(source, PythonLexer(), lambda: True) is None
 
 
-
 def test_token_spans_use_exact_source_offsets_for_unicode_and_newlines():
     source = "\n# café\nvalue = 42\n"
     lexer = PythonLexer(stripnl=False, ensurenl=False)
@@ -81,8 +80,6 @@ def test_highlight_span_generation_can_be_cancelled():
 
     source = "if ready:\n    print('ok')\n"
     assert (
-        build_highlight_spans(
-            source, PythonLexer(), lambda _token: "tag", lambda: True
-        )
+        build_highlight_spans(source, PythonLexer(), lambda _token: "tag", lambda: True)
         is None
     )

@@ -18,7 +18,16 @@ import tracemalloc
 from pathlib import Path
 
 from pygments.lexers import PythonLexer
-from pygments.token import Comment, Error, Keyword, Name, Number, Operator, Punctuation, String
+from pygments.token import (
+    Comment,
+    Error,
+    Keyword,
+    Name,
+    Number,
+    Operator,
+    Punctuation,
+    String,
+)
 
 
 def measure(label, operation, repeats):

@@ -73,7 +73,9 @@ class AnalyzerTests(unittest.TestCase):
     def test_collect_diagnostics_does_not_materialize_lexical_tokens(self):
         with patch(
             "pylex.analyzer.lexical_analysis",
-            side_effect=AssertionError("diagnostics should use validation-only tokenization"),
+            side_effect=AssertionError(
+                "diagnostics should use validation-only tokenization"
+            ),
         ):
             self.assertEqual(collect_diagnostics("value = 42"), [])
 

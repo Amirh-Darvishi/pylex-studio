@@ -268,6 +268,7 @@ def collect_diagnostics(
         unique.values(), key=lambda item: (item.line, item.column, item.error_type)
     )
 
+
 def format_tokens(tokens):
     """Format lexical tokens as an English-language report with token spans."""
     lines = [

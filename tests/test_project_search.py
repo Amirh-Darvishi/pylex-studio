@@ -50,9 +50,7 @@ class ProjectSearchTests(unittest.TestCase):
         path = self.root / "multiline.py"
         path.write_text("begin\nmiddle\nend\n", encoding="utf-8")
 
-        matches, _snapshots = search_text(
-            self.root, r"begin\nmiddle", regex=True
-        )
+        matches, _snapshots = search_text(self.root, r"begin\nmiddle", regex=True)
 
         self.assertEqual(len(matches), 1)
         self.assertEqual(matches[0].line, 1)
