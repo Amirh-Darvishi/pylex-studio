@@ -121,7 +121,7 @@ def main():
 
     source = make_source(args.lines)
     lexer = PythonLexer()
-    cursor = source.index("(")
+    cursor = max(0, source.find("("))
     tasks = [
         ("Pygments token spans", lambda: build_token_spans(source, lexer)),
         (
