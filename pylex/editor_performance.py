@@ -19,7 +19,7 @@ def is_large_document(content, path=None):
             pass
     if len(content) >= LARGE_FILE_THRESHOLD:
         return True
-    return content.count("\\n") >= LARGE_DOCUMENT_LINE_THRESHOLD
+    return content.count("\n") >= LARGE_DOCUMENT_LINE_THRESHOLD
 
 
 def lexer_for_path(path):
