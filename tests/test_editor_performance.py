@@ -64,7 +64,15 @@ def test_token_spans_use_exact_source_offsets_for_unicode_and_newlines():
 
 def test_editor_token_tag_mapping_preserves_pygments_categories():
     from pylex.editor import CodeEditor
-    from pygments.token import Comment, Error, Name, Number, Operator, Punctuation, String
+    from pygments.token import (
+        Comment,
+        Error,
+        Name,
+        Number,
+        Operator,
+        Punctuation,
+        String,
+    )
 
     assert CodeEditor._tag_for_token(Keyword) == "py_keyword"
     assert CodeEditor._tag_for_token(Comment.Single) == "py_comment"
