@@ -256,9 +256,10 @@ class CodeEditor(tk.Frame):
     def _smart_newline(self, event=None):
         """Continue indentation and add one level after a Python suite header."""
         prefix = self.text.get("insert linestart", "insert")
+        leading = prefix[: len(prefix) - len(prefix.lstrip(" \\t"))]
         indentation = indentation_for_newline(prefix)
-        if prefix.rstrip().endswith(":") and indentation.endswith("    "):
-            indentation = indentation[:-4] + self.indent_string
+        if indentation != leading:
+            indentation = leading + self.indent_string
         self.text.insert("insert", "\n" + indentation)
         # Keep the insertion point visible and move the gutter in lockstep.
         self.text.see("insert")
