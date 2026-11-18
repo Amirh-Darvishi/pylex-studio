@@ -161,27 +161,51 @@ def syntax_analysis(source: str) -> AnalysisResult:
         )
 
 
-def collect_diagnostics(source: str, is_cancelled=None):
-    """Collect lexical and parser diagnostics, removing duplicate reports."""
-    found = []
-    try:
-        lexical_result = lexical_analysis(source, is_cancelled)
-        if lexical_result is None and is_cancelled is not None and is_cancelled():
-            return None
-    except tokenize.TokenError as exc:
+def _append_lexical_error(found, exc, source):
+    """Normalize a tokenizer/parser exception into a diagnostic."""
+    if isinstance(exc, tokenize.TokenError):
         found.append(_token_error_diagnostic(exc, source))
-    except SyntaxError as exc:
+    elif isinstance(exc, SyntaxError):
         found.append(_syntax_error_diagnostic(exc, source))
-    except (ValueError, TypeError) as exc:
+    else:
         found.append(
             Diagnostic(
-                type(exc).__name__, str(exc), 1, 0, source_line=_line_text(source, 1)
+                type(exc).__name__,
+                str(exc),
+                1,
+                0,
+                source_line=_line_text(source, 1),
             )
         )
 
+
+def collect_diagnostics(
+    source: str,
+    is_cancelled=None,
+    *,
+    lexical_checked=False,
+    lexical_error=None,
+    syntax_result=None,
+):
+    """Collect normalized lexical and parser diagnostics.
+
+    Callers that already performed lexical or syntax analysis can pass those
+    results to avoid repeating expensive tokenization or AST parsing.
+    """
+    found = []
+    if lexical_error is not None:
+        _append_lexical_error(found, lexical_error, source)
+    elif not lexical_checked:
+        try:
+            lexical_result = lexical_analysis(source, is_cancelled)
+            if lexical_result is None and is_cancelled is not None and is_cancelled():
+                return None
+        except (tokenize.TokenError, SyntaxError, ValueError, TypeError) as exc:
+            _append_lexical_error(found, exc, source)
+
     if is_cancelled is not None and is_cancelled():
         return None
-    syntax = syntax_analysis(source)
+    syntax = syntax_result if syntax_result is not None else syntax_analysis(source)
     if not syntax.success and syntax.error_type:
         candidate = Diagnostic(
             syntax.error_type,
@@ -228,7 +252,6 @@ def collect_diagnostics(source: str, is_cancelled=None):
     return sorted(
         unique.values(), key=lambda item: (item.line, item.column, item.error_type)
     )
-
 
 def format_tokens(tokens):
     """Format lexical tokens as an English-language report with token spans."""
