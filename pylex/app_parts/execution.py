@@ -293,9 +293,7 @@ class ExecutionMixin:
         if not exception_matches:
             return
         error_type, message = exception_matches[-1]
-        traceback_frames = re.findall(
-            r'File "([^"]+)", line (\d+)', stderr
-        )
+        traceback_frames = re.findall(r'File "([^"]+)", line (\d+)', stderr)
         line = int(traceback_frames[-1][1]) if traceback_frames else 1
         if source_path is not None and traceback_frames:
             try:

@@ -273,9 +273,7 @@ class CodeEditor(tk.Frame):
         """Delete indentation to the previous configured indentation stop."""
         prefix = self.text.get("insert linestart", "insert")
         indent_width = max(1, len(self.indent_string.expandtabs(4)))
-        replacement = smart_backspace_prefix(
-            prefix, indent_width, self.indent_string
-        )
+        replacement = smart_backspace_prefix(prefix, indent_width, self.indent_string)
         if replacement is None:
             return None
         self.text.delete("insert linestart", "insert")

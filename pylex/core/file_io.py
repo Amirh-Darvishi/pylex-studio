@@ -70,9 +70,7 @@ def rename_without_overwrite(source, destination):
     # Windows treats case-only path variants as the same existing destination.
     # Use a temporary sibling so users can still change filename casing.
     if os.path.normcase(source_text) == os.path.normcase(destination_text):
-        temporary = source.with_name(
-            f".{source.name}.{secrets.token_hex(8)}.rename"
-        )
+        temporary = source.with_name(f".{source.name}.{secrets.token_hex(8)}.rename")
         source.rename(temporary)
         try:
             temporary.rename(destination)

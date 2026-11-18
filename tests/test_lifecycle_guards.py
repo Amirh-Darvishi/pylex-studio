@@ -136,10 +136,10 @@ def test_runtime_error_prefers_frame_for_executed_source_path():
     editor = object()
     app = _DiagnosticRoot(editor, {editor: {}})
     stderr = (
-        'Traceback (most recent call last):\n'
+        "Traceback (most recent call last):\n"
         '  File "/library/module.py", line 50, in helper\n'
         '  File "/tmp/pylex-run.py", line 2, in <module>\n'
-        'ValueError: invalid value\n'
+        "ValueError: invalid value\n"
     )
 
     ExecutionMixin._report_runtime_error(
@@ -262,4 +262,3 @@ def test_shutdown_closes_active_toolbar_popup():
     PyLexApp._close_toolbar_menu(app)
 
     assert closed == [True]
-
