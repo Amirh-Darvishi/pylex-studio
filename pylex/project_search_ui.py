@@ -228,9 +228,11 @@ class ProjectSearchWindow(tk.Toplevel):
 
         summary = f"{len(self._matches)} matches in {len(file_nodes)} files"
         self.status.configure(
-            text=f"Search cancelled — partial results: {summary}"
-            if cancelled
-            else summary
+            text=(
+                f"Search cancelled — partial results: {summary}"
+                if cancelled
+                else summary
+            )
         )
         self.search_button.configure(state="normal")
         self.cancel_button.configure(state="disabled")
