@@ -1,11 +1,11 @@
-""""Regression tests for workspace search and replacement services."""
+"""Regression tests for workspace search and replacement services."""
 
 import hashlib
 import tempfile
 import threading
 import unittest
-from unittest.mock import patch
 from pathlib import Path
+from unittest.mock import patch
 
 from pylex.project_search import (
     build_replacements,
@@ -26,13 +26,13 @@ class ProjectSearchTests(unittest.TestCase):
         self.temp.cleanup()
 
     def test_literal_search_is_case_insensitive_by_default(self):
-        (self.root / "main.py").write_text("Print('Hello')\\n", encoding="utf-8")
+        (self.root / "main.py").write_text("Print('Hello')\n", encoding="utf-8")
         matches, _ = search_text(self.root, "print")
         self.assertEqual([(item.line, item.column) for item in matches], [(1, 1)])
 
     def test_search_tracks_line_positions_without_repeated_prefix_scans(self):
         path = self.root / "many_hits.py"
-        path.write_text("hit hit\\n\\nhit\\nhit hit", encoding="utf-8")
+        path.write_text("hit hit\n\nhit\nhit hit", encoding="utf-8")
 
         matches, snapshots = search_text(self.root, "hit")
 
@@ -50,13 +50,13 @@ class ProjectSearchTests(unittest.TestCase):
 
     def test_multiline_regex_keeps_the_full_matching_context(self):
         path = self.root / "multiline.py"
-        path.write_text("begin\\nmiddle\\nend\\n", encoding="utf-8")
+        path.write_text("begin\nmiddle\nend\n", encoding="utf-8")
 
-        matches, _snapshots = search_text(self.root, r"begin\\nmiddle", regex=True)
+        matches, _snapshots = search_text(self.root, r"begin\nmiddle", regex=True)
 
         self.assertEqual(len(matches), 1)
         self.assertEqual(matches[0].line, 1)
-        self.assertEqual(matches[0].text, "begin\\nmiddle")
+        self.assertEqual(matches[0].text, "begin\nmiddle")
 
     def test_search_does_not_retain_snapshots_for_unmatched_files(self):
         (self.root / "match.py").write_text("needle", encoding="utf-8")
@@ -106,7 +106,7 @@ class ProjectSearchTests(unittest.TestCase):
 
     def test_large_files_and_binary_files_are_skipped(self):
         (self.root / "large.py").write_bytes(b"x" * 40)
-        (self.root / "binary.py").write_bytes(b"\\x00\\xff\\x00")
+        (self.root / "binary.py").write_bytes(b"\x00\xff\x00")
         matches, _ = search_text(self.root, "x", max_file_bytes=20)
         self.assertEqual(matches, [])
 
@@ -132,11 +132,11 @@ class ProjectSearchTests(unittest.TestCase):
 
     def test_atomic_replacement_preserves_crlf_and_bom(self):
         path = self.root / "bom.py"
-        path.write_bytes(b"\\xef\\xbb\\xbfhello\\r\\nhello")
+        path.write_bytes(b"\xef\xbb\xbfhello\r\nhello")
         snapshot = read_text_snapshot(path)
-        written = write_replacements({path: "world\\nworld"}, {path: snapshot})
+        written = write_replacements({path: "world\nworld"}, {path: snapshot})
         self.assertEqual(written, [path])
-        self.assertEqual(path.read_bytes(), b"\\xef\\xbb\\xbfworld\\r\\nworld")
+        self.assertEqual(path.read_bytes(), b"\xef\xbb\xbfworld\r\nworld")
 
     def test_changed_file_is_not_overwritten_after_preview(self):
         path = self.root / "race.py"
