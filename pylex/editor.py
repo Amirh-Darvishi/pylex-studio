@@ -1,6 +1,7 @@
 """Tkinter code editor with Pygments highlighting and diagnostic navigation."""
 
 import builtins
+from functools import lru_cache
 import keyword
 import queue
 import threading
@@ -804,6 +805,7 @@ class CodeEditor(tk.Frame):
         self.update_current_line()
 
     @staticmethod
+    @lru_cache(maxsize=128)
     def _tag_for_token(token_type):
         if token_type in Keyword:
             return "py_keyword"
