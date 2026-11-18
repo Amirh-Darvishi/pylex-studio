@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import mimetypes
 from dataclasses import dataclass
+from functools import lru_cache
 from pathlib import Path
 
 
@@ -144,12 +145,23 @@ _SPECIAL_NAMES = {
 }
 
 
+
+@lru_cache(maxsize=256)
+def _mime_type_for_suffix(suffix):
+    """Cache MIME lookups for common single-extension workspace files."""
+    return mimetypes.guess_type("placeholder" + suffix)[0]
+
+
 def file_type_for(path) -> FileType:
     """Classify a file using special names, extensions, MIME, and content."""
     path = Path(path)
     name = path.name.lower()
     suffix = path.suffix.lower()
-    mime_type, _encoding = mimetypes.guess_type(str(path))
+    suffixes = path.suffixes
+    if len(suffixes) > 1:
+        mime_type, _encoding = mimetypes.guess_type(str(path))
+    else:
+        mime_type = _mime_type_for_suffix(suffix)
 
     special = _SPECIAL_NAMES.get(name)
     if special is None and name.startswith("readme"):
