@@ -2,8 +2,7 @@
 
 from .analyzer import (
     collect_diagnostics,
-    format_tokens,
-    lexical_analysis,
+    format_lexical_report,
     syntax_analysis,
 )
 
@@ -11,8 +10,9 @@ from .analyzer import (
 def analyze_source(source, mode="all", is_cancelled=None):
     """Analyze a source snapshot without accessing Tk widgets.
 
-    mode may be lexical, syntax or all. The optional predicate lets a worker
-    stop between analysis phases when its snapshot is stale.
+    mode may be lexical, syntax or all. Completed phases are reused when
+    diagnostics are assembled so a full analysis does not tokenize or parse
+    the same source repeatedly.
     """
     if mode not in {"lexical", "syntax", "all"}:
         raise ValueError(f"Unsupported analysis mode: {mode}")
@@ -21,18 +21,23 @@ def analyze_source(source, mode="all", is_cancelled=None):
         return is_cancelled is not None and is_cancelled()
 
     result = {"mode": mode}
+    lexical_checked = False
+    lexical_error = None
+    syntax = None
+
     if mode in {"lexical", "all"}:
         try:
-            tokens = lexical_analysis(source, is_cancelled)
-            if tokens is None:
+            lexical_output = format_lexical_report(source, is_cancelled)
+            if lexical_output is None:
                 return None
-            result["lexical_report"] = format_tokens(tokens)
-            result["lexical_count"] = len(tokens)
+            result["lexical_report"], result["lexical_count"] = lexical_output
             result["lexical_error"] = None
         except Exception as exc:
+            lexical_error = exc
             result["lexical_report"] = f"{type(exc).__name__}: {exc}"
             result["lexical_count"] = None
             result["lexical_error"] = type(exc).__name__
+        lexical_checked = True
 
     if cancelled():
         return None
@@ -51,5 +56,11 @@ def analyze_source(source, mode="all", is_cancelled=None):
     if cancelled():
         return None
 
-    result["diagnostics"] = collect_diagnostics(source, is_cancelled)
+    result["diagnostics"] = collect_diagnostics(
+        source,
+        is_cancelled,
+        lexical_checked=lexical_checked,
+        lexical_error=lexical_error,
+        syntax_result=syntax,
+    )
     return None if cancelled() else result

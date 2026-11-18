@@ -20,9 +20,11 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
       - run: python -m pip install -r requirements-dev.txt
-      - run: python -m compileall -q pylex main.py
+      - run: python -m compileall -q pylex main.py scripts
       - run: python -m pytest -q
+      - name: Benchmark harness smoke test
+        run: python scripts/benchmark_performance.py --lines 100 --files 10 --repeats 1
       - name: Black formatting check
-        run: python -m black --check --diff pylex tests
+        run: python -m black --check --diff pylex tests scripts
       - name: Ruff lint check
-        run: python -m ruff check pylex tests
+        run: python -m ruff check pylex tests scripts

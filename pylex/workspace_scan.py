@@ -41,9 +41,11 @@ def iter_workspace_entries(root):
         directories = []
         files = []
         for entry in entries:
-            if entry.name.casefold() in IGNORED_DIRECTORY_NAMES or entry.is_symlink():
+            if entry.name.casefold() in IGNORED_DIRECTORY_NAMES:
                 continue
             try:
+                # No-follow type checks already exclude symlink targets, so a
+                # separate is_symlink stat would duplicate filesystem work.
                 if entry.is_dir(follow_symlinks=False):
                     directories.append(entry)
                 elif entry.is_file(follow_symlinks=False):

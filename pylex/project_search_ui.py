@@ -124,6 +124,7 @@ class ProjectSearchWindow(tk.Toplevel):
         self._generation += 1
         generation = self._generation
         self._cancel = threading.Event()
+        cancel_event = self._cancel
         overlays = self._overlays()
         options = dict(
             regex=self.regex.get(),
@@ -131,7 +132,7 @@ class ProjectSearchWindow(tk.Toplevel):
             whole_word=self.word.get(),
             include_glob=self.glob.get() or "*",
             overlays=overlays,
-            cancel_event=self._cancel,
+            cancel_event=cancel_event,
         )
         self.search_button.configure(state="disabled")
         self.cancel_button.configure(state="normal")
@@ -145,7 +146,8 @@ class ProjectSearchWindow(tk.Toplevel):
         def worker():
             try:
                 matches, snapshots = search_text(self.root_path, query, **options)
-                self._events.put((generation, "done", matches, snapshots))
+                cancelled = cancel_event.is_set()
+                self._events.put((generation, "done", matches, snapshots, cancelled))
             except Exception as exc:
                 self._events.put((generation, "error", str(exc)))
 
@@ -168,39 +170,72 @@ class ProjectSearchWindow(tk.Toplevel):
                     continue
                 if kind == "error":
                     self.status.configure(text=f"Search failed: {payload[0]}")
+                    self.search_button.configure(state="normal")
+                    self.cancel_button.configure(state="disabled")
                 else:
-                    self._matches, self._snapshots = payload
-                    file_nodes = {}
-                    for index, match in enumerate(self._matches):
-                        relative = match.path.relative_to(self.root_path)
-                        parent = file_nodes.get(match.path)
-                        if parent is None:
-                            parent = f"file:{len(file_nodes)}"
-                            file_nodes[match.path] = parent
-                            self.results.insert(
-                                "",
-                                "end",
-                                iid=parent,
-                                text=str(relative),
-                                values=("", ""),
-                            )
-                        self.results.insert(
-                            parent,
-                            "end",
-                            iid=f"match:{index}",
-                            text=match.text.strip(),
-                            values=(f"{match.line}:{match.column}", ""),
-                        )
-                    self.status.configure(
-                        text=f"{len(self._matches)} matches in "
-                        f"{len(file_nodes)} files"
-                    )
-                self.search_button.configure(state="normal")
-                self.cancel_button.configure(state="disabled")
+                    self._matches, self._snapshots, cancelled = payload
+                    self.cancel_button.configure(state="disabled")
+                    self._insert_search_results(generation, {}, 0, cancelled)
         except queue.Empty:
             pass
         if self.winfo_exists():
             self.after(80, self._poll)
+
+    def _insert_search_results(self, generation, file_nodes, offset, cancelled=False):
+        """Publish search results in small UI batches to keep the window responsive."""
+        if generation != self._generation:
+            return
+        try:
+            if not self.winfo_exists():
+                return
+        except tk.TclError:
+            return
+
+        end = min(offset + 100, len(self._matches))
+        for index in range(offset, end):
+            match = self._matches[index]
+            relative = match.path.relative_to(self.root_path)
+            parent = file_nodes.get(match.path)
+            if parent is None:
+                parent = f"file:{len(file_nodes)}"
+                file_nodes[match.path] = parent
+                self.results.insert(
+                    "",
+                    "end",
+                    iid=parent,
+                    text=str(relative),
+                    values=("", ""),
+                )
+            self.results.insert(
+                parent,
+                "end",
+                iid=f"match:{index}",
+                text=match.text.strip(),
+                values=(f"{match.line}:{match.column}", ""),
+            )
+
+        if end < len(self._matches):
+            try:
+                self.after(
+                    1,
+                    lambda: self._insert_search_results(
+                        generation, file_nodes, end, cancelled
+                    ),
+                )
+            except tk.TclError:
+                return
+            return
+
+        summary = f"{len(self._matches)} matches in {len(file_nodes)} files"
+        self.status.configure(
+            text=(
+                f"Search cancelled — partial results: {summary}"
+                if cancelled
+                else summary
+            )
+        )
+        self.search_button.configure(state="normal")
+        self.cancel_button.configure(state="disabled")
 
     def _open_match(self, _event=None):
         selected = self.results.selection()

@@ -1,5 +1,19 @@
 # Changelog
 
+## [Unreleased]
+
+### Performance and responsiveness
+- Add repeatable benchmarks for editor tokenization and tag spans, AST analysis, combined diagnostics, bracket matching, large-file reads, workspace scanning, and workspace search; document the methodology and initial baseline in `docs/PERFORMANCE.md`.
+- Use Pygments token offsets directly and retain only syntax spans needed by the editor, reducing repeated work and intermediate allocations.
+- Stream lexical tokens without retaining a duplicate tokenizer collection; reuse completed lexical and syntax results when assembling diagnostics in the full-analysis workflow; standalone diagnostics validate tokenization without retaining token objects.
+- Make workspace-search line/column mapping linear in file length, retain replacement snapshots only for files with matches, and render large result sets in bounded UI batches.
+- Reduce Explorer scan metadata work with cached common MIME classifications and no-follow filesystem type checks.
+- Optimize bracket matching with Python tokenization and delimiter-stack traversal while preserving the fallback for incomplete and legacy syntax.
+- Preserve cancellable background work, debounced updates, chunked large-file loading, and bounded UI updates.
+
+### Validation
+- Performance comparisons and the full Windows/Ubuntu × Python 3.10/3.11/3.13 CI matrix are pending final verification for this development branch.
+
 ## [2.6.0] - 2026-11-17
 
 ### Process lifecycle and stability

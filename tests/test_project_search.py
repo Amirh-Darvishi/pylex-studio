@@ -1,9 +1,11 @@
 """Regression tests for workspace search and replacement services."""
 
+import hashlib
 import tempfile
 import threading
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 from pylex.project_search import (
     build_replacements,
@@ -27,6 +29,59 @@ class ProjectSearchTests(unittest.TestCase):
         (self.root / "main.py").write_text("Print('Hello')\n", encoding="utf-8")
         matches, _ = search_text(self.root, "print")
         self.assertEqual([(item.line, item.column) for item in matches], [(1, 1)])
+
+    def test_search_tracks_line_positions_without_repeated_prefix_scans(self):
+        path = self.root / "many_hits.py"
+        path.write_text("hit hit\n\nhit\nhit hit", encoding="utf-8")
+
+        matches, snapshots = search_text(self.root, "hit")
+
+        self.assertEqual(
+            [(item.line, item.column, item.text) for item in matches],
+            [
+                (1, 1, "hit hit"),
+                (1, 5, "hit hit"),
+                (3, 1, "hit"),
+                (4, 1, "hit hit"),
+                (4, 5, "hit hit"),
+            ],
+        )
+        self.assertEqual(set(snapshots), {path.resolve()})
+
+    def test_multiline_regex_keeps_the_full_matching_context(self):
+        path = self.root / "multiline.py"
+        path.write_text("begin\nmiddle\nend\n", encoding="utf-8")
+
+        matches, _snapshots = search_text(self.root, r"begin\nmiddle", regex=True)
+
+        self.assertEqual(len(matches), 1)
+        self.assertEqual(matches[0].line, 1)
+        self.assertEqual(matches[0].text, "begin\nmiddle")
+
+    def test_search_does_not_retain_snapshots_for_unmatched_files(self):
+        (self.root / "match.py").write_text("needle", encoding="utf-8")
+        (self.root / "no_match.py").write_text("nothing here", encoding="utf-8")
+
+        matches, snapshots = search_text(self.root, "needle")
+
+        self.assertEqual(len(matches), 1)
+        self.assertEqual(set(snapshots), {(self.root / "match.py").resolve()})
+
+    def test_search_computes_digests_only_for_files_with_matches(self):
+        matched = self.root / "matched.py"
+        unmatched = self.root / "unmatched.py"
+        matched.write_text("needle here", encoding="utf-8")
+        unmatched.write_text("nothing here", encoding="utf-8")
+
+        with patch(
+            "pylex.project_search.hashlib.sha256", wraps=hashlib.sha256
+        ) as digest:
+            matches, snapshots = search_text(self.root, "needle")
+
+        self.assertEqual(len(matches), 1)
+        self.assertEqual(set(snapshots), {matched.resolve()})
+        self.assertEqual(digest.call_count, 1)
+        self.assertEqual(len(snapshots[matched.resolve()].digest), 64)
 
     def test_regex_whole_word_and_case_options(self):
         pattern = compile_search_pattern(

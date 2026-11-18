@@ -101,16 +101,12 @@ def lexical_analysis(source: str, is_cancelled=None):
     partial token stream from a complete lexical analysis.
     """
     result = []
-    generated = []
+    has_error_token = False
     for item in tokenize.generate_tokens(io.StringIO(source).readline):
         if is_cancelled is not None and is_cancelled():
             return None
-        generated.append(item)
-    # Some Python versions emit an ERRORTOKEN for an unterminated quote
-    # instead of raising TokenError. Ask the parser for its canonical error.
-    if any(item.type == tokenize.ERRORTOKEN for item in generated):
-        ast.parse(source)
-    for item in generated:
+        if item.type == tokenize.ERRORTOKEN:
+            has_error_token = True
         if item.type in (tokenize.ENCODING, tokenize.ENDMARKER):
             continue
         name = tokenize.tok_name.get(item.type, str(item.type))
@@ -131,7 +127,47 @@ def lexical_analysis(source: str, is_cancelled=None):
                 item.end[1],
             )
         )
+    # Some Python versions emit ERRORTOKEN for an unterminated quote instead
+    # of raising TokenError. Ask the parser for its canonical error.
+    if has_error_token:
+        ast.parse(source)
     return result
+
+
+def format_lexical_report(source: str, is_cancelled=None):
+    """Format lexical output directly, avoiding intermediate TokenInfo objects."""
+    lines = [
+        f"{'TYPE':<18} {'LINE':>5} {'COLUMN':>7} {'END':>10}  VALUE",
+        "-" * 78,
+    ]
+    count = 0
+    has_error_token = False
+    for item in tokenize.generate_tokens(io.StringIO(source).readline):
+        if is_cancelled is not None and is_cancelled():
+            return None
+        if item.type == tokenize.ERRORTOKEN:
+            has_error_token = True
+        if item.type in (tokenize.ENCODING, tokenize.ENDMARKER):
+            continue
+        name = tokenize.tok_name.get(item.type, str(item.type))
+        if item.type == tokenize.NAME:
+            if keyword.iskeyword(item.string):
+                name = "KEYWORD"
+            elif item.string in vars(builtins) and not item.string.startswith("__"):
+                name = "BUILTIN"
+            else:
+                name = "NAME"
+        value = item.string.replace("\n", r"\n").replace("\t", r"\t")
+        end = f"{item.end[0]}:{item.end[1]}"
+        lines.append(
+            f"{name:<18} {item.start[0]:>5} {item.start[1]:>7} " f"{end:>10}  {value}"
+        )
+        count += 1
+    if has_error_token:
+        ast.parse(source)
+    if is_cancelled is not None and is_cancelled():
+        return None
+    return ("\n".join(lines) if count else "No tokens found."), count
 
 
 def syntax_analysis(source: str) -> AnalysisResult:
@@ -161,27 +197,66 @@ def syntax_analysis(source: str) -> AnalysisResult:
         )
 
 
-def collect_diagnostics(source: str, is_cancelled=None):
-    """Collect lexical and parser diagnostics, removing duplicate reports."""
-    found = []
-    try:
-        lexical_result = lexical_analysis(source, is_cancelled)
-        if lexical_result is None and is_cancelled is not None and is_cancelled():
+def _validate_lexical_source(source: str, is_cancelled=None):
+    """Validate tokenization without retaining a second full token collection."""
+    has_error_token = False
+    for item in tokenize.generate_tokens(io.StringIO(source).readline):
+        if is_cancelled is not None and is_cancelled():
             return None
-    except tokenize.TokenError as exc:
+        if item.type == tokenize.ERRORTOKEN:
+            has_error_token = True
+    if has_error_token:
+        # Some Python versions emit ERRORTOKEN for unterminated strings instead
+        # of raising TokenError. Preserve the parser's canonical diagnostic.
+        ast.parse(source)
+    return True
+
+
+def _append_lexical_error(found, exc, source):
+    """Normalize a tokenizer/parser exception into a diagnostic."""
+    if isinstance(exc, tokenize.TokenError):
         found.append(_token_error_diagnostic(exc, source))
-    except SyntaxError as exc:
+    elif isinstance(exc, SyntaxError):
         found.append(_syntax_error_diagnostic(exc, source))
-    except (ValueError, TypeError) as exc:
+    else:
         found.append(
             Diagnostic(
-                type(exc).__name__, str(exc), 1, 0, source_line=_line_text(source, 1)
+                type(exc).__name__,
+                str(exc),
+                1,
+                0,
+                source_line=_line_text(source, 1),
             )
         )
 
+
+def collect_diagnostics(
+    source: str,
+    is_cancelled=None,
+    *,
+    lexical_checked=False,
+    lexical_error=None,
+    syntax_result=None,
+):
+    """Collect normalized lexical and parser diagnostics.
+
+    Callers that already performed lexical or syntax analysis can pass those
+    results to avoid repeating expensive tokenization or AST parsing.
+    """
+    found = []
+    if lexical_error is not None:
+        _append_lexical_error(found, lexical_error, source)
+    elif not lexical_checked:
+        try:
+            lexical_result = _validate_lexical_source(source, is_cancelled)
+            if lexical_result is None and is_cancelled is not None and is_cancelled():
+                return None
+        except (tokenize.TokenError, SyntaxError, ValueError, TypeError) as exc:
+            _append_lexical_error(found, exc, source)
+
     if is_cancelled is not None and is_cancelled():
         return None
-    syntax = syntax_analysis(source)
+    syntax = syntax_result if syntax_result is not None else syntax_analysis(source)
     if not syntax.success and syntax.error_type:
         candidate = Diagnostic(
             syntax.error_type,

@@ -2,7 +2,6 @@
 
 from pathlib import Path
 
-from pygments import lex
 from pygments.lexers import PythonLexer, get_lexer_for_filename
 from pygments.util import ClassNotFound
 
@@ -37,21 +36,50 @@ def lexer_for_path(path):
         return PythonLexer()
 
 
-def build_token_spans(source, lexer, is_cancelled=None):
-    """Tokenize source into offset spans without touching editor widgets.
+def _iter_token_spans(source, lexer):
+    """Yield source-relative token spans, using Pygments' offset-aware API."""
+    tokenize_unprocessed = getattr(lexer, "get_tokens_unprocessed", None)
+    if callable(tokenize_unprocessed):
+        for start, token_type, value in tokenize_unprocessed(source):
+            if value:
+                yield token_type, start, start + len(value)
+        return
 
-    The optional predicate lets background callers abandon obsolete work
-    between tokens. A cancelled operation returns None rather than partial tags.
-    """
-    spans = []
+    # Compatibility fallback for custom lexers that expose only get_tokens().
     offset = 0
-    for token_type, value in lex(source, lexer):
-        if is_cancelled is not None and is_cancelled():
-            return None
+    for token_type, value in lexer.get_tokens(source):
         end = offset + len(value)
         if value:
-            spans.append((token_type, offset, end))
+            yield token_type, offset, end
         offset = end
+
+
+def build_token_spans(source, lexer, is_cancelled=None):
+    """Tokenize source into exact offset spans without touching editor widgets.
+
+    Pygments' unprocessed-token API supplies offsets directly, avoiding a second
+    character-by-character offset accumulation pass. Cancellation discards
+    partial output rather than returning incomplete highlighting information.
+    """
+    spans = []
+    for token_type, start, end in _iter_token_spans(source, lexer):
+        if is_cancelled is not None and is_cancelled():
+            return None
+        spans.append((token_type, start, end))
+    if is_cancelled is not None and is_cancelled():
+        return None
+    return spans
+
+
+def build_highlight_spans(source, lexer, tag_for_token, is_cancelled=None):
+    """Build only visible editor tag spans, avoiding an intermediate token list."""
+    spans = []
+    for token_type, start, end in _iter_token_spans(source, lexer):
+        if is_cancelled is not None and is_cancelled():
+            return None
+        tag = tag_for_token(token_type)
+        if tag is not None:
+            spans.append((tag, start, end))
     if is_cancelled is not None and is_cancelled():
         return None
     return spans

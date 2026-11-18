@@ -48,3 +48,63 @@ def test_token_span_generation_can_be_cancelled():
     source = "print('a lot of source')\n" * 100
 
     assert build_token_spans(source, PythonLexer(), lambda: True) is None
+
+
+def test_token_spans_use_exact_source_offsets_for_unicode_and_newlines():
+    source = "\n# café\nvalue = 42\n"
+    lexer = PythonLexer(stripnl=False, ensurenl=False)
+
+    spans = build_token_spans(source, lexer)
+
+    assert spans is not None
+    assert all(source[start:end] for _token, start, end in spans)
+    assert spans[-1][2] == len(source)
+    assert any("café" in source[start:end] for _token, start, end in spans)
+
+
+def test_editor_token_tag_mapping_preserves_pygments_categories():
+    from pylex.editor import CodeEditor
+    from pygments.token import (
+        Comment,
+        Error,
+        Name,
+        Number,
+        Operator,
+        Punctuation,
+        String,
+    )
+
+    assert CodeEditor._tag_for_token(Keyword) == "py_keyword"
+    assert CodeEditor._tag_for_token(Comment.Single) == "py_comment"
+    assert CodeEditor._tag_for_token(String.Double) == "py_string"
+    assert CodeEditor._tag_for_token(Number.Integer) == "py_number"
+    assert CodeEditor._tag_for_token(Error) == "py_error"
+    assert CodeEditor._tag_for_token(Name.Function) == "py_function"
+    assert CodeEditor._tag_for_token(Name.Class) == "py_class"
+    assert CodeEditor._tag_for_token(Name.Builtin) == "py_builtin"
+    assert CodeEditor._tag_for_token(Operator) == "py_operator"
+    assert CodeEditor._tag_for_token(Punctuation) == "py_operator"
+    assert CodeEditor._tag_for_token(Name) is None
+
+
+def test_highlight_spans_keep_only_tokens_with_editor_tags():
+    from pylex.editor_performance import build_highlight_spans
+
+    source = "if ready:\n    value = 'ok'\n"
+    spans = build_highlight_spans(
+        source,
+        PythonLexer(stripnl=False, ensurenl=False),
+        lambda token: "keyword" if token in Keyword else None,
+    )
+
+    assert spans == [("keyword", 0, 2)]
+
+
+def test_highlight_span_generation_can_be_cancelled():
+    from pylex.editor_performance import build_highlight_spans
+
+    source = "if ready:\n    print('ok')\n"
+    assert (
+        build_highlight_spans(source, PythonLexer(), lambda _token: "tag", lambda: True)
+        is None
+    )
