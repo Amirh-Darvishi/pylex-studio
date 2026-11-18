@@ -332,7 +332,7 @@ class ExecutionMixin:
                     f"Missing library '{module}'. Install it into the active interpreter with: "
                     f'"{interpreter}" -m pip install "{package}"'
                 )
-        from .analyzer import Diagnostic
+        from ..analyzer import Diagnostic
 
         diagnostic = Diagnostic(
             error_type,
