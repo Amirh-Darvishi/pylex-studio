@@ -30,7 +30,7 @@ class ProjectSearchTests(unittest.TestCase):
 
     def test_search_tracks_line_positions_without_repeated_prefix_scans(self):
         path = self.root / "many_hits.py"
-        path.write_text("hit hit\\n\\nhit\\nhit hit", encoding="utf-8")
+        path.write_text("hit hit\n\nhit\nhit hit", encoding="utf-8")
 
         matches, snapshots = search_text(self.root, "hit")
 
