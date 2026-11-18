@@ -8,7 +8,7 @@ import tkinter as tk
 from tkinter import font as tkfont
 
 from .editor_performance import (
-    build_token_spans,
+    build_highlight_spans,
     is_large_document,
     lexer_for_path,
 )
@@ -875,13 +875,10 @@ class CodeEditor(tk.Frame):
 
         def tokenize_source():
             try:
-                raw_spans = build_token_spans(source, lexer, cancel_event.is_set)
-                if raw_spans is not None and not cancel_event.is_set():
-                    spans = [
-                        (tag, start, end)
-                        for token_type, start, end in raw_spans
-                        if (tag := self._tag_for_token(token_type)) is not None
-                    ]
+                spans = build_highlight_spans(
+                    source, lexer, self._tag_for_token, cancel_event.is_set
+                )
+                if spans is not None and not cancel_event.is_set():
                     result_queue.put((True, spans))
             except Exception as exc:
                 if not cancel_event.is_set():
