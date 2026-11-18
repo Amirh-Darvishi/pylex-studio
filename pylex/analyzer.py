@@ -160,8 +160,7 @@ def format_lexical_report(source: str, is_cancelled=None):
         value = item.string.replace("\n", r"\n").replace("\t", r"\t")
         end = f"{item.end[0]}:{item.end[1]}"
         lines.append(
-            f"{name:<18} {item.start[0]:>5} {item.start[1]:>7} "
-            f"{end:>10}  {value}"
+            f"{name:<18} {item.start[0]:>5} {item.start[1]:>7} " f"{end:>10}  {value}"
         )
         count += 1
     if has_error_token:
