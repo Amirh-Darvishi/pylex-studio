@@ -184,7 +184,8 @@ def test_dialog_poll_helper_handles_tcl_destroy_race():
 
 def test_dialog_poll_helper_schedules_when_dialog_is_alive():
     dialog = _FakeDialog()
-    callback = lambda: None
+    def callback():
+        return None
 
     assert _dialog_exists(dialog)
     assert _schedule_dialog_poll(dialog, 100, callback) == "poll-id"
