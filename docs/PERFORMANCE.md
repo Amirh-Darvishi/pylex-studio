@@ -37,11 +37,12 @@ The output records the Python and Pygments versions. Use the same machine, Pytho
 | Bracket matching | Finding the matching delimiter at a cursor offset |
 | Large-file read | Reading a generated source file from disk |
 | Workspace scan | Enumerating a synthetic workspace using the Explorer scanner |
-| Workspace search | Searching supported text files and creating match/snapshot results |
+| Workspace search | Searching supported text files and creating match/snapshot results (all files match) |
+| Workspace search (10% hits) | Searching a workspace where approximately one in ten files contains the query |
 
 Each benchmark reports median elapsed time in milliseconds and peak Python allocation measured with `tracemalloc`. Peak MiB is not the application's total resident memory. Large-file read measures disk reading only; it does not measure inserting text into Tkinter widgets. UI responsiveness must also be checked in the running application.
 
-The harness uses one warm-up by default to reduce first-run effects, then reports the median of timed samples. Peak allocation is measured in a separate run and should be treated as an approximate per-operation Python allocation peak, not process-wide memory use.
+The workspace-search benchmarks include both an all-match workload and a sparse workload with approximately 10% matching files. This makes the cost of scanning non-matching files visible. The harness uses one warm-up by default to reduce first-run effects, then reports the median of timed samples. Peak allocation is measured in a separate run and should be treated as an approximate per-operation Python allocation peak, not process-wide memory use.
 
 ## Initial Windows baseline
 
