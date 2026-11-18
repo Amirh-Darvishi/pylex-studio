@@ -9,6 +9,7 @@ from pygments.lexers import PythonLexer
 from pygments.token import Keyword
 
 from pylex.analyzer import (
+    format_lexical_report,
     lexical_analysis,
     syntax_analysis,
     format_tokens,
@@ -119,6 +120,18 @@ class AnalyzerTests(unittest.TestCase):
         )
         self.assertIn(token_type, Keyword)
         self.assertEqual(CodeEditor._tag_for_token(token_type), "py_keyword")
+
+    def test_streamed_lexical_report_matches_token_object_formatter(self):
+        source = 'if ready:\\n    print("café", 42)\\n'
+        expected = format_tokens(lexical_analysis(source))
+
+        report, count = format_lexical_report(source)
+
+        self.assertEqual(report, expected)
+        self.assertEqual(count, len(lexical_analysis(source)))
+
+    def test_streamed_lexical_report_can_be_cancelled(self):
+        self.assertIsNone(format_lexical_report("value = 1", lambda: True))
 
     def test_format_tokens_includes_span_heading(self):
         report = format_tokens(lexical_analysis("x = 1"))
