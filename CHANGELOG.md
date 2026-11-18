@@ -7,6 +7,7 @@
 - Use Pygments token offsets directly and retain only syntax spans needed by the editor, reducing repeated work and intermediate allocations.
 - Stream lexical tokens without retaining a duplicate tokenizer collection; reuse completed lexical and syntax results when assembling diagnostics in the full-analysis workflow; standalone diagnostics validate tokenization without retaining token objects.
 - Make workspace-search line/column mapping linear in file length, retain replacement snapshots only for files with matches, and render large result sets in bounded UI batches.
+- Reduce Explorer scan metadata work with cached common MIME classifications and no-follow filesystem type checks.
 - Optimize bracket matching with Python tokenization and delimiter-stack traversal while preserving the fallback for incomplete and legacy syntax.
 - Preserve cancellable background work, debounced updates, chunked large-file loading, and bounded UI updates.
 
