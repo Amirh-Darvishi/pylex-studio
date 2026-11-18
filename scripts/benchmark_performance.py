@@ -69,12 +69,13 @@ def make_source(lines):
     return "\n".join(blocks) + ("\n" if blocks else "")
 
 
-def make_workspace(root, file_count):
-    """Create a bounded synthetic workspace for directory-scan benchmarks."""
+def make_workspace(root, file_count, *, match_every=1):
+    """Create a workspace with a configurable fraction of matching files."""
     for index in range(file_count):
         folder = root / f"package_{index // 50:03d}"
         folder.mkdir(exist_ok=True)
-        (folder / f"module_{index:05d}.py").write_text("value = 1\n", encoding="utf-8")
+        content = "value = 1\n" if index % match_every == 0 else "other = 1\n"
+        (folder / f"module_{index:05d}.py").write_text(content, encoding="utf-8")
 
 
 def positive_int(value):
@@ -192,6 +193,17 @@ def main():
         name, elapsed, peak = measure(
             "Workspace search",
             lambda: search_text(workspace, "value"),
+            args.repeats,
+            args.warmups,
+        )
+        print(f"{name:<28} {elapsed:>14.2f} {peak:>12.2f}")
+
+        sparse_workspace = root / "workspace_sparse"
+        sparse_workspace.mkdir()
+        make_workspace(sparse_workspace, args.files, match_every=10)
+        name, elapsed, peak = measure(
+            "Workspace search (10% hits)",
+            lambda: search_text(sparse_workspace, "value"),
             args.repeats,
             args.warmups,
         )
