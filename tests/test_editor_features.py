@@ -15,6 +15,12 @@ class SmartEditorFeatureTests(unittest.TestCase):
     def test_indents_after_suite_colon(self):
         self.assertEqual(indentation_for_newline("    if ready:"), "        ")
 
+    def test_newline_indent_uses_configured_width(self):
+        self.assertEqual(indentation_for_newline("  if ready:", 2), "    ")
+
+    def test_comment_colon_does_not_add_indent(self):
+        self.assertEqual(indentation_for_newline("    value = 1  #:", 2), "    ")
+
     def test_does_not_indent_after_colon_inside_string_or_comment(self):
         self.assertEqual(indentation_for_newline('    message = "value:"'), "    ")
         self.assertEqual(indentation_for_newline("    value = 1  #:"), "    ")
