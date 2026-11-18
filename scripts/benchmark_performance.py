@@ -19,16 +19,6 @@ from pathlib import Path
 
 from pygments.lexers import PythonLexer
 
-# Support direct execution from the scripts directory without requiring installation.
-ROOT = Path(__file__).resolve().parents[1]
-if str(ROOT) not in sys.path:
-    sys.path.insert(0, str(ROOT))
-
-from pylex.analyzer import collect_diagnostics, syntax_analysis
-from pylex.editor_features import find_matching_bracket
-from pylex.editor_performance import build_token_spans
-from pylex.workspace_scan import iter_workspace_entries
-
 
 def measure(label, operation, repeats):
     """Measure a callable and return median milliseconds plus peak MiB."""
@@ -90,6 +80,16 @@ def non_negative_int(value):
 
 
 def main():
+    # Support direct execution without requiring an editable installation.
+    root_path = str(Path(__file__).resolve().parents[1])
+    if root_path not in sys.path:
+        sys.path.insert(0, root_path)
+
+    from pylex.analyzer import collect_diagnostics, syntax_analysis
+    from pylex.editor_features import find_matching_bracket
+    from pylex.editor_performance import build_token_spans
+    from pylex.workspace_scan import iter_workspace_entries
+
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--lines", type=positive_int, default=5000)
     parser.add_argument("--files", type=non_negative_int, default=500)
