@@ -18,6 +18,7 @@ import tracemalloc
 from pathlib import Path
 
 from pygments.lexers import PythonLexer
+from pygments.token import Comment, Error, Keyword, Name, Number, Operator, Punctuation, String
 
 
 def measure(label, operation, repeats):
@@ -87,8 +88,30 @@ def main():
 
     from pylex.analyzer import collect_diagnostics, syntax_analysis
     from pylex.editor_features import find_matching_bracket
-    from pylex.editor_performance import build_token_spans
+    from pylex.editor_performance import build_highlight_spans, build_token_spans
+    from pylex.project_search import search_text
     from pylex.workspace_scan import iter_workspace_entries
+
+    def editor_tag(token_type):
+        if token_type in Keyword:
+            return "py_keyword"
+        if token_type in Comment:
+            return "py_comment"
+        if token_type in String:
+            return "py_string"
+        if token_type in Number:
+            return "py_number"
+        if token_type in Error:
+            return "py_error"
+        if token_type in Name.Function:
+            return "py_function"
+        if token_type in Name.Class:
+            return "py_class"
+        if token_type in Name.Builtin:
+            return "py_builtin"
+        if token_type in Operator or token_type in Punctuation:
+            return "py_operator"
+        return None
 
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--lines", type=positive_int, default=5000)
@@ -101,6 +124,10 @@ def main():
     cursor = source.index("(")
     tasks = [
         ("Pygments token spans", lambda: build_token_spans(source, lexer)),
+        (
+            "Editor highlight spans",
+            lambda: build_highlight_spans(source, lexer, editor_tag),
+        ),
         ("AST syntax analysis", lambda: syntax_analysis(source)),
         ("Combined diagnostics", lambda: collect_diagnostics(source)),
         ("Bracket matching", lambda: find_matching_bracket(source, cursor)),
@@ -132,6 +159,12 @@ def main():
         name, elapsed, peak = measure(
             "Workspace scan",
             lambda: list(iter_workspace_entries(workspace)),
+            args.repeats,
+        )
+        print(f"{name:<28} {elapsed:>14.2f} {peak:>12.2f}")
+        name, elapsed, peak = measure(
+            "Workspace search",
+            lambda: search_text(workspace, "value"),
             args.repeats,
         )
         print(f"{name:<28} {elapsed:>14.2f} {peak:>12.2f}")
