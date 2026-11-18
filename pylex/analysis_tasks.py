@@ -2,7 +2,7 @@
 
 from .analyzer import (
     collect_diagnostics,
-    format_tokens,
+    format_lexical_report,
     lexical_analysis,
     syntax_analysis,
 )
@@ -28,11 +28,10 @@ def analyze_source(source, mode="all", is_cancelled=None):
 
     if mode in {"lexical", "all"}:
         try:
-            tokens = lexical_analysis(source, is_cancelled)
-            if tokens is None:
+            lexical_output = format_lexical_report(source, is_cancelled)
+            if lexical_output is None:
                 return None
-            result["lexical_report"] = format_tokens(tokens)
-            result["lexical_count"] = len(tokens)
+            result["lexical_report"], result["lexical_count"] = lexical_output
             result["lexical_error"] = None
         except Exception as exc:
             lexical_error = exc
