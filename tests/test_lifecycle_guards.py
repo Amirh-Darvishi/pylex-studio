@@ -20,6 +20,12 @@ class _FakeRoot:
     def after_cancel(self, job):
         self.cancelled.append(job)
 
+    def _cancel_execution_poll(self):
+        ExecutionMixin._cancel_execution_poll(self)
+
+    def _cancel_debug_poll(self):
+        DebuggerMixin._cancel_debug_poll(self)
+
 
 def test_execution_poll_ignores_stale_handle():
     current = object()
@@ -102,10 +108,10 @@ class _FakeTree:
 def test_runtime_error_uses_run_snapshot_for_diagnostic_source_line():
     editor = object()
     app = _DiagnosticRoot(editor, {editor: {}})
-    stderr = 'Traceback (most recent call last):\\n  File "program.py", line 2, in <module>\\nValueError: invalid value\\n'
+    stderr = 'Traceback (most recent call last):\n  File "program.py", line 2, in <module>\nValueError: invalid value\n'
 
     ExecutionMixin._report_runtime_error(
-        app, stderr, source="first line\\nraise ValueError()", editor=editor
+        app, stderr, source="first line\nraise ValueError()", editor=editor
     )
 
     assert app.diagnostics[0].line == 2
@@ -116,7 +122,7 @@ def test_runtime_error_from_inactive_editor_does_not_replace_active_diagnostics(
     active, previous = object(), object()
     app = _DiagnosticRoot(active, {active: {}, previous: {}})
     app.diagnostics = ["active diagnostics"]
-    stderr = 'Traceback (most recent call last):\\n  File "program.py", line 1, in <module>\\nValueError: invalid value\\n'
+    stderr = 'Traceback (most recent call last):\n  File "program.py", line 1, in <module>\nValueError: invalid value\n'
 
     ExecutionMixin._report_runtime_error(
         app, stderr, source="raise ValueError()", editor=previous
@@ -130,16 +136,16 @@ def test_runtime_error_prefers_frame_for_executed_source_path():
     editor = object()
     app = _DiagnosticRoot(editor, {editor: {}})
     stderr = (
-        'Traceback (most recent call last):\\n'
-        '  File "/library/module.py", line 50, in helper\\n'
-        '  File "/tmp/pylex-run.py", line 2, in <module>\\n'
-        'ValueError: invalid value\\n'
+        'Traceback (most recent call last):\n'
+        '  File "/library/module.py", line 50, in helper\n'
+        '  File "/tmp/pylex-run.py", line 2, in <module>\n'
+        'ValueError: invalid value\n'
     )
 
     ExecutionMixin._report_runtime_error(
         app,
         stderr,
-        source="first line\\nraise ValueError()",
+        source="first line\nraise ValueError()",
         editor=editor,
         source_path="/tmp/pylex-run.py",
     )
@@ -194,6 +200,7 @@ def test_dialog_poll_helper_handles_after_scheduling_race():
 
 def test_dialog_poll_helper_schedules_when_dialog_is_alive():
     dialog = _FakeDialog()
+
     def callback():
         return None
 
