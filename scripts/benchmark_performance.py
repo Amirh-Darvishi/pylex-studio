@@ -11,12 +11,18 @@ from __future__ import annotations
 
 import argparse
 import statistics
+import sys
 import tempfile
 import time
 import tracemalloc
 from pathlib import Path
 
 from pygments.lexers import PythonLexer
+
+# Support direct execution from the scripts directory without requiring installation.
+ROOT = Path(__file__).resolve().parents[1]
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
 
 from pylex.analyzer import collect_diagnostics, syntax_analysis
 from pylex.editor_features import find_matching_bracket
