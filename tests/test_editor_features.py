@@ -35,16 +35,16 @@ class SmartEditorFeatureTests(unittest.TestCase):
         self.assertEqual(smart_backspace_prefix("  ", 2, "  "), "")
 
     def test_smart_backspace_preserves_tab_indentation(self):
-        self.assertEqual(smart_backspace_prefix("\\t\\t", 4, "\\t"), "\\t")
+        self.assertEqual(smart_backspace_prefix("\t\t", 4, "\t"), "\t")
 
     def test_dedent_removes_configured_indentation_unit(self):
         self.assertEqual(dedent_prefix("    ", "  "), "  ")
         self.assertEqual(dedent_prefix("  ", "  "), "")
-        self.assertEqual(dedent_prefix("\\t", "  "), "")
+        self.assertEqual(dedent_prefix("\t", "  "), "")
 
     def test_dedent_handles_tab_indentation(self):
-        self.assertEqual(dedent_prefix("\\t\\t", "\\t"), "\\t")
-        self.assertEqual(dedent_prefix("    ", "\\t"), "")
+        self.assertEqual(dedent_prefix("\t\t", "\t"), "\t")
+        self.assertEqual(dedent_prefix("    ", "\t"), "")
 
     def test_comment_toggle_preserves_indentation_and_line_endings(self):
         source = "if ready:\r\n    run()\r\n"
