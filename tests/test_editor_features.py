@@ -53,7 +53,7 @@ class SmartEditorFeatureTests(unittest.TestCase):
 
 
     def test_matching_brackets_uses_python_tokens_across_multiple_lines(self):
-        source = "result = call(\\n    values[0],\\n    {\\\"key\\\": 1},\\n)\\n"
+        source = "result = call(\n    values[0],\n    {\"key\": 1},\n)\n"
         opening = source.index("(")
         self.assertEqual(
             find_matching_bracket(source, opening),
