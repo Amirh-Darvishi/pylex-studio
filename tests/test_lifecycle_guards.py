@@ -152,6 +152,7 @@ class _FakeDialog:
     def __init__(self, exists=True, error=False):
         self.exists = exists
         self.error = error
+        self.after_error = False
         self.scheduled = []
 
     def winfo_exists(self):
@@ -160,7 +161,7 @@ class _FakeDialog:
         return self.exists
 
     def after(self, delay, callback):
-        if self.error:
+        if self.error or self.after_error:
             raise tk.TclError("bad window")
         self.scheduled.append((delay, callback))
         return "poll-id"
@@ -178,6 +179,15 @@ def test_dialog_poll_helper_handles_tcl_destroy_race():
     dialog = _FakeDialog(error=True)
 
     assert not _dialog_exists(dialog)
+    assert _schedule_dialog_poll(dialog, 100, lambda: None) is None
+    assert dialog.scheduled == []
+
+
+def test_dialog_poll_helper_handles_after_scheduling_race():
+    dialog = _FakeDialog()
+    dialog.after_error = True
+
+    assert _dialog_exists(dialog)
     assert _schedule_dialog_poll(dialog, 100, lambda: None) is None
     assert dialog.scheduled == []
 
