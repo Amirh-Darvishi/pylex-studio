@@ -73,3 +73,27 @@ The bracket matcher retains its Pygments fallback for incomplete source and olde
 ## CI
 
 CI runs a small smoke workload to ensure the benchmark remains executable. It does not enforce timing thresholds. Full-size comparisons are intended to be run locally on a stable machine and reviewed alongside functional tests.
+
+## Final 2.7.0 measurements
+
+The following representative runs were collected locally on Windows with Python 3.13.14 and Pygments 2.21.0. Workloads were 5,000 source lines / 500 workspace files and 20,000 lines / 2,000 files. They are reference observations, not CI thresholds; machine load and runtime versions affect timings.
+
+| Benchmark | 5,000 lines / 500 files | 20,000 lines / 2,000 files |
+|---|---:|---:|
+| Pygments token spans | 690.18 ms / 5.57 MiB | 2,458.97 ms / 22.54 MiB |
+| Editor highlight spans | 849.75 ms / 2.15 MiB | 3,336.46 ms / 9.00 MiB |
+| Lexical analysis | 94.64 ms / 6.83 MiB | 385.17 ms / 27.60 MiB |
+| AST syntax analysis | 83.22 ms / 17.10 MiB | 362.73 ms / 68.45 MiB |
+| Standalone diagnostics | 128.25 ms / 17.10 MiB | 524.03 ms / 68.45 MiB |
+| Full analysis workflow | 232.18 ms / 18.64 MiB | 916.84 ms / 74.63 MiB |
+| Bracket matching | 68.77 ms / 0.91 MiB | 264.55 ms / 3.94 MiB |
+| Large-file read | 0.22 ms / 0.35 MiB | 1.15 ms / 1.40 MiB |
+| Workspace scan | 21.12 ms / 0.13 MiB | 87.34 ms / 0.43 MiB |
+| Workspace search (all match) | 207.65 ms / 1.17 MiB | 834.93 ms / 4.66 MiB |
+| Workspace search (10% hits) | 196.87 ms / 0.81 MiB | 812.24 ms / 3.20 MiB |
+
+Each cell shows median elapsed time and peak Python allocation. The sparse-search workload showed roughly 31% lower peak allocation than the all-match workload, but timing was similar; do not describe it as a confirmed speed improvement. These full measurements are from the benchmark harness used for 2.7.0 and should be compared only against runs using the same harness and setup.
+
+## Release validation
+
+The 2.7.0 release validation recorded 198 passing tests, 3 skipped tests, and 14 passing subtests locally. Black reported 75 files unchanged and Ruff passed. The six CI combinations (Windows and Ubuntu, Python 3.10/3.11/3.13) all passed pytest, compileall, the benchmark smoke test, Black, and Ruff. Skips were platform/environment limitations such as symlink availability and POSIX process-group semantics.
