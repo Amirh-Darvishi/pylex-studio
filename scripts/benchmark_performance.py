@@ -3,8 +3,8 @@
 Run from the repository root:
     python scripts/benchmark_performance.py --lines 5000 --files 500 --repeats 3
 
-These timings are diagnostic only: they are not CI pass/fail thresholds and should
-be compared on the same machine, Python version, and workload.
+Compare results on the same machine, Python version, and workload. Timing results
+are diagnostic only and deliberately do not create CI pass/fail thresholds.
 """
 
 from __future__ import annotations
@@ -30,25 +30,33 @@ def measure(label, operation, repeats):
     for _ in range(repeats):
         started = time.perf_counter()
         operation()
-        samples.append((time.perf_counter() - started) * 1000
+        samples.append((time.perf_counter() - started) * 1000)
 
     tracemalloc.start()
-    operation()
-    _current, peak = tracemalloc.get_traced_memory()
-    tracemalloc.stop()
+    try:
+        operation()
+        _current, peak = tracemalloc.get_traced_memory()
+    finally:
+        tracemalloc.stop()
     return label, statistics.median(samples), peak / (1024 * 1024)
 
 
 def make_source(lines):
-    """Create deterministic valid Python source with repeated nested structures."""
-    return "\n".join(
-        f"def function_{i}(value):\n"
-        f"    result = (value + {i}) * 2\n"
-        f"    if result > 10:\n"
-        f"        return result\n"
-        f"    return value"
-        for i in range(max(1, lines // 5))
-    ) + "\n"
+    """Create deterministic valid Python source with repeatable code patterns."""
+    blocks = [
+        (
+            f"def function_{index}(value):\n"
+            f"    result = (value + {index}) * 2\n"
+            "    if result > 10:\n"
+            "        return result\n"
+            "    return value"
+        )
+        for index in range(lines // 5)
+    ]
+    remainder = lines % 5
+    if remainder:
+        blocks.append("\n".join(f"value_{i} = {i}" for i in range(remainder)))
+    return "\n".join(blocks) + ("\n" if blocks else "")
 
 
 def make_workspace(root, file_count):
@@ -61,16 +69,32 @@ def make_workspace(root, file_count):
         )
 
 
+def positive_int(value):
+    """Parse a positive CLI integer."""
+    parsed = int(value)
+    if parsed < 1:
+        raise argparse.ArgumentTypeError("value must be greater than zero")
+    return parsed
+
+
+def non_negative_int(value):
+    """Parse a non-negative CLI integer."""
+    parsed = int(value)
+    if parsed < 0:
+        raise argparse.ArgumentTypeError("value must be zero or greater")
+    return parsed
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--lines", type=int, default=5000)
-    parser.add_argument("--files", type=int, default=500)
-    parser.add_argument("--repeats", type=int, default=3)
+    parser.add_argument("--lines", type=positive_int, default=5000)
+    parser.add_argument("--files", type=non_negative_int, default=500)
+    parser.add_argument("--repeats", type=positive_int, default=3)
     args = parser.parse_args()
 
     source = make_source(args.lines)
     lexer = PythonLexer()
-    cursor = max(0, len(source) - 1)
+    cursor = max(0, len(source) - 2)
     tasks = [
         ("Pygments token spans", lambda: build_token_spans(source, lexer)),
         ("AST syntax analysis", lambda: syntax_analysis(source)),
@@ -89,10 +113,21 @@ def main():
 
     with tempfile.TemporaryDirectory(prefix="pylex-perf-") as directory:
         root = Path(directory)
-        make_workspace(root, args.files)
+        source_file = root / "benchmark_source.py"
+        source_file.write_text(source, encoding="utf-8")
+        name, elapsed, peak = measure(
+            "Large-file read",
+            lambda: source_file.read_text(encoding="utf-8"),
+            args.repeats,
+        )
+        print(f"{name:<28} {elapsed:>14.2f} {peak:>12.2f}")
+
+        workspace = root / "workspace"
+        workspace.mkdir()
+        make_workspace(workspace, args.files)
         name, elapsed, peak = measure(
             "Workspace scan",
-            lambda: list(iter_workspace_entries(root)),
+            lambda: list(iter_workspace_entries(workspace)),
             args.repeats,
         )
         print(f"{name:<28} {elapsed:>14.2f} {peak:>12.2f}")
