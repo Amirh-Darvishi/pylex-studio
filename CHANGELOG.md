@@ -1,6 +1,5 @@
 # Changelog
 
-
 ## [Unreleased]
 
 ### Performance and responsiveness
