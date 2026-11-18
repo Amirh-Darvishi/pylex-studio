@@ -62,6 +62,23 @@ def test_token_spans_use_exact_source_offsets_for_unicode_and_newlines():
     assert any("café" in source[start:end] for _token, start, end in spans)
 
 
+def test_editor_token_tag_mapping_preserves_pygments_categories():
+    from pylex.editor import CodeEditor
+    from pygments.token import Comment, Error, Name, Number, String
+
+    assert CodeEditor._tag_for_token(Keyword) == "py_keyword"
+    assert CodeEditor._tag_for_token(Comment.Single) == "py_comment"
+    assert CodeEditor._tag_for_token(String.Double) == "py_string"
+    assert CodeEditor._tag_for_token(Number.Integer) == "py_number"
+    assert CodeEditor._tag_for_token(Error) == "py_error"
+    assert CodeEditor._tag_for_token(Name.Function) == "py_function"
+    assert CodeEditor._tag_for_token(Name.Class) == "py_class"
+    assert CodeEditor._tag_for_token(Name.Builtin) == "py_builtin"
+    assert CodeEditor._tag_for_token(Operator) == "py_operator"
+    assert CodeEditor._tag_for_token(Punctuation) == "py_operator"
+    assert CodeEditor._tag_for_token(Name) is None
+
+
 def test_highlight_spans_keep_only_tokens_with_editor_tags():
     from pylex.editor_performance import build_highlight_spans
 
