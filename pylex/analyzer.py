@@ -134,6 +134,43 @@ def lexical_analysis(source: str, is_cancelled=None):
     return result
 
 
+
+def format_lexical_report(source: str, is_cancelled=None):
+    """Format lexical output directly, avoiding intermediate TokenInfo objects."""
+    lines = [
+        f"{'TYPE':<18} {'LINE':>5} {'COLUMN':>7} {'END':>10}  VALUE",
+        "-" * 78,
+    ]
+    count = 0
+    has_error_token = False
+    for item in tokenize.generate_tokens(io.StringIO(source).readline):
+        if is_cancelled is not None and is_cancelled():
+            return None
+        if item.type == tokenize.ERRORTOKEN:
+            has_error_token = True
+        if item.type in (tokenize.ENCODING, tokenize.ENDMARKER):
+            continue
+        name = tokenize.tok_name.get(item.type, str(item.type))
+        if item.type == tokenize.NAME:
+            if keyword.iskeyword(item.string):
+                name = "KEYWORD"
+            elif item.string in vars(builtins) and not item.string.startswith("__"):
+                name = "BUILTIN"
+            else:
+                name = "NAME"
+        value = item.string.replace("\\n", r"\\n").replace("\\t", r"\\t")
+        end = f"{item.end[0]}:{item.end[1]}"
+        lines.append(
+            f"{name:<18} {item.start[0]:>5} {item.start[1]:>7} "
+            f"{end:>10}  {value}"
+        )
+        count += 1
+    if has_error_token:
+        ast.parse(source)
+    if is_cancelled is not None and is_cancelled():
+        return None
+    return ("\\n".join(lines) if count else "No tokens found."), count
+
 def syntax_analysis(source: str) -> AnalysisResult:
     """Validate Python syntax with ast.parse and return structured diagnostics."""
     try:
