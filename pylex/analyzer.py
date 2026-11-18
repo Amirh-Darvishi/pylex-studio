@@ -161,6 +161,21 @@ def syntax_analysis(source: str) -> AnalysisResult:
         )
 
 
+def _validate_lexical_source(source: str, is_cancelled=None):
+    """Validate tokenization without retaining a second full token collection."""
+    has_error_token = False
+    for item in tokenize.generate_tokens(io.StringIO(source).readline):
+        if is_cancelled is not None and is_cancelled():
+            return None
+        if item.type == tokenize.ERRORTOKEN:
+            has_error_token = True
+    if has_error_token:
+        # Some Python versions emit ERRORTOKEN for unterminated strings instead
+        # of raising TokenError. Preserve the parser's canonical diagnostic.
+        ast.parse(source)
+    return True
+
+
 def _append_lexical_error(found, exc, source):
     """Normalize a tokenizer/parser exception into a diagnostic."""
     if isinstance(exc, tokenize.TokenError):
@@ -197,7 +212,7 @@ def collect_diagnostics(
         _append_lexical_error(found, lexical_error, source)
     elif not lexical_checked:
         try:
-            lexical_result = lexical_analysis(source, is_cancelled)
+            lexical_result = _validate_lexical_source(source, is_cancelled)
             if lexical_result is None and is_cancelled is not None and is_cancelled():
                 return None
         except (tokenize.TokenError, SyntaxError, ValueError, TypeError) as exc:
