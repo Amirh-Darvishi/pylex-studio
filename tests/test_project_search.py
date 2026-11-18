@@ -1,5 +1,6 @@
 """Regression tests for workspace search and replacement services."""
 
+import hashlib
 import tempfile
 import threading
 import unittest
@@ -72,9 +73,7 @@ class ProjectSearchTests(unittest.TestCase):
         matched.write_text("needle here", encoding="utf-8")
         unmatched.write_text("nothing here", encoding="utf-8")
 
-        with patch("pylex.project_search.hashlib.sha256", wraps=__import__(
-            "hashlib"
-        ).sha256) as digest:
+        with patch("pylex.project_search.hashlib.sha256", wraps=hashlib.sha256) as digest:
             matches, snapshots = search_text(self.root, "needle")
 
         self.assertEqual(len(matches), 1)
