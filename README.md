@@ -1,10 +1,20 @@
 # PyLex Studio
 
-**Latest stable release: 2.6.0 — Process Lifecycle Stability**
+**Latest stable release: 2.7.0 — Performance Optimization**
 
-PyLex Studio 2.6.0 is the latest published stable release, focused on reliable process ownership, termination, and shutdown across the Runner, Terminal, Debugger, and Quality panel.
+PyLex Studio 2.7.0 is the latest published stable release, focused on improving editor, analysis, bracket matching, and workspace performance while preserving existing behavior.
 
-[View the 2.6.0 release notes](https://github.com/Amirh-Darvishi/pylex-studio/releases/tag/2.6.0)
+[View the 2.7.0 release notes](https://github.com/Amirh-Darvishi/pylex-studio/releases/tag/v2.7.0)
+
+## 2.7.0 release — Performance Optimization
+
+Version 2.7.0 establishes repeatable performance benchmarks and optimizes token processing, editor highlighting, analysis reuse, bracket matching, workspace scanning, and workspace search. It reduces unnecessary intermediate allocations and metadata checks while preserving cancellable background work and bounded UI updates. Bracket matching measured approximately 88% faster on a 5,000-line workload and 90% faster on a 20,000-line workload in local Windows/Python 3.13 measurements.
+
+Validation on the feature branch: **198 passed, 3 skipped, and 14 subtests passed**; Black left all 75 checked files unchanged and Ruff passed. All six Windows/Ubuntu × Python 3.10/3.11/3.13 CI jobs passed. Platform-specific skips are expected where symlink or POSIX process-group behavior is unavailable.
+
+- [Implementation PR #27](https://github.com/Amirh-Darvishi/pylex-studio/pull/27)
+- [Performance benchmarks](docs/PERFORMANCE.md)
+- [Release notes](https://github.com/Amirh-Darvishi/pylex-studio/releases/tag/v2.7.0)
 
 A lightweight Python desktop editor with independent lexical and syntax analysis.
 
