@@ -1,5 +1,6 @@
 """Tests for workspace file type recognition."""
 
+import mimetypes
 import tempfile
 import unittest
 from pathlib import Path
@@ -12,6 +13,14 @@ class FileTypeTests(unittest.TestCase):
         self.assertEqual(info.kind, "python")
         self.assertTrue(info.is_text)
         self.assertEqual(info.icon, "🐍")
+
+    def test_cached_mime_lookup_preserves_single_and_compound_extensions(self):
+        for filename in ("main.py", "archive.tar.gz"):
+            with self.subTest(filename=filename):
+                self.assertEqual(
+                    file_type_for(filename).mime_type,
+                    mimetypes.guess_type(filename)[0],
+                )
 
     def test_common_workspace_formats_are_classified(self):
         expected = {
