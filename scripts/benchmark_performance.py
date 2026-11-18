@@ -64,9 +64,7 @@ def make_workspace(root, file_count):
     for index in range(file_count):
         folder = root / f"package_{index // 50:03d}"
         folder.mkdir(exist_ok=True)
-        (folder / f"module_{index:05d}.py").write_text(
-            "value = 1\n", encoding="utf-8"
-        )
+        (folder / f"module_{index:05d}.py").write_text("value = 1\n", encoding="utf-8")
 
 
 def positive_int(value):
