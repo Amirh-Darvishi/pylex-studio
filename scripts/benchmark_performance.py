@@ -1,7 +1,7 @@
 """Repeatable, non-gating performance benchmarks for PyLex Studio hot paths.
 
 Run from the repository root:
-    python scripts/benchmark_performance.py --lines 5000 --files 500 --repeats 3
+    python scripts/benchmark_performance.py --lines 5000 --files 500 --repeats 5
 
 Compare results on the same machine, Python version, and workload. Timing results
 are diagnostic only and deliberately do not create CI pass/fail thresholds.
@@ -17,6 +17,7 @@ import time
 import tracemalloc
 from pathlib import Path
 
+import pygments
 from pygments.lexers import PythonLexer
 from pygments.token import (
     Comment,
@@ -30,8 +31,11 @@ from pygments.token import (
 )
 
 
-def measure(label, operation, repeats):
+def measure(label, operation, repeats, warmups):
     """Measure a callable and return median milliseconds plus peak MiB."""
+    for _ in range(warmups):
+        operation()
+
     samples = []
     for _ in range(repeats):
         started = time.perf_counter()
@@ -95,7 +99,12 @@ def main():
     if root_path not in sys.path:
         sys.path.insert(0, root_path)
 
-    from pylex.analyzer import collect_diagnostics, syntax_analysis
+    from pylex.analysis_tasks import analyze_source
+    from pylex.analyzer import (
+        collect_diagnostics,
+        lexical_analysis,
+        syntax_analysis,
+    )
     from pylex.editor_features import find_matching_bracket
     from pylex.editor_performance import build_highlight_spans, build_token_spans
     from pylex.project_search import search_text
@@ -125,11 +134,12 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--lines", type=positive_int, default=5000)
     parser.add_argument("--files", type=non_negative_int, default=500)
-    parser.add_argument("--repeats", type=positive_int, default=3)
+    parser.add_argument("--repeats", type=positive_int, default=5)
+    parser.add_argument("--warmups", type=non_negative_int, default=1)
     args = parser.parse_args()
 
     source = make_source(args.lines)
-    lexer = PythonLexer()
+    lexer = PythonLexer(stripnl=False, ensurenl=False)
     cursor = max(0, source.find("("))
     tasks = [
         ("Pygments token spans", lambda: build_token_spans(source, lexer)),
@@ -137,18 +147,26 @@ def main():
             "Editor highlight spans",
             lambda: build_highlight_spans(source, lexer, editor_tag),
         ),
+        ("Lexical analysis", lambda: lexical_analysis(source)),
         ("AST syntax analysis", lambda: syntax_analysis(source)),
-        ("Combined diagnostics", lambda: collect_diagnostics(source)),
+        ("Standalone diagnostics", lambda: collect_diagnostics(source)),
+        ("Full analysis workflow", lambda: analyze_source(source, mode="all")),
         ("Bracket matching", lambda: find_matching_bracket(source, cursor)),
     ]
 
+    print(f"Python: {sys.version.split()[0]} | Pygments: {pygments.__version__}")
     print(f"Source: {len(source):,} chars / {source.count(chr(10)):,} lines")
-    print(f"Workspace target: {args.files:,} files; repeats: {args.repeats}")
+    print(
+        f"Workspace target: {args.files:,} files; "
+        f"warmups: {args.warmups}; repeats: {args.repeats}"
+    )
     print()
     print(f"{'Benchmark':<28} {'Median (ms)':>14} {'Peak MiB':>12}")
     print("-" * 56)
     for label, operation in tasks:
-        name, elapsed, peak = measure(label, operation, args.repeats)
+        name, elapsed, peak = measure(
+            label, operation, args.repeats, args.warmups
+        )
         print(f"{name:<28} {elapsed:>14.2f} {peak:>12.2f}")
 
     with tempfile.TemporaryDirectory(prefix="pylex-perf-") as directory:
@@ -159,6 +177,7 @@ def main():
             "Large-file read",
             lambda: source_file.read_text(encoding="utf-8"),
             args.repeats,
+            args.warmups,
         )
         print(f"{name:<28} {elapsed:>14.2f} {peak:>12.2f}")
 
@@ -169,12 +188,14 @@ def main():
             "Workspace scan",
             lambda: list(iter_workspace_entries(workspace)),
             args.repeats,
+            args.warmups,
         )
         print(f"{name:<28} {elapsed:>14.2f} {peak:>12.2f}")
         name, elapsed, peak = measure(
             "Workspace search",
             lambda: search_text(workspace, "value"),
             args.repeats,
+            args.warmups,
         )
         print(f"{name:<28} {elapsed:>14.2f} {peak:>12.2f}")
 
