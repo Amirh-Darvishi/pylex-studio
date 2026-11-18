@@ -52,5 +52,26 @@ class SmartEditorFeatureTests(unittest.TestCase):
         )
 
 
+    def test_matching_brackets_uses_python_tokens_across_multiple_lines(self):
+        source = "result = call(\\n    values[0],\\n    {\\\"key\\\": 1},\\n)\\n"
+        opening = source.index("(")
+        self.assertEqual(
+            find_matching_bracket(source, opening),
+            (opening, source.index(")", opening)),
+        )
+
+    def test_matching_brackets_preserves_f_string_expression_support(self):
+        source = 'message = f"result: {call(value)}"'
+        opening = source.index("(")
+        self.assertEqual(
+            find_matching_bracket(source, opening),
+            (opening, source.index(")", opening)),
+        )
+
+    def test_matching_bracket_falls_back_for_incomplete_source(self):
+        source = "call(value"
+        self.assertIsNone(find_matching_bracket(source, source.index("(")))
+
+
 if __name__ == "__main__":
     unittest.main()
