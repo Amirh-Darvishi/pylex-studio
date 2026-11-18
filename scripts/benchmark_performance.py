@@ -164,9 +164,7 @@ def main():
     print(f"{'Benchmark':<28} {'Median (ms)':>14} {'Peak MiB':>12}")
     print("-" * 56)
     for label, operation in tasks:
-        name, elapsed, peak = measure(
-            label, operation, args.repeats, args.warmups
-        )
+        name, elapsed, peak = measure(label, operation, args.repeats, args.warmups)
         print(f"{name:<28} {elapsed:>14.2f} {peak:>12.2f}")
 
     with tempfile.TemporaryDirectory(prefix="pylex-perf-") as directory:
