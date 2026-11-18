@@ -206,19 +206,27 @@ def search_text(
             content = overlays.get(path, snapshot.content)
         except (OSError, ValueError):
             continue
-        snapshots[path] = snapshot
+        line_number = 1
+        line_start = 0
+        line_end = content.find("\n")
+        matched = False
         for match in pattern.finditer(content):
-            line = content.count("\n", 0, match.start()) + 1
-            line_start = content.rfind("\n", 0, match.start()) + 1
-            line_end = content.find("\n", match.end())
-            if line_end < 0:
-                line_end = len(content)
+            # Advance line boundaries monotonically. Repeated str.count/rfind
+            # scans made searches with many hits quadratic in file length.
+            while line_end >= 0 and match.start() > line_end:
+                line_number += 1
+                line_start = line_end + 1
+                line_end = content.find("\n", line_start)
+            if not matched:
+                snapshots[path] = snapshot
+                matched = True
+            visible_end = line_end if line_end >= 0 else len(content)
             results.append(
                 SearchMatch(
                     path,
-                    line,
+                    line_number,
                     match.start() - line_start + 1,
-                    content[line_start:line_end],
+                    content[line_start:visible_end],
                     match.start(),
                     match.end(),
                 )
