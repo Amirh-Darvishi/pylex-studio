@@ -32,7 +32,6 @@ class AnalysisTaskTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             analyze_source("pass", mode="unknown")
 
-
     def test_full_analysis_reuses_lexical_and_syntax_results_for_diagnostics(self):
         with (
             patch(
@@ -52,21 +51,3 @@ class AnalysisTaskTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
-
-
-
-    def test_full_analysis_reuses_lexical_and_syntax_results_for_diagnostics(self):
-        with (
-            patch(
-                "pylex.analyzer.lexical_analysis",
-                side_effect=AssertionError("lexical analysis was repeated"),
-            ),
-            patch(
-                "pylex.analyzer.syntax_analysis",
-                side_effect=AssertionError("syntax analysis was repeated"),
-            ),
-        ):
-            result = analyze_source("value = 42", mode="all")
-
-        self.assertEqual(result["diagnostics"], [])
-        self.assertTrue(result["syntax"].success)
