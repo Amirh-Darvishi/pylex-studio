@@ -145,7 +145,7 @@ def find_matching_bracket(source, cursor_offset, is_cancelled=None):
     reverse = {value: key for key, value in pairs.items()}
     line_offsets = [0]
     line_offsets.extend(
-        index + 1 for index, char in enumerate(source) if char == "\\n"
+        index + 1 for index, char in enumerate(source) if char == "\n"
     )
     delimiters = []
     try:
