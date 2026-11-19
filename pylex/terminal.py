@@ -252,13 +252,14 @@ class TerminalProcess:
         terminate_process_tree(self.process)
         return True
 
-    def read_available(self):
+    def read_available(self, max_chunks=None):
         chunks = []
-        while True:
+        while max_chunks is None or len(chunks) < max_chunks:
             try:
                 chunks.append(self.events.get_nowait())
             except queue.Empty:
-                return chunks
+                break
+        return chunks
 
 
 class TerminalPanel(ttk.Frame):
@@ -564,13 +565,27 @@ class TerminalPanel(ttk.Frame):
         output = view["output"]
         output.configure(state="normal")
         output.insert("end", value, tag or ())
+        # Keep terminal widgets bounded so long-running sessions do not make
+        # subsequent inserts and scrolling progressively more expensive.
+        retained_chars = 250_000
+        try:
+            count = int(output.count("1.0", "end-1c", "chars")[0])
+            if count > retained_chars:
+                output.delete("1.0", f"1.0+{count-retained_chars}c")
+        except (tk.TclError, TypeError, IndexError, ValueError):
+            pass
         output.see("end")
         output.configure(state="disabled")
 
     def _poll(self):
+        # Bound work per event-loop turn so a noisy shell cannot monopolize Tk.
+        max_chunks_per_session = 32
         for frame, session in list(self.sessions.items()):
-            for chunk in session.read_available():
-                self._append(frame, chunk)
+            for _ in range(max_chunks_per_session):
+                chunks = session.read_available(max_chunks=1)
+                if not chunks:
+                    break
+                self._append(frame, chunks[0])
             if session.done and not getattr(session, "_reported_exit", False):
                 session._reported_exit = True
                 self._append(
