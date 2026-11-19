@@ -1,7 +1,8 @@
-"""Opt-in Python callback tracing for diagnosing UI hangs.
+"""Opt-in low-overhead callback tracing for diagnosing UI hangs.
 
-Enable with PYLEX_HANG_TRACE=1. Writes callback enter/exit records and periodic
-Python traceback dumps. No Tk calls are made from the diagnostic worker.
+Enable with PYLEX_HANG_TRACE=<watchdog seconds>. Only callbacks slower than
+PYLEX_HANG_TRACE_MIN_MS (default 100 ms) are written. No Tk calls are made
+from the diagnostic worker.
 """
 
 import faulthandler
@@ -23,7 +24,6 @@ _TARGETS = {
     "highlight",
     "_poll_highlight_result",
     "_apply_highlight_batch",
-    "_apply_highlight_batch",
     "_cursor_changed",
     "paste",
     "_paste",
@@ -42,20 +42,28 @@ def start_hang_trace(root):
         return None
     try:
         timeout = float(raw_timeout)
+        min_duration_ms = float(
+            os.environ.get("PYLEX_HANG_TRACE_MIN_MS", "100").strip()
+        )
     except ValueError:
         return None
-    if timeout <= 0:
+    if timeout <= 0 or min_duration_ms < 0:
         return None
+
     path = os.environ.get("PYLEX_HANG_TRACE_FILE", "pylex-hang-trace.log")
     stream = None
     lock = threading.Lock()
     last_heartbeat = [time.monotonic()]
     last_callback = ["(none)"]
+    callback_starts = {}
+    stop_event = threading.Event()
+    heartbeat_job = [None]
+
     try:
         stream = open(path, "w", encoding="utf-8", buffering=1)
         stream.write(
             f"PyLex diagnostic started; timeout={timeout:.1f}s; "
-            f"pid={os.getpid()}\n"
+            f"slow_callback_threshold={min_duration_ms:.1f}ms; pid={os.getpid()}\n"
         )
 
         def log(message):
@@ -71,32 +79,54 @@ def start_hang_trace(root):
             module = frame.f_globals.get("__name__", "")
             if name not in _TARGETS or not module.startswith("pylex"):
                 return
+            frame_key = id(frame)
             if event == "call":
+                callback_starts[frame_key] = time.monotonic()
                 last_callback[0] = f"{module}.{name} ({code.co_filename}:{frame.f_lineno})"
-            log(f"{event.upper()} {module}.{name} line={frame.f_lineno}")
+                return
+            started = callback_starts.pop(frame_key, None)
+            if started is None:
+                return
+            duration_ms = (time.monotonic() - started) * 1000
+            if duration_ms >= min_duration_ms:
+                log(
+                    f"SLOW_CALLBACK {module}.{name} duration_ms={duration_ms:.1f} "
+                    f"line={frame.f_lineno}"
+                )
 
         sys.setprofile(profile)
 
         def heartbeat():
             last_heartbeat[0] = time.monotonic()
             try:
-                root.after(250, heartbeat)
+                heartbeat_job[0] = root.after(250, heartbeat)
             except Exception:
-                return
+                heartbeat_job[0] = None
 
-        root.after(250, heartbeat)
+        heartbeat_job[0] = root.after(250, heartbeat)
 
         def watchdog():
             while not stop_event.wait(timeout):
                 elapsed = time.monotonic() - last_heartbeat[0]
-                log(f"WATCHDOG heartbeat_age={elapsed:.2f}s last_callback={last_callback[0]}")
+                log(
+                    f"WATCHDOG heartbeat_age={elapsed:.2f}s "
+                    f"last_callback={last_callback[0]}"
+                )
                 if elapsed > timeout:
                     log("WARNING: Tk heartbeat stalled or delayed.")
-        stop_event = threading.Event()
-        worker = threading.Thread(target=watchdog, name="pylex-hang-watchdog", daemon=True)
+
+        worker = threading.Thread(
+            target=watchdog, name="pylex-hang-watchdog", daemon=True
+        )
         worker.start()
         faulthandler.dump_traceback_later(timeout, repeat=True, file=stream)
-        return {"stream": stream, "lock": lock, "stop": stop_event, "worker": worker}
+        return {
+            "stream": stream,
+            "lock": lock,
+            "stop": stop_event,
+            "worker": worker,
+            "heartbeat_job": heartbeat_job,
+        }
     except (OSError, RuntimeError):
         if stream is not None:
             try:
@@ -108,7 +138,7 @@ def start_hang_trace(root):
 
 
 def stop_hang_trace(resource, root=None):
-    """Stop diagnostic callbacks and close the trace file."""
+    """Stop diagnostic callbacks and close the trace file safely."""
     if resource is None:
         return
     stream = resource["stream"]
@@ -118,11 +148,16 @@ def stop_hang_trace(resource, root=None):
         pass
     resource["stop"].set()
     sys.setprofile(None)
+    worker = resource.get("worker")
+    if worker is not None:
+        worker.join(timeout=1.0)
     if root is not None:
-        try:
-            root.after_cancel(resource.get("heartbeat_job"))
-        except Exception:
-            pass
+        job = resource.get("heartbeat_job", [None])[0]
+        if job is not None:
+            try:
+                root.after_cancel(job)
+            except Exception:
+                pass
     try:
         stream.flush()
         stream.close()
