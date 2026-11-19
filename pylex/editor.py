@@ -983,9 +983,10 @@ class CodeEditor(tk.Frame):
             return
         self._cancel_highlight_work()
         self._cancel_bracket_work()
-        if self._edit_refresh_job is not None:
+        edit_refresh_job = getattr(self, "_edit_refresh_job", None)
+        if edit_refresh_job is not None:
             try:
-                self.after_cancel(self._edit_refresh_job)
+                self.after_cancel(edit_refresh_job)
             except tk.TclError:
                 pass
             self._edit_refresh_job = None
