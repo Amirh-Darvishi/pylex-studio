@@ -906,14 +906,16 @@ class WorkspaceMixin:
         except OSError as exc:
             messagebox.showerror("Rename", str(exc), parent=self)
             return
-        for _editor, document in self.documents.items():
+        for editor, document in self.documents.items():
             opened = document.get("path")
             if opened and (opened == path or was_directory and path in opened.parents):
-                document["path"] = (
+                updated_path = (
                     destination / opened.relative_to(path)
                     if opened != path
                     else destination
                 )
+                document["path"] = updated_path
+                editor.set_file_path(updated_path)
                 self.editor_tabs.tab(document["frame"], text=self._tab_label(document))
         self._sync_active_document()
         self.refresh_workspace()
