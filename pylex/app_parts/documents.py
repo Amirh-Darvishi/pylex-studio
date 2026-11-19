@@ -201,7 +201,6 @@ class DocumentsMixin:
         if path:
             self._open_path(path)
 
-
     def save_file(self):
         document = self._active_document()
         if document is None:
@@ -216,7 +215,9 @@ class DocumentsMixin:
                 f"{document['path'].name} changed on disk since it was opened or last saved. Overwrite those external changes?",
                 parent=self,
             ):
-                self.status.configure(text="Save cancelled; external changes were preserved.")
+                self.status.configure(
+                    text="Save cancelled; external changes were preserved."
+                )
                 return False
         try:
             source = self.editor.get_content().replace("\r\n", "\n").replace("\r", "\n")
