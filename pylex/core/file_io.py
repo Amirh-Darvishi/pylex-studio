@@ -6,6 +6,17 @@ import stat
 from pathlib import Path
 
 
+def file_disk_signature(path):
+    """Return file size and nanosecond modification time, or None if unavailable."""
+    if path is None:
+        return None
+    try:
+        info = Path(path).stat()
+    except OSError:
+        return None
+    return (info.st_size, info.st_mtime_ns)
+
+
 def _create_temporary_file(destination):
     """Create a unique sibling file using the process' normal creation mode."""
     flags = os.O_WRONLY | os.O_CREAT | os.O_EXCL
