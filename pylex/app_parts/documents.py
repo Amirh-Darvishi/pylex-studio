@@ -242,7 +242,7 @@ class DocumentsMixin:
             atomic_write_text(document["path"], source, encoding=codec, newline="")
             document["encoding"] = codec
             document["newline"] = line_ending
-            document["disk_signature"] = self._file_disk_signature(document["path"])
+            document["disk_signature"] = file_disk_signature(document["path"])
             document["dirty"] = False
             self.editor_tabs.tab(document["frame"], text=self._tab_label(document))
             self._sync_active_document()
