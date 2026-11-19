@@ -146,41 +146,19 @@ class PanelsMixin:
     def _set_status_preference(self, key, value):
         self.preferences[key] = value
 
-        # Custom popup callbacks run during Tk's mouse-event dispatch. Defer
-        # the UI update until the popup has fully closed and the window has
-        # regained its normal event/render cycle. Coalesce rapid selections.
-        pending = getattr(self, "_status_preference_job", None)
-        if pending is not None:
-            try:
-                self.after_cancel(pending)
-            except tk.TclError:
-                pass
-
         def apply_setting():
-            self._status_preference_job = None
-            try:
-                if not self.winfo_exists():
-                    return
-                if key == "status_bar_indent":
-                    indent_string = self._configured_indent_string()
-                    for editor in tuple(self.documents):
-                        try:
-                            if editor.winfo_exists():
-                                editor.indent_string = indent_string
-                        except tk.TclError:
-                            continue
-                self._update_editor_status()
-                self._persist_preferences()
-                # Flush geometry/text invalidations without entering a nested
-                # event loop; minimizing the window should not be needed.
-                self.update_idletasks()
-            except tk.TclError:
-                return
+            if key == "status_bar_indent":
+                indent_string = self._configured_indent_string()
+                for editor in tuple(self.documents):
+                    try:
+                        if editor.winfo_exists():
+                            editor.indent_string = indent_string
+                    except tk.TclError:
+                        continue
+            self._update_editor_status()
+            self._persist_preferences()
 
-        try:
-            self._status_preference_job = self.after(75, apply_setting)
-        except tk.TclError:
-            self._status_preference_job = None
+        self.after_idle(apply_setting)
 
     def _new_context_menu(self):
         return ContextMenu(
