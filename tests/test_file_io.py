@@ -7,7 +7,11 @@ from unittest.mock import patch
 
 import pytest
 
-from pylex.core.file_io import atomic_write_text, file_disk_signature, rename_without_overwrite
+from pylex.core.file_io import (
+    atomic_write_text,
+    file_disk_signature,
+    rename_without_overwrite,
+)
 
 
 def test_atomic_write_replaces_file_with_requested_encoding(tmp_path):
