@@ -7,7 +7,7 @@ from unittest.mock import patch
 
 import pytest
 
-from pylex.core.file_io import atomic_write_text, rename_without_overwrite
+from pylex.core.file_io import atomic_write_text, file_disk_signature, rename_without_overwrite
 
 
 def test_atomic_write_replaces_file_with_requested_encoding(tmp_path):
@@ -108,3 +108,18 @@ def test_rename_without_overwrite_supports_case_only_rename_on_windows(tmp_path)
     assert rename_without_overwrite(source, destination) == destination
     assert destination.read_text(encoding="utf-8") == "content"
     assert [item.name for item in tmp_path.iterdir()] == ["example.py"]
+
+
+def test_file_disk_signature_detects_content_replacement(tmp_path):
+    target = tmp_path / "tracked.txt"
+    target.write_text("one", encoding="utf-8")
+    original = file_disk_signature(target)
+
+    target.write_text("a longer replacement", encoding="utf-8")
+
+    assert file_disk_signature(target) != original
+
+
+def test_file_disk_signature_returns_none_for_missing_path(tmp_path):
+    assert file_disk_signature(tmp_path / "missing.txt") is None
+    assert file_disk_signature(None) is None
