@@ -122,7 +122,7 @@ class PyLexApp(
         if sys.platform == "win32":
             ttkb.enable_high_dpi_awareness()
         super().__init__()
-        self._hang_trace_file = start_hang_trace()
+        self._hang_trace_file = start_hang_trace(self)
         # Keep the IDE fully opaque: top-level alpha blending softens text,
         # icons and thin borders on Windows, especially on high-DPI displays.
         self._icon_cache = {}
@@ -211,5 +211,5 @@ class PyLexApp(
         self.terminal_panel.close_all()
         self.quality_panel.close()
         self.git_panel.close()
-        stop_hang_trace(self._hang_trace_file)
+        stop_hang_trace(self._hang_trace_file, self)
         self.destroy()
