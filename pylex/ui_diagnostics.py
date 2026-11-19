@@ -32,6 +32,21 @@ _TARGETS = {
     "_render",
     "_dismiss",
     "_invoke",
+    "_persist_preferences",
+    "save_preferences",
+    "apply_setting",
+    "apply_reset",
+    "_refresh_lines_after_edit",
+    "refresh_gutter_marks",
+    "update_current_line",
+    "_on_document_changed",
+    "_show_context_menu",
+    "set_content",
+    "get_content",
+    "_copy_current_line",
+    "_delete_current_line",
+    "_select_all",
+    "_cursor_changed",
 }
 
 
