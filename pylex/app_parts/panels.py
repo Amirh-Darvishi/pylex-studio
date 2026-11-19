@@ -137,17 +137,28 @@ class PanelsMixin:
         self.preferences["status_bar_items"] = [
             item for item in order if item in current
         ]
-        self._persist_preferences()
-        self._apply_status_bar_visibility()
+        # Apply UI changes after the custom popup has dismissed. Mutating editor
+        # and status widgets inside the popup callback can leave Tk in a stale
+        # focus/grab state on some platforms.
+        self.after_idle(self._apply_status_bar_visibility)
+        self.after_idle(self._persist_preferences)
 
     def _set_status_preference(self, key, value):
         self.preferences[key] = value
-        if key == "status_bar_indent":
-            indent_string = self._configured_indent_string()
-            for editor in self.documents:
-                editor.indent_string = indent_string
-        self._persist_preferences()
-        self._update_editor_status()
+
+        def apply_setting():
+            if key == "status_bar_indent":
+                indent_string = self._configured_indent_string()
+                for editor in tuple(self.documents):
+                    try:
+                        if editor.winfo_exists():
+                            editor.indent_string = indent_string
+                    except tk.TclError:
+                        continue
+            self._update_editor_status()
+            self._persist_preferences()
+
+        self.after_idle(apply_setting)
 
     def _new_context_menu(self):
         return ContextMenu(
@@ -224,9 +235,12 @@ class PanelsMixin:
             self.preferences[key] = (
                 list(DEFAULTS[key]) if key == "status_bar_items" else DEFAULTS[key]
             )
-        self._persist_preferences()
-        self._apply_status_bar_visibility()
-        self._update_editor_status()
+        def apply_reset():
+            self._apply_status_bar_visibility()
+            self._update_editor_status()
+            self._persist_preferences()
+
+        self.after_idle(apply_reset)
 
     def _show_tree_data_context_menu(self, tree, event):
         row = tree.identify_row(event.y)
