@@ -352,7 +352,7 @@ class ContextMenu:
                     callback = entry.get("command")
                     if callback:
                         callback()
-                    self._dismiss()
+                    self._root_menu()._dismiss()
 
                 for widget in (row, *row.winfo_children()):
                     widget.bind("<Button-1>", lambda event, fn=toggle: fn(), add="+")
@@ -363,7 +363,7 @@ class ContextMenu:
                     callback = entry.get("command")
                     if callback:
                         callback()
-                    self._dismiss()
+                    self._root_menu()._dismiss()
 
                 for widget in (row, *row.winfo_children()):
                     widget.bind("<Button-1>", lambda event, fn=choose: fn(), add="+")
