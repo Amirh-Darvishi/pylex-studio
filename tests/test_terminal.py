@@ -1,6 +1,7 @@
 """Unit tests for integrated terminal helpers."""
 
 import os
+import queue
 import shlex
 import sys
 import time
@@ -85,7 +86,7 @@ class TerminalHelperTests(unittest.TestCase):
 
     def test_read_available_respects_chunk_limit(self):
         session = TerminalProcess.__new__(TerminalProcess)
-        session.events = __import__("queue").Queue()
+        session.events = queue.Queue()
         session.events.put("first")
         session.events.put("second")
         session.events.put("third")
