@@ -251,6 +251,14 @@ class ExecutionMixin:
             content,
             channel if channel in {"stdout", "stderr", "system"} else "stdout",
         )
+        # Keep recent output without allowing the Text widget to grow forever.
+        retained_chars = 500_000
+        try:
+            count = int(self.output.count("1.0", "end-1c", "chars")[0])
+            if count > retained_chars:
+                self.output.delete("1.0", f"1.0+{count-retained_chars}c")
+        except (tk.TclError, TypeError, IndexError, ValueError):
+            pass
         self.output.see("end")
         self.output.configure(state="disabled")
 
