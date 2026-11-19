@@ -8,8 +8,10 @@
 - Guard interpreter-discovery, pip-repair, and virtual-environment dialog polling against destroyed Tk windows.
 - Cancel chunked editor-content callbacks and close completion popups when an editor is destroyed.
 - Honor configured indentation width in Auto-Indent, Smart Backspace, and Dedent, including two-space and tab-based indentation; avoid false auto-indent from comment colons.
-- Prevent workspace rename from replacing an existing destination.
-- Add regression coverage for lifecycle callbacks, runtime diagnostic context, dialog polling, indentation, and rename safety.
+- Prevent workspace rename from replacing an existing destination; update open-document paths and lexer paths after file/folder rename.
+- Make Close Others and Close All cancellation-safe by resolving all dirty documents before closing any tabs.
+- Detect external file changes by size/mtime signature and warn before overwriting them during Save.
+- Add regression coverage for lifecycle callbacks, runtime diagnostic context, dialog polling, indentation, rename safety, and file-signature detection.
 
 ## [2.7.0] - 2026-11-18
 
