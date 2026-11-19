@@ -1,8 +1,9 @@
 """Opt-in low-overhead callback tracing for diagnosing UI hangs.
 
-Enable with PYLEX_HANG_TRACE=<watchdog seconds>. Only callbacks slower than
-PYLEX_HANG_TRACE_MIN_MS (default 100 ms) are written. No Tk calls are made
-from the diagnostic worker.
+Enable with PYLEX_HANG_TRACE=<watchdog seconds>. Slow callbacks are written
+when they exceed PYLEX_HANG_TRACE_MIN_MS (default 100 ms). Event-loop stalls
+are also reported at PYLEX_HANG_TRACE_STALL_MS (default 750 ms). No Tk calls
+are made from the diagnostic worker.
 """
 
 import faulthandler
@@ -47,6 +48,20 @@ _TARGETS = {
     "_delete_current_line",
     "_select_all",
     "_cursor_changed",
+    "_theme",
+    "toggle_theme",
+    "poll_pointer",
+    "schedule_poll",
+    "show_submenu",
+    "destroy_popups",
+    "make_popup",
+    "highlight_menu_row",
+    "clear_menu_row_hover",
+    "_open_submenu",
+    "tk_popup",
+    "_refresh_after_edit",
+    "_apply_status_bar_visibility",
+    "_apply_highlight_batch",
 }
 
 
@@ -60,9 +75,12 @@ def start_hang_trace(root):
         min_duration_ms = float(
             os.environ.get("PYLEX_HANG_TRACE_MIN_MS", "100").strip()
         )
+        stall_threshold_ms = float(
+            os.environ.get("PYLEX_HANG_TRACE_STALL_MS", "750").strip()
+        )
     except ValueError:
         return None
-    if timeout <= 0 or min_duration_ms < 0:
+    if timeout <= 0 or min_duration_ms < 0 or stall_threshold_ms <= 0:
         return None
 
     path = os.environ.get("PYLEX_HANG_TRACE_FILE", "pylex-hang-trace.log")
@@ -78,7 +96,8 @@ def start_hang_trace(root):
         stream = open(path, "w", encoding="utf-8", buffering=1)
         stream.write(
             f"PyLex diagnostic started; timeout={timeout:.1f}s; "
-            f"slow_callback_threshold={min_duration_ms:.1f}ms; pid={os.getpid()}\n"
+            f"slow_callback_threshold={min_duration_ms:.1f}ms; "
+            f"ui_stall_threshold={stall_threshold_ms:.1f}ms; pid={os.getpid()}\n"
         )
 
         def log(message):
@@ -121,14 +140,28 @@ def start_hang_trace(root):
         heartbeat_job[0] = root.after(250, heartbeat)
 
         def watchdog():
-            while not stop_event.wait(timeout):
-                elapsed = time.monotonic() - last_heartbeat[0]
-                log(
-                    f"WATCHDOG heartbeat_age={elapsed:.2f}s "
-                    f"last_callback={last_callback[0]}"
-                )
-                if elapsed > timeout:
-                    log("WARNING: Tk heartbeat stalled or delayed.")
+            poll_interval = min(0.25, timeout)
+            next_report = time.monotonic() + timeout
+            stall_reported = False
+            while not stop_event.wait(poll_interval):
+                now = time.monotonic()
+                elapsed = now - last_heartbeat[0]
+                if elapsed * 1000 >= stall_threshold_ms and not stall_reported:
+                    log(
+                        f"UI_STALL heartbeat_age={elapsed:.3f}s "
+                        f"last_callback={last_callback[0]}"
+                    )
+                    stall_reported = True
+                elif elapsed * 1000 < stall_threshold_ms:
+                    stall_reported = False
+                if now >= next_report:
+                    log(
+                        f"WATCHDOG heartbeat_age={elapsed:.2f}s "
+                        f"last_callback={last_callback[0]}"
+                    )
+                    if elapsed > timeout:
+                        log("WARNING: Tk heartbeat stalled or delayed.")
+                    next_report = now + timeout
 
         worker = threading.Thread(
             target=watchdog, name="pylex-hang-watchdog", daemon=True
