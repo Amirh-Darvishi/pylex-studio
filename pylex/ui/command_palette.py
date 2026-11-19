@@ -97,8 +97,8 @@ class CommandPalette:
             highlightthickness=0,
             bg=surface,
             fg=foreground,
-            selectbackground=elevated,
-            selectforeground=accent,
+            selectbackground=accent,
+            selectforeground="#ffffff",
             font=(self.font_family, 9),
             exportselection=False,
         )
