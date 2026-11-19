@@ -63,6 +63,7 @@ class CodeEditor(tk.Frame):
         self.large_file_mode = False
         self._loading_content = False
         self._content_job = None
+        self._edit_refresh_job = None
 
         self.gutter = tk.Text(
             self,
@@ -221,11 +222,23 @@ class CodeEditor(tk.Frame):
             if not self.large_file_mode:
                 self._schedule_line_refresh()
             self._schedule_highlight()
-            self.update_current_line()
-            if self.on_cursor_change:
-                self.on_cursor_change()
-            if self.on_change:
-                self.on_change()
+            # Coalesce editor/status refreshes after bulk edits such as paste.
+            if self._edit_refresh_job is not None:
+                try:
+                    self.after_cancel(self._edit_refresh_job)
+                except tk.TclError:
+                    pass
+            self._edit_refresh_job = self.after_idle(self._refresh_after_edit)
+
+    def _refresh_after_edit(self):
+        self._edit_refresh_job = None
+        if not self.winfo_exists() or self._loading_content:
+            return
+        self.update_current_line()
+        if self.on_cursor_change:
+            self.on_cursor_change()
+        if self.on_change:
+            self.on_change()
 
     def _wheel_from_event(self, event):
         units = -int(event.delta / 120) * 3 if event.delta else 0
@@ -761,6 +774,12 @@ class CodeEditor(tk.Frame):
             self._highlight_job = None
         self._cancel_highlight_work()
         self._cancel_bracket_work()
+        if self._edit_refresh_job is not None:
+            try:
+                self.after_cancel(self._edit_refresh_job)
+            except tk.TclError:
+                pass
+            self._edit_refresh_job = None
         if self._bracket_job is not None:
             try:
                 self.after_cancel(self._bracket_job)
