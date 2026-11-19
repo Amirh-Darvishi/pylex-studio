@@ -135,7 +135,7 @@ class CommandPalette:
             self.registry.execute(command.command_id)
             return "break"
 
-        def select_result(index):
+        def select_result(index, *, focus=False):
             if not matches:
                 return "break"
             index = max(0, min(len(matches) - 1, index))
@@ -143,11 +143,12 @@ class CommandPalette:
             listing.selection_set(index)
             listing.activate(index)
             listing.see(index)
-            listing.focus_set()
+            if focus:
+                listing.focus_set()
             return "break"
 
         def focus_results(_event=None):
-            return select_result(0)
+            return select_result(0, focus=True)
 
         def move_selection(direction):
             selection = listing.curselection()
@@ -213,6 +214,9 @@ class CommandPalette:
                 root._pylex_command_palette_window = None
 
         query.trace_add("write", refresh)
+        listing.bind("<Motion>", lambda event: select_result(listing.nearest(event.y)))
+        listing.bind("<Leave>", lambda _event: "break")
+        listing.bind("<Button-1>", lambda event: select_result(listing.nearest(event.y)))
         listing.bind("<Double-1>", execute)
         listing.bind("<Return>", execute)
         entry.bind("<Down>", focus_results)
