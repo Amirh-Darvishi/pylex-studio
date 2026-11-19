@@ -804,6 +804,14 @@ class CodeEditor(tk.Frame):
         if not self.gutter.winfo_manager():
             self.gutter.pack(side="left", before=self.text, fill="y")
         self.text.insert("1.0", value)
+        # Loading a document must not be reported as a user edit by the
+        # deferred callback scheduled from Tk's <<Modified>> event.
+        if self._edit_refresh_job is not None:
+            try:
+                self.after_cancel(self._edit_refresh_job)
+            except tk.TclError:
+                pass
+            self._edit_refresh_job = None
         self.text.edit_modified(False)
         self.refresh_lines()
         self.highlight()
