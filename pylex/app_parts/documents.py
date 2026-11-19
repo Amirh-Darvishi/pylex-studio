@@ -4,7 +4,7 @@
 # ruff: noqa: F403, F405
 
 from ..app_support import *  # noqa: F403
-from ..core.file_io import atomic_write_text
+from ..core.file_io import atomic_write_text, file_disk_signature
 
 
 class DocumentsMixin:
@@ -115,7 +115,7 @@ class DocumentsMixin:
                 "dirty": False,
                 "encoding": encoding,
                 "newline": newline or "\n",
-                "disk_signature": self._file_disk_signature(document_path),
+                "disk_signature": file_disk_signature(document_path),
             },
         )
         self._refresh_open_editors()
@@ -201,16 +201,6 @@ class DocumentsMixin:
         if path:
             self._open_path(path)
 
-    @staticmethod
-    def _file_disk_signature(path):
-        """Return a cheap signature for detecting external file changes."""
-        if path is None:
-            return None
-        try:
-            stat = Path(path).stat()
-        except OSError:
-            return None
-        return (stat.st_size, stat.st_mtime_ns)
 
     def save_file(self):
         document = self._active_document()
@@ -218,7 +208,7 @@ class DocumentsMixin:
             return False
         if document["path"] is None:
             return self.save_as()
-        current_signature = self._file_disk_signature(document["path"])
+        current_signature = file_disk_signature(document["path"])
         previous_signature = document.get("disk_signature")
         if previous_signature is not None and current_signature != previous_signature:
             if not messagebox.askyesno(
