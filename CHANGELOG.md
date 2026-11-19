@@ -2,6 +2,11 @@
 
 ## [Unreleased]
 
+### UX refinements
+- Start the main application maximized by default.
+- Add menu-style keyboard navigation and mouse-wheel scrolling to the Command Palette results.
+- Defer Status Bar setting updates until the custom popup closes to avoid UI focus/lifecycle freezes.
+
 ### UX and reliability improvements
 - Guard execution and debugger polling against stale sessions, cancel their scheduled callbacks when replacing sessions or shutting down, and prevent old runtime diagnostics from replacing the active document's diagnostics.
 - Map runtime exceptions to the traceback frame for the executed source and retain the launched editor snapshot and interpreter context.
