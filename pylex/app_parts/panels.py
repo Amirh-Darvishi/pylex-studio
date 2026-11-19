@@ -235,6 +235,7 @@ class PanelsMixin:
             self.preferences[key] = (
                 list(DEFAULTS[key]) if key == "status_bar_items" else DEFAULTS[key]
             )
+
         def apply_reset():
             self._apply_status_bar_visibility()
             self._update_editor_status()
