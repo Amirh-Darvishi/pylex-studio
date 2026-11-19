@@ -83,6 +83,17 @@ class TerminalHelperTests(unittest.TestCase):
         terminal_environment(base, r"C:\venv\Scripts\python.exe")
         self.assertEqual(base, {"PATH": "original"})
 
+    def test_read_available_respects_chunk_limit(self):
+        session = TerminalProcess.__new__(TerminalProcess)
+        session.events = __import__("queue").Queue()
+        session.events.put("first")
+        session.events.put("second")
+        session.events.put("third")
+
+        self.assertEqual(session.read_available(max_chunks=2), ["first", "second"])
+        self.assertEqual(session.read_available(max_chunks=1), ["third"])
+        self.assertEqual(session.read_available(max_chunks=1), [])
+
     @unittest.skipIf(os.name == "nt", "POSIX process-group semantics")
     def test_shell_exit_cleans_up_child_holding_terminal_pipe(self):
         with tempfile.TemporaryDirectory() as directory:
