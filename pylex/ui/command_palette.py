@@ -151,7 +151,11 @@ class CommandPalette:
 
         def move_selection(direction):
             selection = listing.curselection()
-            current = selection[0] if selection else (0 if direction > 0 else len(matches) - 1)
+            current = (
+                selection[0]
+                if selection
+                else (0 if direction > 0 else len(matches) - 1)
+            )
             return select_result(current + direction)
 
         def wheel_scroll(event):
