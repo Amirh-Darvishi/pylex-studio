@@ -128,6 +128,8 @@ class PyLexApp(
         self.title("PyLex Studio")
         self.geometry("1180x780")
         self.minsize(850, 560)
+        # Start maximized while retaining the native title bar and window controls.
+        self.after_idle(self._maximize_window)
         self.current_path = None
         self.dirty = False
         self.project = None
@@ -158,6 +160,21 @@ class PyLexApp(
         self._theme()
         self.protocol("WM_DELETE_WINDOW", self.close)
         self._title()
+
+    def _maximize_window(self):
+        """Maximize the main window using the platform-supported Tk state."""
+        try:
+            if sys.platform == "win32":
+                self.state("zoomed")
+            else:
+                self.attributes("-zoomed", True)
+        except tk.TclError:
+            try:
+                self.geometry(
+                    f"{self.winfo_screenwidth()}x{self.winfo_screenheight()}+0+0"
+                )
+            except tk.TclError:
+                pass
 
     def _close_toolbar_menu(self):
         """Close any active toolbar popup and cancel its scheduled timers."""
