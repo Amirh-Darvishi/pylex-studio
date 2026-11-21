@@ -111,10 +111,10 @@ class ContextMenu:
             root = self.master.winfo_toplevel()
             if getattr(root, "_pylex_active_context_menu", None) is self:
                 root._pylex_active_context_menu = None
-            try:
-                root.after_idle(root.focus_set)
-            except tk.TclError:
-                pass
+            # Do not restore focus asynchronously to the application root.
+            # A user may have clicked another widget or opened a dialog while
+            # dismissing the popup; an idle focus callback would steal focus
+            # from that target and interfere with window/widget interaction.
 
     def _root_menu(self):
         menu = self
