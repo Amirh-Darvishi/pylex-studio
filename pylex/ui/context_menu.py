@@ -176,7 +176,7 @@ class ContextMenu:
             child.window.geometry(f"+{max(0, x)}+{max(0, y)}")
             child.window.deiconify()
             child.window.lift()
-            child.window.focus_force()
+            child.window.focus_set()
         except (tk.TclError, AttributeError):
             # A parent or row can disappear during rapid pointer movement.
             return
@@ -464,7 +464,7 @@ class ContextMenu:
             parent = self._parent_menu
             self._dismiss()
             if parent.window is not None:
-                parent.window.focus_force()
+                parent.window.focus_set()
         else:
             self._root_menu()._dismiss()
         return "break"
@@ -487,7 +487,7 @@ class ContextMenu:
         self.window.deiconify()
         self.window.lift()
         try:
-            self.window.focus_force()
+            self.window.focus_set()
         except tk.TclError:
             pass
         if self._parent_menu is None:
