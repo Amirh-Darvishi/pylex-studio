@@ -30,6 +30,7 @@ from .editor_features import (
     find_matching_bracket,
     indentation_for_newline,
     smart_backspace_prefix,
+    dedent_prefix,
     toggle_comment_block,
 )
 
@@ -62,6 +63,7 @@ class CodeEditor(tk.Frame):
         self.large_file_mode = False
         self._loading_content = False
         self._content_job = None
+        self._edit_refresh_job = None
 
         self.gutter = tk.Text(
             self,
@@ -220,11 +222,23 @@ class CodeEditor(tk.Frame):
             if not self.large_file_mode:
                 self._schedule_line_refresh()
             self._schedule_highlight()
-            self.update_current_line()
-            if self.on_cursor_change:
-                self.on_cursor_change()
-            if self.on_change:
-                self.on_change()
+            # Coalesce editor/status refreshes after bulk edits such as paste.
+            if self._edit_refresh_job is not None:
+                try:
+                    self.after_cancel(self._edit_refresh_job)
+                except tk.TclError:
+                    pass
+            self._edit_refresh_job = self.after_idle(self._refresh_after_edit)
+
+    def _refresh_after_edit(self):
+        self._edit_refresh_job = None
+        if not self.winfo_exists() or self._loading_content:
+            return
+        self.update_current_line()
+        if self.on_cursor_change:
+            self.on_cursor_change()
+        if self.on_change:
+            self.on_change()
 
     def _wheel_from_event(self, event):
         units = -int(event.delta / 120) * 3 if event.delta else 0
@@ -255,9 +269,10 @@ class CodeEditor(tk.Frame):
     def _smart_newline(self, event=None):
         """Continue indentation and add one level after a Python suite header."""
         prefix = self.text.get("insert linestart", "insert")
+        leading = prefix[: len(prefix) - len(prefix.lstrip(" \\t"))]
         indentation = indentation_for_newline(prefix)
-        if prefix.rstrip().endswith(":") and indentation.endswith("    "):
-            indentation = indentation[:-4] + self.indent_string
+        if indentation != leading:
+            indentation = leading + self.indent_string
         self.text.insert("insert", "\n" + indentation)
         # Keep the insertion point visible and move the gutter in lockstep.
         self.text.see("insert")
@@ -268,9 +283,10 @@ class CodeEditor(tk.Frame):
         return "break"
 
     def _smart_backspace(self, event=None):
-        """Delete indentation to the previous four-column stop."""
+        """Delete indentation to the previous configured indentation stop."""
         prefix = self.text.get("insert linestart", "insert")
-        replacement = smart_backspace_prefix(prefix)
+        indent_width = max(1, len(self.indent_string.expandtabs(4)))
+        replacement = smart_backspace_prefix(prefix, indent_width, self.indent_string)
         if replacement is None:
             return None
         self.text.delete("insert linestart", "insert")
@@ -289,11 +305,12 @@ class CodeEditor(tk.Frame):
             first = last = int(self.text.index("insert").split(".")[0])
         for line in range(first, last + 1):
             start = f"{line}.0"
-            prefix = self.text.get(start, f"{line}.0+4c")
-            if prefix.startswith("    "):
-                self.text.delete(start, f"{line}.0+4c")
-            elif prefix.startswith("\t"):
-                self.text.delete(start, f"{line}.0+1c")
+            line_text = self.text.get(start, f"{line}.0 lineend")
+            prefix = line_text[: len(line_text) - len(line_text.lstrip(" \\t"))]
+            replacement = dedent_prefix(prefix, self.indent_string)
+            if replacement != prefix:
+                self.text.delete(start, f"{start}+{len(prefix)}c")
+                self.text.insert(start, replacement)
         return "break"
 
     def _toggle_comment(self, event=None):
@@ -757,6 +774,13 @@ class CodeEditor(tk.Frame):
             self._highlight_job = None
         self._cancel_highlight_work()
         self._cancel_bracket_work()
+        edit_refresh_job = getattr(self, "_edit_refresh_job", None)
+        if edit_refresh_job is not None:
+            try:
+                self.after_cancel(edit_refresh_job)
+            except tk.TclError:
+                pass
+            self._edit_refresh_job = None
         if self._bracket_job is not None:
             try:
                 self.after_cancel(self._bracket_job)
@@ -781,6 +805,14 @@ class CodeEditor(tk.Frame):
         if not self.gutter.winfo_manager():
             self.gutter.pack(side="left", before=self.text, fill="y")
         self.text.insert("1.0", value)
+        # Loading a document must not be reported as a user edit by the
+        # deferred callback scheduled from Tk's <<Modified>> event.
+        if self._edit_refresh_job is not None:
+            try:
+                self.after_cancel(self._edit_refresh_job)
+            except tk.TclError:
+                pass
+            self._edit_refresh_job = None
         self.text.edit_modified(False)
         self.refresh_lines()
         self.highlight()
@@ -951,6 +983,13 @@ class CodeEditor(tk.Frame):
             return
         self._cancel_highlight_work()
         self._cancel_bracket_work()
+        edit_refresh_job = getattr(self, "_edit_refresh_job", None)
+        if edit_refresh_job is not None:
+            try:
+                self.after_cancel(edit_refresh_job)
+            except tk.TclError:
+                pass
+            self._edit_refresh_job = None
         if self._highlight_job is not None:
             try:
                 self.after_cancel(self._highlight_job)
@@ -969,6 +1008,21 @@ class CodeEditor(tk.Frame):
             except tk.TclError:
                 pass
             self._bracket_job = None
+        if self._content_job is not None:
+            try:
+                self.after_cancel(self._content_job)
+            except tk.TclError:
+                pass
+            self._content_job = None
+        completion = self._completion_window
+        if completion is not None:
+            try:
+                if completion.winfo_exists():
+                    completion.destroy()
+            except tk.TclError:
+                pass
+            self._completion_window = None
+            self._completion_list = None
 
     def show_diagnostic(self, line, column=0, end_line=None, end_column=None):
         """Highlight an error span and move the insertion cursor to its location."""

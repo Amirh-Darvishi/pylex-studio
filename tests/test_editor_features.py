@@ -6,6 +6,7 @@ from pylex.editor_features import (
     find_matching_bracket,
     indentation_for_newline,
     smart_backspace_prefix,
+    dedent_prefix,
     toggle_comment_block,
 )
 
@@ -13,6 +14,12 @@ from pylex.editor_features import (
 class SmartEditorFeatureTests(unittest.TestCase):
     def test_indents_after_suite_colon(self):
         self.assertEqual(indentation_for_newline("    if ready:"), "        ")
+
+    def test_newline_indent_uses_configured_width(self):
+        self.assertEqual(indentation_for_newline("  if ready:", 2), "    ")
+
+    def test_comment_colon_does_not_add_indent(self):
+        self.assertEqual(indentation_for_newline("    value = 1  #:", 2), "    ")
 
     def test_does_not_indent_after_colon_inside_string_or_comment(self):
         self.assertEqual(indentation_for_newline('    message = "value:"'), "    ")
@@ -22,6 +29,22 @@ class SmartEditorFeatureTests(unittest.TestCase):
         self.assertEqual(smart_backspace_prefix("        "), "    ")
         self.assertEqual(smart_backspace_prefix("   "), "")
         self.assertIsNone(smart_backspace_prefix("  x"))
+
+    def test_smart_backspace_respects_two_space_indentation(self):
+        self.assertEqual(smart_backspace_prefix("    ", 2, "  "), "  ")
+        self.assertEqual(smart_backspace_prefix("  ", 2, "  "), "")
+
+    def test_smart_backspace_preserves_tab_indentation(self):
+        self.assertEqual(smart_backspace_prefix("\t\t", 4, "\t"), "\t")
+
+    def test_dedent_removes_configured_indentation_unit(self):
+        self.assertEqual(dedent_prefix("    ", "  "), "  ")
+        self.assertEqual(dedent_prefix("  ", "  "), "")
+        self.assertEqual(dedent_prefix("\t", "  "), "")
+
+    def test_dedent_handles_tab_indentation(self):
+        self.assertEqual(dedent_prefix("\t\t", "\t"), "\t")
+        self.assertEqual(dedent_prefix("    ", "\t"), "")
 
     def test_comment_toggle_preserves_indentation_and_line_endings(self):
         source = "if ready:\r\n    run()\r\n"

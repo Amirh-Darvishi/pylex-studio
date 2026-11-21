@@ -4,7 +4,7 @@
 # ruff: noqa: F403, F405
 
 from ..app_support import *  # noqa: F403
-from ..core.file_io import atomic_write_text
+from ..core.file_io import atomic_write_text, file_disk_signature
 
 
 class DocumentsMixin:
@@ -106,14 +106,16 @@ class DocumentsMixin:
         editor.text.bind("<<PyLexAnalyze>>", lambda _event: self.analyze_all(), add="+")
         editor.set_file_path(path)
         editor.set_content(content)
+        document_path = Path(path) if path else None
         self.document_controller.register(
             editor,
             {
                 "frame": frame,
-                "path": Path(path) if path else None,
+                "path": document_path,
                 "dirty": False,
                 "encoding": encoding,
                 "newline": newline or "\n",
+                "disk_signature": file_disk_signature(document_path),
             },
         )
         self._refresh_open_editors()
@@ -205,6 +207,18 @@ class DocumentsMixin:
             return False
         if document["path"] is None:
             return self.save_as()
+        current_signature = file_disk_signature(document["path"])
+        previous_signature = document.get("disk_signature")
+        if previous_signature is not None and current_signature != previous_signature:
+            if not messagebox.askyesno(
+                "File Changed Externally",
+                f"{document['path'].name} changed on disk since it was opened or last saved. Overwrite those external changes?",
+                parent=self,
+            ):
+                self.status.configure(
+                    text="Save cancelled; external changes were preserved."
+                )
+                return False
         try:
             source = self.editor.get_content().replace("\r\n", "\n").replace("\r", "\n")
             eol = self.preferences.get("status_bar_eol", "Auto")
@@ -229,6 +243,7 @@ class DocumentsMixin:
             atomic_write_text(document["path"], source, encoding=codec, newline="")
             document["encoding"] = codec
             document["newline"] = line_ending
+            document["disk_signature"] = file_disk_signature(document["path"])
             document["dirty"] = False
             self.editor_tabs.tab(document["frame"], text=self._tab_label(document))
             self._sync_active_document()

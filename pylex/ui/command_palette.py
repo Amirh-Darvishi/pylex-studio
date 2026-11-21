@@ -97,8 +97,8 @@ class CommandPalette:
             highlightthickness=0,
             bg=surface,
             fg=foreground,
-            selectbackground=elevated,
-            selectforeground=accent,
+            selectbackground=accent,
+            selectforeground="#ffffff",
             font=(self.font_family, 9),
             exportselection=False,
         )
@@ -135,12 +135,41 @@ class CommandPalette:
             self.registry.execute(command.command_id)
             return "break"
 
-        def focus_results(_event=None):
-            if matches:
+        def select_result(index, *, focus=False):
+            if not matches:
+                return "break"
+            index = max(0, min(len(matches) - 1, index))
+            listing.selection_clear(0, "end")
+            listing.selection_set(index)
+            listing.activate(index)
+            listing.see(index)
+            if focus:
                 listing.focus_set()
-                listing.selection_clear(0, "end")
-                listing.selection_set(0)
-                listing.activate(0)
+            return "break"
+
+        def focus_results(_event=None):
+            return select_result(0, focus=True)
+
+        def move_selection(direction):
+            selection = listing.curselection()
+            current = (
+                selection[0]
+                if selection
+                else (0 if direction > 0 else len(matches) - 1)
+            )
+            return select_result(current + direction)
+
+        def wheel_scroll(event):
+            if getattr(event, "delta", 0):
+                listing.yview_scroll(-1 if event.delta > 0 else 1, "units")
+            return "break"
+
+        def wheel_up(_event):
+            listing.yview_scroll(-1, "units")
+            return "break"
+
+        def wheel_down(_event):
+            listing.yview_scroll(1, "units")
             return "break"
 
         def dismiss(_event=None):
@@ -185,10 +214,22 @@ class CommandPalette:
                 root._pylex_command_palette_window = None
 
         query.trace_add("write", refresh)
+        listing.bind("<Motion>", lambda event: select_result(listing.nearest(event.y)))
+        listing.bind("<Leave>", lambda _event: "break")
+        listing.bind("<Button-1>", lambda event: select_result(listing.nearest(event.y)))
         listing.bind("<Double-1>", execute)
         listing.bind("<Return>", execute)
         entry.bind("<Down>", focus_results)
+        entry.bind("<Up>", lambda _event: select_result(len(matches) - 1))
         entry.bind("<Return>", execute)
+        listing.bind("<Up>", lambda _event: move_selection(-1))
+        listing.bind("<Down>", lambda _event: move_selection(1))
+        listing.bind("<MouseWheel>", wheel_scroll)
+        listing.bind("<Button-4>", wheel_up)
+        listing.bind("<Button-5>", wheel_down)
+        entry.bind("<MouseWheel>", wheel_scroll)
+        entry.bind("<Button-4>", wheel_up)
+        entry.bind("<Button-5>", wheel_down)
         dialog.bind("<Escape>", dismiss)
         if not getattr(root, "_pylex_command_palette_listener", False):
             root.bind_all("<Button-1>", outside_click, add="+")

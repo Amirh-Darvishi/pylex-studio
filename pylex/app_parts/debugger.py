@@ -40,6 +40,7 @@ class DebuggerMixin:
         if self.debug_session is not None and not self.debug_session.done:
             self.status.configure(text="A debugging session is already active.")
             return
+        self._cancel_debug_poll()
         try:
             document = self._active_document()
             project = self._project_for_document(document)
@@ -66,7 +67,7 @@ class DebuggerMixin:
         self.status.configure(
             text="Debugger ready — set breakpoints or press Continue."
         )
-        self._poll_debugger()
+        self._poll_debugger(self.debug_session)
 
     def debug_continue(self):
         if self.debug_session is None or self.debug_session.done:
@@ -253,9 +254,19 @@ class DebuggerMixin:
         self.debugger_controller.stop()
         self.status.configure(text="Stopping debugger...")
 
-    def _poll_debugger(self):
-        session = self.debug_session
-        if session is None:
+    def _cancel_debug_poll(self):
+        job = getattr(self, "_debug_poll", None)
+        if job is not None:
+            try:
+                self.after_cancel(job)
+            except tk.TclError:
+                pass
+            self._debug_poll = None
+
+    def _poll_debugger(self, session=None):
+        session = session or self.debug_session
+        # Ignore callbacks from sessions that have already been replaced.
+        if session is None or session is not self.debug_session:
             return
         output = session.read_available()
         if output:
@@ -283,4 +294,6 @@ class DebuggerMixin:
             else:
                 self.status.configure(text="Debugging session stopped.")
             return
-        self._debug_poll = self.after(80, self._poll_debugger)
+        self._debug_poll = self.after(
+            80, lambda active=session: self._poll_debugger(active)
+        )

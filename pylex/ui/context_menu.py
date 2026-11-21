@@ -111,6 +111,10 @@ class ContextMenu:
             root = self.master.winfo_toplevel()
             if getattr(root, "_pylex_active_context_menu", None) is self:
                 root._pylex_active_context_menu = None
+            # Do not restore focus asynchronously to the application root.
+            # A user may have clicked another widget or opened a dialog while
+            # dismissing the popup; an idle focus callback would steal focus
+            # from that target and interfere with window/widget interaction.
 
     def _root_menu(self):
         menu = self
@@ -128,10 +132,16 @@ class ContextMenu:
         child._dismiss()
 
     def _invoke(self, item):
+        """Dismiss popup windows before dispatching commands on the Tk event loop."""
+        root = self.master.winfo_toplevel()
         self._root_menu()._dismiss()
         callback = item.get("command")
         if callback is not None:
-            callback()
+            try:
+                root.after_idle(callback)
+            except tk.TclError:
+                # The application may be closing while a menu command is selected.
+                pass
 
     def _open_submenu(self, row, child):
         # Tk can deliver a queued <Enter> after a popup was dismissed. Ignore
@@ -172,7 +182,7 @@ class ContextMenu:
             child.window.geometry(f"+{max(0, x)}+{max(0, y)}")
             child.window.deiconify()
             child.window.lift()
-            child.window.focus_force()
+            child.window.focus_set()
         except (tk.TclError, AttributeError):
             # A parent or row can disappear during rapid pointer movement.
             return
@@ -350,9 +360,13 @@ class ContextMenu:
                 def toggle(entry=item):
                     entry["variable"].set(not bool(entry["variable"].get()))
                     callback = entry.get("command")
+                    root = self.master.winfo_toplevel()
+                    self._root_menu()._dismiss()
                     if callback:
-                        callback()
-                    self._dismiss()
+                        try:
+                            root.after_idle(callback)
+                        except tk.TclError:
+                            pass
 
                 for widget in (row, *row.winfo_children()):
                     widget.bind("<Button-1>", lambda event, fn=toggle: fn(), add="+")
@@ -361,9 +375,13 @@ class ContextMenu:
                 def choose(entry=item):
                     entry["variable"].set(entry["value"])
                     callback = entry.get("command")
+                    root = self.master.winfo_toplevel()
+                    self._root_menu()._dismiss()
                     if callback:
-                        callback()
-                    self._dismiss()
+                        try:
+                            root.after_idle(callback)
+                        except tk.TclError:
+                            pass
 
                 for widget in (row, *row.winfo_children()):
                     widget.bind("<Button-1>", lambda event, fn=choose: fn(), add="+")
@@ -435,15 +453,23 @@ class ContextMenu:
                 elif item["kind"] == "check":
                     item["variable"].set(not bool(item["variable"].get()))
                     callback = item.get("command")
-                    if callback:
-                        callback()
+                    root = self.master.winfo_toplevel()
                     self._root_menu()._dismiss()
+                    if callback:
+                        try:
+                            root.after_idle(callback)
+                        except tk.TclError:
+                            pass
                 elif item["kind"] == "radio":
                     item["variable"].set(item["value"])
                     callback = item.get("command")
-                    if callback:
-                        callback()
+                    root = self.master.winfo_toplevel()
                     self._root_menu()._dismiss()
+                    if callback:
+                        try:
+                            root.after_idle(callback)
+                        except tk.TclError:
+                            pass
                 else:
                     self._invoke(item)
         return "break"
@@ -460,7 +486,7 @@ class ContextMenu:
             parent = self._parent_menu
             self._dismiss()
             if parent.window is not None:
-                parent.window.focus_force()
+                parent.window.focus_set()
         else:
             self._root_menu()._dismiss()
         return "break"
@@ -483,7 +509,7 @@ class ContextMenu:
         self.window.deiconify()
         self.window.lift()
         try:
-            self.window.focus_force()
+            self.window.focus_set()
         except tk.TclError:
             pass
         if self._parent_menu is None:

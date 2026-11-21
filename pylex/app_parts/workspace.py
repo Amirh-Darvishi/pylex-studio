@@ -4,6 +4,7 @@
 # ruff: noqa: F403, F405
 
 from ..app_support import *  # noqa: F403
+from ..core.file_io import rename_without_overwrite
 from ..editor_performance import LARGE_FILE_THRESHOLD
 from ..file_loading import FileLoadCoordinator
 from ..workspace_scan import iter_workspace_entries
@@ -713,30 +714,63 @@ class WorkspaceMixin:
         menu.tk_popup(event.x_root, event.y_root)
         return "break"
 
-    def _close_other_documents(self, keep):
-        for editor in list(self.documents):
-            if editor is keep:
+    def _confirm_documents_before_close(self, editors):
+        """Resolve dirty documents before closing any tab in a group."""
+        previous = self.editor
+        previous_tab = self.editor_tabs.select()
+        for editor in editors:
+            document = self.documents.get(editor)
+            if document is None or not document["dirty"]:
                 continue
-            self.editor_tabs.select(self.documents[editor]["frame"])
+            self.editor_tabs.select(document["frame"])
             self.editor = editor
             self._sync_active_document()
-            if not self._confirm():
-                return
-            self.editor_tabs.forget(self.documents[editor]["frame"])
+            answer = messagebox.askyesnocancel(
+                "Unsaved Changes",
+                f"Save changes to {document['path'].name if document['path'] else 'Untitled'} before closing?",
+                parent=self,
+            )
+            if answer is None or (answer and not self.save_file()):
+                if previous in self.documents:
+                    self.editor_tabs.select(self.documents[previous]["frame"])
+                    self.editor = previous
+                    self._sync_active_document()
+                elif previous_tab:
+                    self.editor_tabs.select(previous_tab)
+                return False
+        if previous in self.documents:
+            self.editor_tabs.select(self.documents[previous]["frame"])
+            self.editor = previous
+            self._sync_active_document()
+        elif previous_tab:
+            self.editor_tabs.select(previous_tab)
+        return True
+
+    def _close_other_documents(self, keep):
+        targets = [editor for editor in self.documents if editor is not keep]
+        if not self._confirm_documents_before_close(targets):
+            return
+        for editor in targets:
+            document = self.documents.get(editor)
+            if document is None:
+                continue
+            self.editor_tabs.forget(document["frame"])
             self.document_controller.remove(editor)
         self._refresh_open_editors()
-        self.editor_tabs.select(self.documents[keep]["frame"])
-        self.editor = keep
-        self._sync_active_document()
+        if keep in self.documents:
+            self.editor_tabs.select(self.documents[keep]["frame"])
+            self.editor = keep
+            self._sync_active_document()
 
     def _close_all_documents(self):
-        for editor in list(self.documents):
-            self.editor_tabs.select(self.documents[editor]["frame"])
-            self.editor = editor
-            self._sync_active_document()
-            if not self._confirm():
-                return
-            self.editor_tabs.forget(self.documents[editor]["frame"])
+        targets = list(self.documents)
+        if not self._confirm_documents_before_close(targets):
+            return
+        for editor in targets:
+            document = self.documents.get(editor)
+            if document is None:
+                continue
+            self.editor_tabs.forget(document["frame"])
             self.document_controller.remove(editor)
         self._refresh_open_editors()
         self._create_document()
@@ -901,18 +935,20 @@ class WorkspaceMixin:
         destination = path.with_name(name)
         was_directory = path.is_dir()
         try:
-            path.rename(destination)
+            rename_without_overwrite(path, destination)
         except OSError as exc:
             messagebox.showerror("Rename", str(exc), parent=self)
             return
-        for _editor, document in self.documents.items():
+        for editor, document in self.documents.items():
             opened = document.get("path")
             if opened and (opened == path or was_directory and path in opened.parents):
-                document["path"] = (
+                updated_path = (
                     destination / opened.relative_to(path)
                     if opened != path
                     else destination
                 )
+                document["path"] = updated_path
+                editor.set_file_path(updated_path)
                 self.editor_tabs.tab(document["frame"], text=self._tab_label(document))
         self._sync_active_document()
         self.refresh_workspace()
