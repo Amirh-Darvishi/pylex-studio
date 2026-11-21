@@ -132,10 +132,16 @@ class ContextMenu:
         child._dismiss()
 
     def _invoke(self, item):
+        """Dismiss popup windows before dispatching commands on the Tk event loop."""
+        root = self.master.winfo_toplevel()
         self._root_menu()._dismiss()
         callback = item.get("command")
         if callback is not None:
-            callback()
+            try:
+                root.after_idle(callback)
+            except tk.TclError:
+                # The application may be closing while a menu command is selected.
+                pass
 
     def _open_submenu(self, row, child):
         # Tk can deliver a queued <Enter> after a popup was dismissed. Ignore
@@ -354,9 +360,13 @@ class ContextMenu:
                 def toggle(entry=item):
                     entry["variable"].set(not bool(entry["variable"].get()))
                     callback = entry.get("command")
-                    if callback:
-                        callback()
+                    root = self.master.winfo_toplevel()
                     self._root_menu()._dismiss()
+                    if callback:
+                        try:
+                            root.after_idle(callback)
+                        except tk.TclError:
+                            pass
 
                 for widget in (row, *row.winfo_children()):
                     widget.bind("<Button-1>", lambda event, fn=toggle: fn(), add="+")
@@ -365,9 +375,13 @@ class ContextMenu:
                 def choose(entry=item):
                     entry["variable"].set(entry["value"])
                     callback = entry.get("command")
-                    if callback:
-                        callback()
+                    root = self.master.winfo_toplevel()
                     self._root_menu()._dismiss()
+                    if callback:
+                        try:
+                            root.after_idle(callback)
+                        except tk.TclError:
+                            pass
 
                 for widget in (row, *row.winfo_children()):
                     widget.bind("<Button-1>", lambda event, fn=choose: fn(), add="+")
@@ -439,15 +453,23 @@ class ContextMenu:
                 elif item["kind"] == "check":
                     item["variable"].set(not bool(item["variable"].get()))
                     callback = item.get("command")
-                    if callback:
-                        callback()
+                    root = self.master.winfo_toplevel()
                     self._root_menu()._dismiss()
+                    if callback:
+                        try:
+                            root.after_idle(callback)
+                        except tk.TclError:
+                            pass
                 elif item["kind"] == "radio":
                     item["variable"].set(item["value"])
                     callback = item.get("command")
-                    if callback:
-                        callback()
+                    root = self.master.winfo_toplevel()
                     self._root_menu()._dismiss()
+                    if callback:
+                        try:
+                            root.after_idle(callback)
+                        except tk.TclError:
+                            pass
                 else:
                     self._invoke(item)
         return "break"
