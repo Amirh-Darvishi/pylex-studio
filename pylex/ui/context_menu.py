@@ -103,6 +103,12 @@ class ContextMenu:
         if window is not None:
             try:
                 if window.winfo_exists():
+                    # Only the root popup owns the grab. Submenus share it so
+                    # switching cascades never transfers modal ownership.
+                    if parent is None:
+                        current_grab = window.grab_current()
+                        if current_grab is window:
+                            window.grab_release()
                     window.destroy()
             except tk.TclError:
                 pass
@@ -510,6 +516,12 @@ class ContextMenu:
         self.window.lift()
         try:
             self.window.focus_set()
+            # Use a real Tk grab for the root custom popup. This prevents
+            # clicks from leaking into underlying widgets while a menu is
+            # active, which can trigger unrelated UI callbacks during menu
+            # dismissal (e.g. editor paste/status-bar interactions).
+            if self._parent_menu is None:
+                self.window.grab_set()
         except tk.TclError:
             pass
         if self._parent_menu is None:
