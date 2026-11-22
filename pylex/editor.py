@@ -60,6 +60,7 @@ class CodeEditor(tk.Frame):
         self._completion_window = None
         self._completion_list = None
         self._breakpoints = set()
+        self._gutter_line_count = None
         self.file_path = None
         self.large_file_mode = False
         self._loading_content = False
@@ -704,6 +705,7 @@ class CodeEditor(tk.Frame):
             return
         first, _last = self.text.yview()
         count = max(1, int(self.text.index("end-1c").split(".")[0]))
+        self._gutter_line_count = count
         current = int(self.text.index("insert").split(".")[0])
         self.gutter.configure(state="normal")
         self.gutter.delete("1.0", "end")
@@ -883,7 +885,14 @@ class CodeEditor(tk.Frame):
 
     def _refresh_lines_after_edit(self):
         self._line_refresh_job = None
-        if not self.large_file_mode:
+        if self.large_file_mode:
+            return
+        # Rebuilding the whole gutter is O(lines). Edits inside existing lines
+        # leave the numbering untouched, so only move the current-line marks.
+        count = max(1, int(self.text.index("end-1c").split(".")[0]))
+        if count == self._gutter_line_count:
+            self.refresh_gutter_marks()
+        else:
             self.refresh_lines()
 
     def _schedule_highlight(self, event=None):
@@ -893,7 +902,11 @@ class CodeEditor(tk.Frame):
         self._cancel_bracket_work()
         if self._highlight_job is not None:
             self.after_cancel(self._highlight_job)
-        self._highlight_job = self.after(120, self.highlight)
+        # Whole-document tokenization competes with the UI thread for the GIL,
+        # so back off proportionally on big documents while typing continues.
+        lines = int(self.text.index("end-1c").split(".")[0])
+        delay = 120 + min(480, lines // 25)
+        self._highlight_job = self.after(delay, self.highlight)
 
     def highlight(self, event=None):
         """Tokenize in a worker and apply syntax tags in bounded UI batches."""
@@ -964,7 +977,7 @@ class CodeEditor(tk.Frame):
     def _apply_highlight_batch(self, generation, spans, offset):
         if generation != self._highlight_generation:
             return
-        end = min(offset + 400, len(spans))
+        end = min(offset + 150, len(spans))
         try:
             for tag, start, stop in spans[offset:end]:
                 self.text.tag_add(tag, start, stop)

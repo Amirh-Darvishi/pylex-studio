@@ -41,13 +41,11 @@ _TARGETS = {
     "refresh_gutter_marks",
     "update_current_line",
     "_on_document_changed",
-    "_show_context_menu",
     "set_content",
     "get_content",
     "_copy_current_line",
     "_delete_current_line",
     "_select_all",
-    "_cursor_changed",
     "_theme",
     "toggle_theme",
     "poll_pointer",
@@ -60,8 +58,6 @@ _TARGETS = {
     "_open_submenu",
     "tk_popup",
     "_refresh_after_edit",
-    "_apply_status_bar_visibility",
-    "_apply_highlight_batch",
 }
 
 
@@ -116,7 +112,9 @@ def start_hang_trace(root):
             frame_key = id(frame)
             if event == "call":
                 callback_starts[frame_key] = time.monotonic()
-                last_callback[0] = f"{module}.{name} ({code.co_filename}:{frame.f_lineno})"
+                last_callback[0] = (
+                    f"{module}.{name} ({code.co_filename}:{frame.f_lineno})"
+                )
                 return
             started = callback_starts.pop(frame_key, None)
             if started is None:

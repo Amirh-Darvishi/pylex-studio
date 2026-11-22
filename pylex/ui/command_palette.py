@@ -216,7 +216,9 @@ class CommandPalette:
         query.trace_add("write", refresh)
         listing.bind("<Motion>", lambda event: select_result(listing.nearest(event.y)))
         listing.bind("<Leave>", lambda _event: "break")
-        listing.bind("<Button-1>", lambda event: select_result(listing.nearest(event.y)))
+        listing.bind(
+            "<Button-1>", lambda event: select_result(listing.nearest(event.y))
+        )
         listing.bind("<Double-1>", execute)
         listing.bind("<Return>", execute)
         entry.bind("<Down>", focus_results)
