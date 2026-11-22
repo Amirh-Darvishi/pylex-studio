@@ -12,6 +12,7 @@ from .editor_performance import (
     build_highlight_spans,
     is_large_document,
     lexer_for_path,
+    spans_to_text_indexes,
 )
 from pygments.token import (
     Comment,
@@ -913,6 +914,10 @@ class CodeEditor(tk.Frame):
                     source, lexer, self._tag_for_token, cancel_event.is_set
                 )
                 if spans is not None and not cancel_event.is_set():
+                    # Resolve Tk indexes off the UI thread; "1.0+Nc" indexes are
+                    # O(N) each inside Tk and made large pastes freeze the UI.
+                    spans = spans_to_text_indexes(source, spans)
+                if spans is not None and not cancel_event.is_set():
                     result_queue.put((True, spans))
             except Exception as exc:
                 if not cancel_event.is_set():
@@ -962,7 +967,7 @@ class CodeEditor(tk.Frame):
         end = min(offset + 400, len(spans))
         try:
             for tag, start, stop in spans[offset:end]:
-                self.text.tag_add(tag, f"1.0+{start}c", f"1.0+{stop}c")
+                self.text.tag_add(tag, start, stop)
         except tk.TclError:
             return
         if end < len(spans):

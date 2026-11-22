@@ -8,6 +8,7 @@
 - Defer Status Bar setting updates until the custom popup closes to avoid UI focus/lifecycle freezes.
 
 ### UX and reliability improvements
+- Fix UI freezes after pasting large text into the editor: syntax-highlight spans are now converted to Tk `line.column` indexes on the worker thread instead of `1.0+Nc` offsets, which Tk resolves in linear time per tag and made highlighting quadratic (8,000 pasted lines: ~40 s -> ~1.3 s).
 - Guard execution and debugger polling against stale sessions, cancel their scheduled callbacks when replacing sessions or shutting down, and prevent old runtime diagnostics from replacing the active document's diagnostics.
 - Map runtime exceptions to the traceback frame for the executed source and retain the launched editor snapshot and interpreter context.
 - Guard interpreter-discovery, pip-repair, and virtual-environment dialog polling against destroyed Tk windows.

@@ -108,3 +108,26 @@ def test_highlight_span_generation_can_be_cancelled():
         build_highlight_spans(source, PythonLexer(), lambda _token: "tag", lambda: True)
         is None
     )
+
+
+def test_spans_to_text_indexes_maps_offsets_to_line_and_column():
+    from pylex.editor_performance import spans_to_text_indexes
+
+    source = "if x:\n    y = 1\n\nz"
+    spans = [("a", 0, 2), ("b", 10, 11), ("c", 5, 6), ("d", 17, 18), ("e", 0, 0)]
+
+    assert spans_to_text_indexes(source, spans) == [
+        ("a", "1.0", "1.2"),
+        ("b", "2.4", "2.5"),
+        ("c", "1.5", "2.0"),
+        ("d", "4.0", "4.1"),
+        ("e", "1.0", "1.0"),
+    ]
+
+
+def test_spans_to_text_indexes_matches_tk_offset_semantics_for_multiline_source():
+    from pylex.editor_performance import line_start_offsets, spans_to_text_indexes
+
+    source = "a\n\nbc\n"
+    assert line_start_offsets(source) == [0, 2, 3, 6]
+    assert spans_to_text_indexes(source, [("t", 3, 5)]) == [("t", "3.0", "3.2")]

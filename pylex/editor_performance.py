@@ -1,5 +1,6 @@
 """Performance policies and file-aware lexer selection for the editor."""
 
+from bisect import bisect_right
 from pathlib import Path
 
 from pygments.lexers import PythonLexer, get_lexer_for_filename
@@ -83,3 +84,31 @@ def build_highlight_spans(source, lexer, tag_for_token, is_cancelled=None):
     if is_cancelled is not None and is_cancelled():
         return None
     return spans
+
+
+def line_start_offsets(source):
+    """Return the character offset at which each source line begins."""
+    starts = [0]
+    find = source.find
+    position = find("\n")
+    while position != -1:
+        starts.append(position + 1)
+        position = find("\n", position + 1)
+    return starts
+
+
+def spans_to_text_indexes(source, spans):
+    """Convert character-offset spans to Tk ``line.column`` index spans.
+
+    Tk resolves ``1.0+Nc`` indexes by counting from the start of the buffer, so
+    applying thousands of them is quadratic and freezes the UI after large
+    pastes. ``line.column`` indexes are resolved directly; this conversion is
+    pure Python, uses binary search, and is safe to run on a worker thread.
+    """
+    starts = line_start_offsets(source)
+
+    def index(offset):
+        line = bisect_right(starts, offset) - 1
+        return f"{line + 1}.{offset - starts[line]}"
+
+    return [(tag, index(start), index(end)) for tag, start, end in spans]
