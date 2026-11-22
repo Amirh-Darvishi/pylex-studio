@@ -97,3 +97,14 @@ Each cell shows median elapsed time and peak Python allocation. The sparse-searc
 ## Release validation
 
 The 2.7.0 release validation recorded 198 passing tests, 3 skipped tests, and 14 passing subtests locally. Black reported 75 files unchanged and Ruff passed. The six CI combinations (Windows and Ubuntu, Python 3.10/3.11/3.13) all passed pytest, compileall, the benchmark smoke test, Black, and Ruff. Skips were platform/environment limitations such as symlink availability and POSIX process-group semantics.
+
+## Editor highlight application (post-2.7.0)
+
+Applying syntax tags with character-offset indexes (`1.0+Nc`) is linear per call inside Tk, so highlighting a large pasted block was quadratic and froze the UI. Offsets are now converted to `line.column` indexes with `spans_to_text_indexes()` (binary search over line starts) on the highlight worker thread, so the UI thread only calls `tag_add` with direct indexes. Manual measurement under Xvfb, pasting `print('hello')` lines into an empty editor until highlighting finished:
+
+| Pasted lines | Before | After |
+|---|---|---|
+| 2,000 | ~2.7 s | ~0.4 s |
+| 8,000 | ~40.5 s | ~1.3 s |
+
+These are single-machine, single-run figures meant to show the scaling change, not benchmark-harness results.

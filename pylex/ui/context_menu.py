@@ -71,10 +71,14 @@ class ContextMenu:
         )
 
     def delete(self, first, last=None):
-        if first in ("all", 0) and (last in (None, "end", 0) or first == "all"):
+        if first == "all" or (first == 0 and last == "end"):
             self.items.clear()
         elif isinstance(first, int):
-            end = first if last is None or last == "end" else int(last)
+            end = (
+                len(self.items) - 1
+                if last == "end"
+                else first if last is None else int(last)
+            )
             del self.items[first : end + 1]
 
     def _color(self, name, fallback):
@@ -333,7 +337,14 @@ class ContextMenu:
                     if not inside:
                         set_row_hover(target, target_label, active, surface, normal_fg)
 
-                hover_data["id"] = self.window.after(45, settle)
+                window = self.window
+                if window is None:
+                    # A stale <Leave> can arrive after the popup was dismissed.
+                    return
+                try:
+                    hover_data["id"] = window.after(45, settle)
+                except tk.TclError:
+                    hover_data["id"] = None
 
             for widget in (row, *row.winfo_children()):
                 widget.bind("<Enter>", hover, add="+")
