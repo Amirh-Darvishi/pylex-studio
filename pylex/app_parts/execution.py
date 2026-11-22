@@ -20,7 +20,8 @@ class ExecutionMixin:
                 text="A program is already running. Force Stop it before starting another."
             )
             return
-        source = self.editor.get_content()
+        editor = self.editor
+        source = editor.get_content()
         document = self._active_document()
         project = self._project_for_document(document)
         try:
@@ -65,9 +66,10 @@ class ExecutionMixin:
                 "Dependency check: no missing imports detected.\n", "system"
             )
         self._append_output("Starting program...\n", "system")
+        self._cancel_execution_poll()
         try:
             timeout = self.preferences["timeout_seconds"]
-            self.execution_controller.start_document(
+            handle = self.execution_controller.start_document(
                 source,
                 document.get("path") if document else None,
                 project,
@@ -82,10 +84,25 @@ class ExecutionMixin:
         timeout_label = "unlimited" if timeout is None else f"{timeout} seconds"
         self._append_output(f"Execution timeout: {timeout_label}.\n", "system")
         self._last_timeout_display = None
+        self._execution_context = (
+            editor,
+            source,
+            interpreter.executable,
+            handle.script_path,
+        )
         self.status.configure(
             text=f"Running — timeout: {timeout_label}. Shift+F5 / Force Stop terminates the process tree."
         )
-        self._poll_execution()
+        self._poll_execution(handle)
+
+    def _cancel_execution_poll(self):
+        job = getattr(self, "_execution_poll", None)
+        if job is not None:
+            try:
+                self.after_cancel(job)
+            except tk.TclError:
+                pass
+            self._execution_poll = None
 
     def stop_execution(self):
         if self.execution_controller.stop():
@@ -96,9 +113,11 @@ class ExecutionMixin:
             return
         self.status.configure(text="No program is currently running.")
 
-    def _poll_execution(self):
-        handle = self.execution
-        if handle is None:
+    def _poll_execution(self, handle=None):
+        handle = handle or self.execution
+        # A delayed callback from an earlier run must never poll or finalize a
+        # newer session after the user starts another program.
+        if handle is None or handle is not self.execution:
             return
         for channel, content in handle.read_available():
             self._append_output(content, channel)
@@ -121,7 +140,9 @@ class ExecutionMixin:
             if display != self._last_timeout_display:
                 self.status.configure(text=status_text)
                 self._last_timeout_display = display
-            self._execution_poll = self.after(60, self._poll_execution)
+            self._execution_poll = self.after(
+                60, lambda active=handle: self._poll_execution(active)
+            )
             return
         result = handle.result
         # Drain any final chunks queued as the reader threads close.
@@ -133,12 +154,34 @@ class ExecutionMixin:
             "system",
         )
         if result.stderr:
-            self._report_runtime_error(result.stderr)
+            context = getattr(self, "_execution_context", None)
+            if context is not None:
+                (
+                    source_editor,
+                    source_snapshot,
+                    interpreter_path,
+                    source_path,
+                ) = context
+            else:
+                source_editor, source_snapshot, interpreter_path, source_path = (
+                    self.editor,
+                    None,
+                    None,
+                    None,
+                )
+            self._report_runtime_error(
+                result.stderr,
+                source=source_snapshot,
+                editor=source_editor,
+                interpreter=interpreter_path,
+                source_path=source_path,
+            )
         self.status.configure(
             text=f"Execution {result.status} — exit code {result.exit_code}."
         )
         self.execution_controller.finish(handle)
         self._execution_poll = None
+        self._execution_context = None
 
     def run_active_file_in_terminal(self):
         """Run the active, saved editor document in the integrated shell."""
@@ -208,6 +251,14 @@ class ExecutionMixin:
             content,
             channel if channel in {"stdout", "stderr", "system"} else "stdout",
         )
+        # Keep recent output without allowing the Text widget to grow forever.
+        retained_chars = 500_000
+        try:
+            count = int(self.output.count("1.0", "end-1c", "chars")[0])
+            if count > retained_chars:
+                self.output.delete("1.0", f"1.0+{count-retained_chars}c")
+        except (tk.TclError, TypeError, IndexError, ValueError):
+            pass
         self.output.see("end")
         self.output.configure(state="disabled")
 
@@ -239,7 +290,9 @@ class ExecutionMixin:
         except OSError as exc:
             messagebox.showerror("Save Output Error", str(exc))
 
-    def _report_runtime_error(self, stderr):
+    def _report_runtime_error(
+        self, stderr, source=None, editor=None, interpreter=None, source_path=None
+    ):
         exception_matches = re.findall(
             r"^([A-Za-z_][\w.]*(?:Error|Exception)): (.*)$",
             stderr,
@@ -248,9 +301,23 @@ class ExecutionMixin:
         if not exception_matches:
             return
         error_type, message = exception_matches[-1]
-        line_matches = re.findall(r'File "[^"]+", line (\d+)', stderr)
-        line = int(line_matches[-1]) if line_matches else 1
-        source_lines = self.editor.get_content().splitlines()
+        traceback_frames = re.findall(r'File "([^"]+)", line (\d+)', stderr)
+        line = int(traceback_frames[-1][1]) if traceback_frames else 1
+        if source_path is not None and traceback_frames:
+            try:
+                target = Path(source_path).resolve()
+                matching_frames = [
+                    frame_line
+                    for frame_path, frame_line in traceback_frames
+                    if Path(frame_path).resolve() == target
+                ]
+                if matching_frames:
+                    line = int(matching_frames[-1])
+            except (OSError, RuntimeError):
+                pass
+        source_lines = (
+            source if source is not None else self.editor.get_content()
+        ).splitlines()
         source_line = source_lines[line - 1] if 1 <= line <= len(source_lines) else ""
         if error_type == "ModuleNotFoundError":
             missing = re.search(r"No module named ['\"]([^'\"]+)['\"]", message)
@@ -261,14 +328,17 @@ class ExecutionMixin:
                 package = PIP_NAMES.get(
                     module.split(".", 1)[0], module.split(".", 1)[0]
                 )
-                interpreter = self._interpreter_for_project(
-                    self._project_for_document(self._active_document())
-                ).executable
+                interpreter = (
+                    interpreter
+                    or self._interpreter_for_project(
+                        self._project_for_document(self._active_document())
+                    ).executable
+                )
                 message = (
                     f"Missing library '{module}'. Install it into the active interpreter with: "
                     f'"{interpreter}" -m pip install "{package}"'
                 )
-        from .analyzer import Diagnostic
+        from ..analyzer import Diagnostic
 
         diagnostic = Diagnostic(
             error_type,
@@ -279,8 +349,12 @@ class ExecutionMixin:
             0,
             source_line,
         )
-        self._set_diagnostics([diagnostic])
-        self.tabs.select(self.error_tree.master)
+        # Runtime diagnostics belong to the source document that produced
+        # them; do not overwrite another tab after a context switch.
+        target_editor = editor or self.editor
+        if target_editor is self.editor and target_editor in self.documents:
+            self._set_diagnostics([diagnostic])
+            self.tabs.select(self.error_tree.master)
         self.status.configure(
             text=f"Runtime error: {error_type} — line {line}. See Errors and Output."
         )

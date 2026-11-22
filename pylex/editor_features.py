@@ -33,14 +33,30 @@ def indentation_for_newline(source_line, indent_width=4):
     return leading
 
 
-def smart_backspace_prefix(prefix, indent_width=4):
+def smart_backspace_prefix(prefix, indent_width=4, indent_string="    "):
     """Return the indentation prefix after one smart backspace, or None."""
     if not prefix or prefix.strip(" \t"):
         return None
     width = max(1, int(indent_width))
-    current = len(prefix.expandtabs(width))
+    current = len(prefix.expandtabs(4))
     target = ((current - 1) // width) * width
+    if indent_string == "\t" and prefix and set(prefix) == {"\t"}:
+        return "\t" * (target // 4)
     return " " * target
+
+
+def dedent_prefix(prefix, indent_string="    "):
+    """Remove one configured indentation unit from a leading whitespace prefix."""
+    if not prefix or prefix.strip(" \t"):
+        return prefix
+    unit = indent_string or "    "
+    if prefix.startswith(unit):
+        return prefix[len(unit) :]
+    if prefix.startswith("\t"):
+        return prefix[1:]
+    width = max(1, len(unit.expandtabs(4)))
+    spaces = len(prefix) - len(prefix.lstrip(" "))
+    return prefix[min(width, spaces) :]
 
 
 def toggle_comment_block(source):

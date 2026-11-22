@@ -1,5 +1,7 @@
 """Main graphical interface and composition root for PyLex Studio."""
 
+from .ui_diagnostics import start_hang_trace, stop_hang_trace
+
 from .app_support import (
     DebuggerController,
     DocumentController,
@@ -120,6 +122,7 @@ class PyLexApp(
         if sys.platform == "win32":
             ttkb.enable_high_dpi_awareness()
         super().__init__()
+        self._hang_trace_file = start_hang_trace(self)
         # Keep the IDE fully opaque: top-level alpha blending softens text,
         # icons and thin borders on Windows, especially on high-DPI displays.
         self._icon_cache = {}
@@ -128,6 +131,8 @@ class PyLexApp(
         self.title("PyLex Studio")
         self.geometry("1180x780")
         self.minsize(850, 560)
+        # Start maximized while retaining the native title bar and window controls.
+        self.after_idle(self._maximize_window)
         self.current_path = None
         self.dirty = False
         self.project = None
@@ -142,6 +147,7 @@ class PyLexApp(
         self.debug_session = None
         self._debug_poll = None
         self._last_timeout_display = None
+        self._execution_context = None
         self.breakpoints = {}
         self.conditional_breakpoints = {}
         self.documents = {}
@@ -158,6 +164,32 @@ class PyLexApp(
         self.protocol("WM_DELETE_WINDOW", self.close)
         self._title()
 
+    def _maximize_window(self):
+        """Maximize the main window using the platform-supported Tk state."""
+        try:
+            if sys.platform == "win32":
+                self.state("zoomed")
+            else:
+                self.attributes("-zoomed", True)
+        except tk.TclError:
+            try:
+                self.geometry(
+                    f"{self.winfo_screenwidth()}x{self.winfo_screenheight()}+0+0"
+                )
+            except tk.TclError:
+                pass
+
+    def _close_toolbar_menu(self):
+        """Close any active toolbar popup and cancel its scheduled timers."""
+        close_menu = getattr(self, "_toolbar_menu_close", None)
+        if callable(close_menu):
+            close_menu()
+
+    def _cancel_lifecycle_polls(self):
+        """Cancel UI polling callbacks before destroying the Tk root."""
+        self._cancel_execution_poll()
+        self._cancel_debug_poll()
+
     def close(self):
         for editor, document in list(self.documents.items()):
             if not document["dirty"]:
@@ -167,8 +199,10 @@ class PyLexApp(
             self._sync_active_document()
             if not self._confirm():
                 return
+        self._close_toolbar_menu()
         self._cancel_analysis()
         self._invalidate_file_loads()
+        self._cancel_lifecycle_polls()
         if self.execution_controller.stop():
             handle = self.execution
             handle.wait(timeout=2)
@@ -177,4 +211,5 @@ class PyLexApp(
         self.terminal_panel.close_all()
         self.quality_panel.close()
         self.git_panel.close()
+        stop_hang_trace(self._hang_trace_file, self)
         self.destroy()
